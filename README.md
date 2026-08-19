@@ -1,36 +1,81 @@
-# 大炎珍馐志
+# Terra Food
 
-一个用于记录、整理与传播中国地区美食的 Java + Vue + MySQL 前后端分离项目。
+Terra Food（大炎珍馐志）是一个地图式地方美食收录平台，面向《明日方舟》玩家和地方美食爱好者。用户可以在地图上发现、搜索和记录各地菜品，管理员可以维护菜品与用户数据。
 
-## 技术栈
+## 项目用途
 
-- 后端：Java 21、Spring Boot、MyBatis、Flyway、MySQL
-- 前端：Vue 3、TypeScript、Vite、Vue Router、Axios
+- 用地图集中展示不同地区的特色菜品和店铺位置。
+- 记录菜品介绍、主要食材、背景故事和图片。
+- 帮助用户按名称或地区查找地方美食。
+- 为管理员提供内容审核、批量导入和用户维护入口。
 
-## 本地启动
+## 主要功能
 
-先创建数据库：`CREATE DATABASE dayan_food CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`
+### 地图与菜品
 
-后端进入 `dayanfood-backend`，按需设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`，运行 `mvn spring-boot:run`。Flyway 会自动创建表并写入示例数据。
+- 在地图上展示已收录菜品的位置标记。
+- 点击地图选取经纬度，并识别所在省市或区县。
+- 按菜品名称搜索，按地区筛选菜品。
+- 查看菜品详情、食材、故事、图片、记录人和热度。
+- 登录用户可以上传图片并收录新菜品。
+- 每名用户每 3 天最多上传一次菜品，减少重复内容占据地图。
+- 每名用户每天首次访问一道菜时增加 1 点热度，当天重复访问不重复计算。
 
-前端进入 `web`，运行 `npm install` 和 `npm run dev`，访问 http://localhost:5173。
+### 用户与权限
 
-地图选点会由浏览器通过 OpenStreetMap Nominatim 逆地理接口直接读取省市；未收录的城市会自动创建地区记录。可使用 `VITE_GEOCODING_BASE_URL` 切换到自建或其他 Nominatim 兼容服务。公共服务调用已限制为每秒不超过一次并缓存相同坐标结果。
+- 支持普通用户注册、登录和退出。
+- 普通用户可以浏览和收录菜品。
+- 管理员拥有独立管理后台。
+- 管理员可以启用、停用和删除用户。
+- 用户列表支持分页，每页可选择 10、20 或 50 条记录。
 
-## Excel 导入
+### 内容管理
 
-管理员登录后可在“菜品管理”区域导入 `.xlsx` 或 `.xls` 文件。系统会尽量从不规则表头与错位列中识别省份、城市、店名/菜品名、地址、推荐菜、点评和记录人：
+- 管理员可以查看和删除菜品。
+- 支持导入 `.xlsx` 和 `.xls` 美食数据。
+- 自动识别省份、城市、名称、地址、推荐菜、点评和记录人。
+- 自动跳过重复或无法可靠识别的数据，并显示问题行及原因。
+- 使用 Redis 缓存菜品列表、菜品详情和地区列表，减少重复数据库查询。
+- 支持中文和英文界面切换。
 
-- 地址只精确到城市时，自动使用内置城市中心坐标与“市中心”地址。
-- 表格未填写记录人，或记录人无法匹配已注册用户时，统一记为“无名”。
-- 相同地区、名称和地址的数据不会重复写入。
-- 无法可靠识别的行会跳过，并在管理页面给出原表行号和原因。
+## 本地运行
 
-## 登录账号
+运行前请准备 Java 21、MySQL、Redis、Node.js 和 Maven。
 
-首次启动后端时会创建两个演示账号，密码以 BCrypt 哈希保存：
+1. 创建数据库：
 
-- 普通用户：`user / user123`
-- 管理员：`admin / admin123`
+```sql
+CREATE DATABASE dayan_food
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+```
 
-生产或共享环境请通过 `INITIAL_USER_PASSWORD` 和 `INITIAL_ADMIN_PASSWORD` 环境变量覆盖初始密码。普通用户可以浏览和收录菜品，管理员登录后进入管理后台并拥有内容删除权限。
+2. 启动后端：
+
+```bash
+cd dayanfood-backend
+mvn spring-boot:run
+```
+
+后端默认运行在 `http://localhost:8080`，Flyway 会自动创建和升级数据库表。
+
+3. 启动前端：
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+前端默认访问地址为 `http://localhost:5173`。
+
+## 默认账号
+
+首次启动后端时会创建以下演示账号：
+
+| 角色 | 用户名 | 密码 |
+| --- | --- | --- |
+| 普通用户 | `user` | `user123` |
+| 管理员 | `admin` | `admin123` |
+
+共享或生产环境请通过 `INITIAL_USER_PASSWORD` 和 `INITIAL_ADMIN_PASSWORD` 修改默认密码。MySQL 和 Redis 连接可以通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT` 和 `REDIS_PASSWORD` 配置。
