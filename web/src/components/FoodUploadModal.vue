@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import axios from 'axios'
 import { reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import { createFood, uploadImage } from '../api'
 import type { Food, FoodCreatePayload, Region } from '../types'
@@ -8,6 +10,7 @@ const props = defineProps<{
   regions: Region[]
   latitude?: number
   longitude?: number
+  regionId?: number
 }>()
 
 const emit = defineEmits<{
@@ -29,6 +32,7 @@ const form = reactive<FoodCreatePayload>({
 const image = ref<File>()
 const saving = ref(false)
 const error = ref('')
+const { t } = useI18n()
 
 watch(
   () => [props.latitude, props.longitude],
@@ -36,6 +40,16 @@ watch(
     if (latitude != null && longitude != null) {
       form.latitude = Number(latitude.toFixed(7))
       form.longitude = Number(longitude.toFixed(7))
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.regionId,
+  (regionId) => {
+    if (regionId != null) {
+      form.regionId = regionId
     }
   },
   { immediate: true },
@@ -50,20 +64,23 @@ async function submit() {
   error.value = ''
 
   if (!form.regionId) {
-    error.value = '请选择所属地区。'
+    error.value = t('upload.regionRequired')
     return
   }
 
   saving.value = true
   try {
+    // 图片与菜品信息分两步提交：先取得资源 URL，再保存稳定的业务记录。
     if (image.value) {
       form.imageUrl = await uploadImage(image.value)
     }
 
     const food = await createFood(form)
     emit('saved', food)
-  } catch {
-    error.value = '保存失败，请检查填写内容和后端服务。'
+  } catch (requestError) {
+    error.value = axios.isAxiosError(requestError) && requestError.response?.status === 429
+      ? t('upload.rateLimitError')
+      : t('upload.saveError')
   } finally {
     saving.value = false
   }
@@ -75,8 +92,8 @@ async function submit() {
     <section class="upload-modal">
       <div class="modal-title">
         <div>
-          <small>NEW DELICACY</small>
-          <h2>收录新的珍馐</h2>
+          <small>{{ t('upload.eyebrow') }}</small>
+          <h2>{{ t('upload.title') }}</h2>
         </div>
         <button class="icon-button" @click="emit('close')">×</button>
       </div>
@@ -84,54 +101,56 @@ async function submit() {
       <form @submit.prevent="submit">
         <div class="form-grid">
           <label>
-            菜品名称
+            {{ t('upload.name') }}
             <input v-model="form.name" required maxlength="100">
           </label>
           <label>
-            所属地区
+            {{ t('upload.region') }}
             <select v-model.number="form.regionId" required>
-              <option :value="0" disabled>请选择</option>
+              <option :value="0" disabled>{{ t('upload.selectRegion') }}</option>
               <option v-for="region in regions" :key="region.id" :value="region.id">
                 {{ region.province }} · {{ region.name }}
               </option>
             </select>
           </label>
           <label>
-            纬度
+            {{ t('upload.latitude') }}
             <input v-model.number="form.latitude" type="number" min="-90" max="90" step="0.0000001" required>
           </label>
           <label>
-            经度
+            {{ t('upload.longitude') }}
             <input v-model.number="form.longitude" type="number" min="-180" max="180" step="0.0000001" required>
           </label>
         </div>
 
-        <p class="coordinate-tip">可先关闭表单并点击地图选取位置，再次打开时会自动带入坐标。</p>
+        <p class="coordinate-tip">{{ t('upload.coordinateTip') }}</p>
 
         <label>
-          一句话简介
+          {{ t('upload.summary') }}
           <textarea v-model="form.summary" required maxlength="1000" rows="2"></textarea>
         </label>
         <label>
-          主要食材
+          {{ t('upload.ingredients') }}
           <input v-model="form.ingredients" required maxlength="500">
         </label>
         <label>
-          珍馐掌故
+          {{ t('upload.story') }}
           <textarea v-model="form.story" required rows="4"></textarea>
         </label>
         <label>
-          封面图片
+          {{ t('upload.cover') }}
           <input type="file" accept="image/jpeg,image/png,image/webp" @change="selectImage">
-          <small>支持 JPG、PNG、WebP，最大 5MB</small>
+          <small>{{ t('upload.imageTip') }}</small>
         </label>
 
         <p v-if="error" class="form-error">{{ error }}</p>
 
         <div class="modal-actions">
-          <button type="button" class="secondary-button" @click="emit('close')">取消</button>
+          <button type="button" class="secondary-button" @click="emit('close')">
+            {{ t('common.cancel') }}
+          </button>
           <button class="primary-button" :disabled="saving">
-            {{ saving ? '正在收录……' : '收入珍馐志' }}
+            {{ saving ? t('upload.saving') : t('upload.submit') }}
           </button>
         </div>
       </form>

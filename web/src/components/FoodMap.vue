@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
 
 import type { Food } from '../types'
@@ -13,6 +14,8 @@ const emit = defineEmits<{
   pick: [latitude: number, longitude: number]
 }>()
 
+const { locale, t } = useI18n()
+
 const mapElement = ref<HTMLElement>()
 let map: L.Map | undefined
 let markerLayer: L.LayerGroup | undefined
@@ -23,6 +26,7 @@ function renderMarkers() {
   }
 
   const layer = markerLayer
+  // 筛选或切换语言后重建图层，避免残留旧标记和旧语言弹窗。
   layer.clearLayers()
   const bounds: L.LatLngExpression[] = []
 
@@ -34,15 +38,26 @@ function renderMarkers() {
     const position: L.LatLngExpression = [food.latitude, food.longitude]
     bounds.push(position)
 
+    const popup = document.createElement('div')
+    popup.className = 'map-popup'
+
+    const name = document.createElement('strong')
+    name.textContent = food.name
+
+    const region = document.createElement('span')
+    region.textContent = `${food.region.province} · ${food.region.name}`
+
+    const summary = document.createElement('p')
+    summary.textContent = food.summary
+
+    const detailLink = document.createElement('a')
+    detailLink.href = `/foods/${food.id}`
+    detailLink.textContent = t('map.detail')
+
+    popup.append(name, region, summary, detailLink)
+
     L.marker(position)
-      .bindPopup(`
-        <div class="map-popup">
-          <strong>${food.name}</strong>
-          <span>${food.region.province} · ${food.region.name}</span>
-          <p>${food.summary}</p>
-          <a href="/foods/${food.id}">查看珍馐志 →</a>
-        </div>
-      `)
+      .bindPopup(popup)
       .addTo(layer)
   })
 
@@ -55,6 +70,7 @@ function renderMarkers() {
 }
 
 onMounted(() => {
+  // Leaflet 必须在真实 DOM 挂载后创建，否则无法正确计算地图尺寸。
   map = L.map(mapElement.value!, {
     center: [35.5, 104.2],
     zoom: 4,
@@ -74,9 +90,10 @@ onMounted(() => {
   renderMarkers()
 })
 
-watch(() => props.foods, renderMarkers, { deep: true })
+watch([() => props.foods, locale], renderMarkers, { deep: true })
 
 onBeforeUnmount(() => {
+  // 主动释放地图事件和 DOM 引用，避免路由往返时重复初始化。
   map?.remove()
 })
 </script>

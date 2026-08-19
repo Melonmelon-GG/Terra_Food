@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
-import { getFoods, getRegions } from '../api'
+import { getFoods, getRegions, resolveMapRegion } from '../api'
+import { useAuth } from '../auth'
 import FoodMap from '../components/FoodMap.vue'
 import FoodUploadModal from '../components/FoodUploadModal.vue'
 import type { Food, Region } from '../types'
@@ -13,8 +16,26 @@ const selectedRegionId = ref<number>()
 const loading = ref(true)
 const error = ref('')
 const uploadOpen = ref(false)
+const regionsExpanded = ref(false)
 const pickedLatitude = ref<number>()
 const pickedLongitude = ref<number>()
+const pickedRegionId = ref<number>()
+const locationError = ref('')
+const locationResolving = ref(false)
+const { t } = useI18n()
+const router = useRouter()
+const auth = useAuth()
+
+const regionToggleLabel = computed(() => {
+  if (regionsExpanded.value) {
+    return t('home.hideRegions')
+  }
+
+  const selectedRegion = regions.value.find((region) => region.id === selectedRegionId.value)
+  return selectedRegion
+    ? t('home.showRegionsCurrent', { name: selectedRegion.name })
+    : t('home.showRegions', { count: regions.value.length })
+})
 
 async function loadFoods() {
   loading.value = true
@@ -26,7 +47,7 @@ async function loadFoods() {
       regionId: selectedRegionId.value,
     })
   } catch {
-    error.value = '暂时无法取得珍馐档案，请确认后端服务已经启动。'
+    error.value = t('home.loadError')
   } finally {
     loading.value = false
   }
@@ -37,9 +58,36 @@ function chooseRegion(regionId?: number) {
   loadFoods()
 }
 
-function pickLocation(latitude: number, longitude: number) {
+let locationLookupSequence = 0
+let locationLookupController: AbortController | undefined
+
+async function pickLocation(latitude: number, longitude: number) {
   pickedLatitude.value = latitude
   pickedLongitude.value = longitude
+  locationError.value = ''
+  locationResolving.value = true
+  locationLookupController?.abort()
+  locationLookupController = new AbortController()
+
+  const lookupSequence = ++locationLookupSequence
+  try {
+    const resolvedRegion = await resolveMapRegion(latitude, longitude, locationLookupController.signal)
+    if (lookupSequence === locationLookupSequence) {
+      pickedRegionId.value = resolvedRegion.id
+      if (!regions.value.some((region) => region.id === resolvedRegion.id)) {
+        regions.value = [...regions.value, resolvedRegion]
+      }
+    }
+  } catch {
+    if (lookupSequence === locationLookupSequence) {
+      pickedRegionId.value = undefined
+      locationError.value = t('home.mapRegionError')
+    }
+  } finally {
+    if (lookupSequence === locationLookupSequence) {
+      locationResolving.value = false
+    }
+  }
 }
 
 function handleSaved(food: Food) {
@@ -47,11 +95,20 @@ function handleSaved(food: Food) {
   foods.value = [food, ...foods.value]
 }
 
+async function openUpload() {
+  if (!auth.currentUser.value) {
+    await router.push({ path: '/login', query: { redirect: '/' } })
+    return
+  }
+
+  uploadOpen.value = true
+}
+
 onMounted(async () => {
   try {
     regions.value = await getRegions()
   } catch {
-    error.value = '暂时无法取得地区信息。'
+    error.value = t('home.regionError')
   }
 
   await loadFoods()
@@ -60,37 +117,46 @@ onMounted(async () => {
 
 <template>
   <section class="hero">
-    <p class="eyebrow">A COMPENDIUM OF CHINESE FLAVORS</p>
-    <h1>山河有味，<em>烟火成诗</em></h1>
+    <p class="eyebrow">{{ t('home.eyebrow') }}</p>
+    <h1>{{ t('home.heroTitle') }}<em>{{ t('home.heroEmphasis') }}</em></h1>
     <p>
-      循着一方水土，寻访一道珍馐。收录食材、掌故与手艺，让每一种地域滋味都被看见。
+      {{ t('home.heroDescription') }}
     </p>
     <form @submit.prevent="loadFoods">
-      <input v-model="keyword" placeholder="搜索一道菜、一座城……">
-      <button>寻味</button>
+      <input v-model="keyword" :placeholder="t('home.searchPlaceholder')">
+      <button>{{ t('home.search') }}</button>
     </form>
   </section>
 
   <section class="content">
     <div class="section-title">
       <div>
-        <small>九州风土</small>
-        <h2>地域寻味</h2>
+        <small>{{ t('home.regionEyebrow') }}</small>
+        <h2>{{ t('home.regionTitle') }}</h2>
       </div>
       <div class="section-actions">
-        <p>一方水土，一方滋味</p>
-        <button class="outline-action" @click="uploadOpen = true">
-          ＋ 收录珍馐
+        <p>{{ t('home.regionDescription') }}</p>
+        <button
+          class="outline-action region-toggle"
+          type="button"
+          :aria-expanded="regionsExpanded"
+          aria-controls="region-filters"
+          @click="regionsExpanded = !regionsExpanded"
+        >
+          {{ regionToggleLabel }}
+        </button>
+        <button class="outline-action" :disabled="locationResolving" @click="openUpload">
+          {{ t('home.addFood') }}
         </button>
       </div>
     </div>
 
-    <div class="regions">
+    <div v-show="regionsExpanded" id="region-filters" class="regions">
       <button
         :class="{ active: selectedRegionId === undefined }"
         @click="chooseRegion()"
       >
-        全部
+        {{ t('home.allRegions') }}
       </button>
       <button
         v-for="region in regions"
@@ -106,30 +172,35 @@ onMounted(async () => {
     <section class="map-journal">
       <div class="map-journal-title">
         <div>
-          <small>TASTE ACROSS THE LAND</small>
-          <h2>九州风味图卷</h2>
+          <small>{{ t('home.mapEyebrow') }}</small>
+          <h2>{{ t('home.mapTitle') }}</h2>
         </div>
-        <p>点击地图选取位置，再将一道新的地方滋味收入志中</p>
+        <p>{{ t('home.mapDescription') }}</p>
       </div>
 
       <div class="map-frame">
         <FoodMap :foods="foods" @pick="pickLocation" />
         <div class="map-vignette"></div>
         <div class="map-hint">
-          <span v-if="pickedLatitude">
-            已选 {{ pickedLatitude.toFixed(3) }}, {{ pickedLongitude?.toFixed(3) }}
+          <span v-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>
+          <span v-else-if="locationError" class="error">{{ locationError }}</span>
+          <span v-else-if="pickedLatitude">
+            {{ t('home.mapPicked', {
+              latitude: pickedLatitude.toFixed(3),
+              longitude: pickedLongitude?.toFixed(3),
+            }) }}
           </span>
-          <span v-else>轻点地图，标记珍馐所在</span>
+          <span v-else>{{ t('home.mapHint') }}</span>
         </div>
       </div>
     </section>
 
     <div class="catalog-heading">
-      <small>珍馐图鉴</small>
-      <span>{{ foods.length }} 道记录</span>
+      <small>{{ t('home.catalogEyebrow') }}</small>
+      <span>{{ t('home.recordCount', { count: foods.length }) }}</span>
     </div>
 
-    <p v-if="loading" class="state">正在翻阅珍馐志……</p>
+    <p v-if="loading" class="state">{{ t('home.loading') }}</p>
     <p v-else-if="error" class="state error">{{ error }}</p>
 
     <div v-else class="grid">
@@ -149,15 +220,15 @@ onMounted(async () => {
           <h3>{{ food.name }}</h3>
           <p>{{ food.summary }}</p>
           <div>
-            <b>热度 {{ food.heat }}</b>
-            <span>阅其志 →</span>
+            <b>{{ t('home.heat', { value: food.heat }) }}</b>
+            <span>{{ t('home.readMore') }}</span>
           </div>
         </div>
       </RouterLink>
     </div>
 
     <p v-if="!loading && !error && foods.length === 0" class="state">
-      此卷尚无记录，静候新的风味。
+      {{ t('home.empty') }}
     </p>
   </section>
 
@@ -166,6 +237,7 @@ onMounted(async () => {
     :regions="regions"
     :latitude="pickedLatitude"
     :longitude="pickedLongitude"
+    :region-id="pickedRegionId"
     @close="uploadOpen = false"
     @saved="handleSaved"
   />

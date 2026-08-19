@@ -11,11 +11,13 @@ export interface Food {
   region: Region
   latitude: number
   longitude: number
+  address?: string
   summary: string
   story: string
   ingredients: string
   imageUrl?: string
   heat: number
+  createdBy: string
   createdAt: string
 }
 
@@ -24,8 +26,57 @@ export interface FoodCreatePayload {
   regionId: number
   latitude: number
   longitude: number
+  address?: string
   summary: string
   story: string
   ingredients: string
   imageUrl?: string
+}
+
+export type UserRole = 'USER' | 'ADMIN'
+
+export interface AuthUser {
+  id: number
+  username: string
+  displayName: string
+  role: UserRole
+  active: boolean
+  createdAt: string
+}
+
+export interface LoginPayload {
+  username: string
+  password: string
+  role: UserRole
+}
+
+export interface RegisterPayload {
+  username: string
+  password: string
+  displayName: string
+}
+
+export interface SetUserActivePayload {
+  active: boolean
+}
+
+export interface FoodImportIssue {
+  rowNumber: number
+  reason: string
+}
+
+export interface FoodImportResult {
+  totalRows: number
+  importedCount: number
+  skippedCount: number
+  duplicateCount: number
+  anonymousCount: number
+  issues: FoodImportIssue[]
+}
+
+export interface PagedAuthUsers {
+  items: AuthUser[]
+  total: number
+  page: number
+  pageSize: number
 }

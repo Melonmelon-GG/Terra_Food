@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { getFood } from '../api'
 import type { Food } from '../types'
 const route = useRoute()
 const food = ref<Food>()
 const error = ref('')
+const { t } = useI18n()
 
 onMounted(async () => {
   try {
     food.value = await getFood(Number(route.params.id))
   } catch {
-    error.value = '没有找到这篇珍馐记录。'
+    error.value = t('detail.notFound')
   }
 })
 </script>
@@ -19,7 +21,7 @@ onMounted(async () => {
 <template>
   <div v-if="food" class="detail">
     <RouterLink to="/" class="back">
-      ← 返回珍馐图鉴
+      {{ t('detail.back') }}
     </RouterLink>
 
     <div
@@ -34,18 +36,18 @@ onMounted(async () => {
     </div>
     <article>
       <section>
-        <small>食之有物</small>
-        <h2>主要食材</h2>
+        <small>{{ t('detail.ingredientsEyebrow') }}</small>
+        <h2>{{ t('detail.ingredients') }}</h2>
         <p>{{ food.ingredients }}</p>
       </section>
       <section>
-        <small>味外之味</small>
-        <h2>珍馐掌故</h2>
+        <small>{{ t('detail.storyEyebrow') }}</small>
+        <h2>{{ t('detail.story') }}</h2>
         <p>{{ food.story }}</p>
       </section>
     </article>
   </div>
   <p v-else class="state">
-    {{ error || '正在展开卷册……' }}
+    {{ error || t('detail.loading') }}
   </p>
 </template>
