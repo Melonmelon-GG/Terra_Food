@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dayan.food.mapper.RegionMapper">
+
+    <resultMap id="regionResultMap" type="com.dayan.food.entity.po.Region">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="province" column="province"/>
+        <result property="description" column="description"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="regionResultMap">
+        SELECT id, name, province, description
+        FROM region
+        ORDER BY id
+    </select>
+
+    <select id="findById" resultMap="regionResultMap">
+        SELECT id, name, province, description
+        FROM region
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByNameAndProvince" resultMap="regionResultMap">
+        SELECT id, name, province, description
+        FROM region
+        WHERE name = #{name}
+          AND province = #{province}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO region (name, province, description)
+        VALUES (#{name}, #{province}, #{description})
+    </insert>
+</mapper>

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dayan.food.mapper.FoodMapper">
+
+    <resultMap id="foodResultMap" type="com.dayan.food.entity.po.Food">
+        <id property="id" column="food_id"/>
+        <result property="name" column="food_name"/>
+        <result property="latitude" column="latitude"/>
+        <result property="longitude" column="longitude"/>
+        <result property="address" column="address"/>
+        <result property="summary" column="summary"/>
+        <result property="story" column="story"/>
+        <result property="ingredients" column="ingredients"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="heat" column="heat"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+        <association property="region" javaType="com.dayan.food.entity.po.Region">
+            <id property="id" column="region_id"/>
+            <result property="name" column="region_name"/>
+            <result property="province" column="region_province"/>
+            <result property="description" column="region_description"/>
+        </association>
+    </resultMap>
+
+    <sql id="foodColumns">
+        f.id AS food_id,
+        f.name AS food_name,
+        f.latitude,
+        f.longitude,
+        f.address,
+        f.summary,
+        f.story,
+        f.ingredients,
+        f.image_url,
+        f.heat,
+        f.created_by,
+        f.created_at,
+        r.id AS region_id,
+        r.name AS region_name,
+        r.province AS region_province,
+        r.description AS region_description
+    </sql>
+
+    <select id="findList" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/>
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        <where>
+            <choose>
+                <when test="keyword != null and keyword != ''">
+                    LOWER(f.name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                </when>
+                <when test="regionId != null">
+                    f.region_id = #{regionId}
+                </when>
+            </choose>
+        </where>
+        ORDER BY f.heat DESC, f.id DESC
+    </select>
+
+    <select id="findById" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/>
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        WHERE f.id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO food (
+            name, region_id, latitude, longitude, address, summary, story,
+            ingredients, image_url, heat, created_by, created_at
+        )
+        VALUES (
+            #{name}, #{region.id}, #{latitude}, #{longitude}, #{address}, #{summary}, #{story},
+            #{ingredients}, #{imageUrl}, #{heat}, #{createdBy}, #{createdAt}
+        )
+    </insert>
+
+    <select id="countDuplicate" resultType="int">
+        SELECT COUNT(*)
+        FROM food
+        WHERE name = #{name}
+          AND region_id = #{regionId}
+          AND address &lt;=&gt; #{address}
+    </select>
+
+    <insert id="insertDailyVisit">
+        INSERT IGNORE INTO food_daily_visit (food_id, user_id, visit_date, visited_at)
+        SELECT f.id, u.id, CURRENT_DATE, CURRENT_TIMESTAMP
+        FROM food f
+        INNER JOIN app_user u ON u.username = #{username} AND u.active = TRUE
+        WHERE f.id = #{foodId}
+    </insert>
+
+    <update id="incrementHeat">
+        UPDATE food
+        SET heat = heat + 1
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM food
+        WHERE id = #{id}
+    </delete>
+</mapper>

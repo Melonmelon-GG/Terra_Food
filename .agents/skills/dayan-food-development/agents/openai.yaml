@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dayan Food Development"
+  short_description: "Build and maintain the Dayan food map"
+  default_prompt: "Use $dayan-food-development to implement a feature following this repository architecture and validation workflow."

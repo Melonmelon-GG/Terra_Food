@@ -1,0 +1,10 @@
+.idea/
+*.iml
+target/
+node_modules/
+dist/
+*.tsbuildinfo
+.env.local
+uploads/
+.m2/
+*.log
