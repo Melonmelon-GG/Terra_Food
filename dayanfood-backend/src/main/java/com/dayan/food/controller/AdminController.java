@@ -1,8 +1,11 @@
 package com.dayan.food.controller;
 
 import com.dayan.food.entity.vo.AuthUserPageVO;
+import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.dto.FoodReviewDTO;
 import com.dayan.food.entity.dto.UserActiveUpdateDTO;
 import com.dayan.food.service.AppUserService;
+import com.dayan.food.service.FoodService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -21,9 +24,25 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class AdminController {
 
     private final AppUserService appUserService;
+    private final FoodService foodService;
 
-    public AdminController(AppUserService appUserService) {
+    public AdminController(AppUserService appUserService, FoodService foodService) {
         this.appUserService = appUserService;
+        this.foodService = foodService;
+    }
+
+    @GetMapping("/foods")
+    public java.util.List<FoodVO> foods() {
+        return foodService.listForAdmin();
+    }
+
+    @PatchMapping("/foods/{id}/review")
+    public void reviewFood(
+            @PathVariable Long id,
+            @RequestBody @Valid FoodReviewDTO request,
+            Authentication authentication
+    ) {
+        foodService.review(id, request.status(), authentication.getName());
     }
 
     @GetMapping("/users")

@@ -5,6 +5,7 @@ import type {
   Food,
   FoodCreatePayload,
   FoodImportResult,
+  FoodReviewPayload,
   LoginPayload,
   SetUserActivePayload,
   Region,
@@ -232,6 +233,15 @@ export async function logout(): Promise<void> {
 
 export async function deleteFood(id: number): Promise<void> {
   await api.delete(`/foods/${id}`)
+}
+
+export async function getAdminFoods(): Promise<Food[]> {
+  const response = await api.get<Food[]>('/admin/foods')
+  return response.data
+}
+
+export async function reviewFood(id: number, payload: FoodReviewPayload): Promise<void> {
+  await api.patch(`/admin/foods/${id}/review`, payload)
 }
 
 export async function getUsers(page = 1, pageSize = 10): Promise<PagedAuthUsers> {

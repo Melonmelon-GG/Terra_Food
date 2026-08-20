@@ -1,5 +1,6 @@
 package com.dayan.food.entity.po;
 
+import com.dayan.food.entity.enums.FoodReviewStatus;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -32,6 +33,12 @@ public class Food {
 
     private Integer heat;
 
+    private FoodReviewStatus reviewStatus;
+
+    private String reviewedBy;
+
+    private LocalDateTime reviewedAt;
+
     private String createdBy;
 
     private LocalDateTime createdAt;
@@ -46,7 +53,8 @@ public class Food {
             String story,
             String ingredients,
             String imageUrl,
-            String createdBy
+            String createdBy,
+            FoodReviewStatus reviewStatus
     ) {
         this.name = name;
         this.region = region;
@@ -58,6 +66,11 @@ public class Food {
         this.ingredients = ingredients;
         this.imageUrl = imageUrl;
         this.heat = 0;
+        this.reviewStatus = reviewStatus;
+        if (reviewStatus == FoodReviewStatus.APPROVED) {
+            this.reviewedBy = createdBy;
+            this.reviewedAt = LocalDateTime.now();
+        }
         this.createdBy = createdBy;
         this.createdAt = LocalDateTime.now();
     }

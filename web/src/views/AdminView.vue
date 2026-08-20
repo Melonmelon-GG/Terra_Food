@@ -5,15 +5,16 @@ import { useI18n } from 'vue-i18n'
 import {
   deleteFood,
   deleteUser,
-  getFoods,
+  getAdminFoods,
   getRegions,
   getUsers,
   importFoodSpreadsheet,
   setUserActive,
+  reviewFood,
 } from '../api'
-import type { AuthUser, Food, FoodImportResult, Region } from '../types'
+import type { AuthUser, Food, FoodImportResult, FoodReviewStatus, Region } from '../types'
 
-type AdminTab = 'foods' | 'users'
+type AdminTab = 'foods' | 'reviews' | 'users'
 type PageSize = 10 | 20 | 50
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const
@@ -39,19 +40,23 @@ const usersPageSize = ref<PageSize>(10)
 const usersLoading = ref(false)
 
 const foodsPageTotal = computed(() => {
-  if (!foods.value.length) {
+  if (!managedFoods.value.length) {
     return 1
   }
 
-  return Math.max(1, Math.ceil(foods.value.length / foodsPageSize.value))
+  return Math.max(1, Math.ceil(managedFoods.value.length / foodsPageSize.value))
 })
 
 const usersPageTotal = computed(() => Math.max(1, Math.ceil(usersTotal.value / usersPageSize.value)))
 
 const visibleFoods = computed(() => {
   const start = (foodsPage.value - 1) * foodsPageSize.value
-  return foods.value.slice(start, start + foodsPageSize.value)
+  return managedFoods.value.slice(start, start + foodsPageSize.value)
 })
+
+const managedFoods = computed(() => activeTab.value === 'reviews'
+  ? foods.value.filter((food) => food.reviewStatus === 'PENDING')
+  : foods.value)
 
 const totalHeat = computed(() => foods.value.reduce((sum, food) => sum + food.heat, 0))
 const canPrevFoods = computed(() => foodsPage.value > 1)
@@ -59,8 +64,8 @@ const canNextFoods = computed(() => foodsPage.value < foodsPageTotal.value)
 const canPrevUsers = computed(() => usersPage.value > 1)
 const canNextUsers = computed(() => usersPage.value < usersPageTotal.value)
 
-const foodsPageStart = computed(() => foods.value.length ? (foodsPage.value - 1) * foodsPageSize.value + 1 : 0)
-const foodsPageEnd = computed(() => Math.min(foodsPage.value * foodsPageSize.value, foods.value.length))
+const foodsPageStart = computed(() => managedFoods.value.length ? (foodsPage.value - 1) * foodsPageSize.value + 1 : 0)
+const foodsPageEnd = computed(() => Math.min(foodsPage.value * foodsPageSize.value, managedFoods.value.length))
 
 function switchTab(tab: AdminTab) {
   activeTab.value = tab
@@ -92,7 +97,7 @@ async function loadFoodsAndMeta() {
 
   try {
     const [loadedFoods, loadedRegions, loadedUsers] = await Promise.all([
-      getFoods(),
+      getAdminFoods(),
       getRegions(),
       getUsers(usersPage.value, usersPageSize.value),
     ])
@@ -108,6 +113,26 @@ async function loadFoodsAndMeta() {
   } finally {
     loading.value = false
   }
+}
+
+async function reviewSubmission(food: Food, status: Extract<FoodReviewStatus, 'APPROVED' | 'REJECTED'>) {
+  const action = status === 'APPROVED' ? t('admin.approve') : t('admin.reject')
+  if (!window.confirm(t('admin.reviewConfirm', { action, name: food.name }))) {
+    return
+  }
+
+  try {
+    await reviewFood(food.id, { status })
+    food.reviewStatus = status
+  } catch {
+    error.value = t('admin.reviewError')
+  }
+}
+
+function reviewStatusLabel(status: FoodReviewStatus) {
+  if (status === 'PENDING') return t('admin.pending')
+  if (status === 'APPROVED') return t('admin.approved')
+  return t('admin.rejected')
 }
 
 async function loadUsersPage(page = usersPage.value, pageSize = usersPageSize.value) {
@@ -275,19 +300,22 @@ onMounted(loadFoodsAndMeta)
       <button class="admin-tab" :class="{ active: activeTab === 'foods' }" type="button" @click="switchTab('foods')">
         {{ t('admin.tabFoods') }}
       </button>
+      <button class="admin-tab" :class="{ active: activeTab === 'reviews' }" type="button" @click="switchTab('reviews')">
+        {{ t('admin.tabReviews') }}（{{ foods.filter((food) => food.reviewStatus === 'PENDING').length }}）
+      </button>
       <button class="admin-tab" :class="{ active: activeTab === 'users' }" type="button" @click="switchTab('users')">
         {{ t('admin.tabUsers') }}
       </button>
     </div>
 
     <section class="admin-table-card">
-      <template v-if="activeTab === 'foods'">
+      <template v-if="activeTab !== 'users'">
         <div class="admin-table-title">
           <div>
-            <h2>{{ t('admin.foodManagement') }}</h2>
-            <span>{{ t('admin.recordCount', { count: foods.length }) }}</span>
+            <h2>{{ activeTab === 'reviews' ? t('admin.reviewManagement') : t('admin.foodManagement') }}</h2>
+            <span>{{ t('admin.recordCount', { count: managedFoods.length }) }}</span>
           </div>
-          <div class="admin-import-actions">
+          <div v-if="activeTab === 'foods'" class="admin-import-actions">
             <span>{{ t('admin.importHint') }}</span>
             <input
               ref="fileInput"
@@ -332,6 +360,7 @@ onMounted(loadFoodsAndMeta)
                   <th>{{ t('admin.region') }}</th>
                   <th>{{ t('admin.creator') }}</th>
                   <th>{{ t('admin.heat') }}</th>
+                  <th>{{ t('admin.reviewStatus') }}</th>
                   <th>{{ t('admin.createdAt') }}</th>
                   <th>{{ t('admin.actions') }}</th>
                 </tr>
@@ -342,8 +371,17 @@ onMounted(loadFoodsAndMeta)
                   <td>{{ food.region.province }} · {{ food.region.name }}</td>
                   <td>{{ food.createdBy || t('admin.anonymousName') }}</td>
                   <td>{{ food.heat }}</td>
+                  <td><span class="admin-user-status" :class="{ inactive: food.reviewStatus !== 'APPROVED' }">{{ reviewStatusLabel(food.reviewStatus) }}</span></td>
                   <td>{{ new Date(food.createdAt).toLocaleDateString() }}</td>
-                  <td><button class="danger-button" @click="removeFood(food)">{{ t('admin.delete') }}</button></td>
+                  <td>
+                    <div class="admin-user-actions">
+                      <template v-if="food.reviewStatus === 'PENDING'">
+                        <button class="admin-user-action" type="button" @click="reviewSubmission(food, 'APPROVED')">{{ t('admin.approve') }}</button>
+                        <button class="danger-button" type="button" @click="reviewSubmission(food, 'REJECTED')">{{ t('admin.reject') }}</button>
+                      </template>
+                      <button class="danger-button" @click="removeFood(food)">{{ t('admin.delete') }}</button>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -358,7 +396,7 @@ onMounted(loadFoodsAndMeta)
             </label>
 
             <p>
-              {{ t('admin.pageInfo', { start: foodsPageStart, end: foodsPageEnd, total: foods.length, page: foodsPage, totalPages: foodsPageTotal }) }}
+              {{ t('admin.pageInfo', { start: foodsPageStart, end: foodsPageEnd, total: managedFoods.length, page: foodsPage, totalPages: foodsPageTotal }) }}
             </p>
 
             <div class="admin-page-controls">

@@ -92,7 +92,9 @@ async function pickLocation(latitude: number, longitude: number) {
 
 function handleSaved(food: Food) {
   uploadOpen.value = false
-  foods.value = [food, ...foods.value]
+  if (food.reviewStatus === 'APPROVED') {
+    foods.value = [food, ...foods.value]
+  }
 }
 
 async function openUpload() {

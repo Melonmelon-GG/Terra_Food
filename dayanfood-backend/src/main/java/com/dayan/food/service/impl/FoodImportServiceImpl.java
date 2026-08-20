@@ -1,6 +1,7 @@
 package com.dayan.food.service.impl;
 
 import com.dayan.food.entity.dto.FoodImportRowDTO;
+import com.dayan.food.entity.enums.FoodReviewStatus;
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.entity.po.Food;
 import com.dayan.food.entity.po.Region;
@@ -115,7 +116,8 @@ public class FoodImportServiceImpl implements FoodImportService {
                     row.story(),
                     row.ingredients(),
                     null,
-                    creator
+                    creator,
+                    FoodReviewStatus.APPROVED
             );
             foodMapper.insert(food);
             imported++;

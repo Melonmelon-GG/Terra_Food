@@ -76,6 +76,9 @@ async function submit() {
     }
 
     const food = await createFood(form)
+    if (food.reviewStatus === 'PENDING') {
+      window.alert(t('upload.pendingSuccess'))
+    }
     emit('saved', food)
   } catch (requestError) {
     error.value = axios.isAxiosError(requestError) && requestError.response?.status === 429

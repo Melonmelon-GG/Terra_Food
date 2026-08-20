@@ -1,6 +1,8 @@
 package com.dayan.food.service.impl;
 
 import com.dayan.food.entity.po.Food;
+import com.dayan.food.entity.enums.FoodReviewStatus;
+import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.vo.FoodVO;
 import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.mapper.FoodMapper;
@@ -54,6 +56,14 @@ public class FoodServiceImpl implements FoodService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<FoodVO> listForAdmin() {
+        return foodMapper.findAdminList().stream()
+                .map(FoodVO::from)
+                .toList();
+    }
+
+    @Override
     @Cacheable(cacheNames = "foodDetails", key = "#id")
     @Transactional(readOnly = true)
     public FoodVO detail(Long id) {
@@ -88,6 +98,18 @@ public class FoodServiceImpl implements FoodService {
     }
 
     @Override
+    @Transactional
+    public void review(Long id, FoodReviewStatus status, String reviewedBy) {
+        if (status != FoodReviewStatus.APPROVED && status != FoodReviewStatus.REJECTED) {
+            throw new IllegalArgumentException("审批结果只能是通过或驳回");
+        }
+        if (foodMapper.updateReviewStatus(id, status, reviewedBy) != 1) {
+            throw new IllegalArgumentException("待审批菜品不存在或已经处理");
+        }
+        clearFoodCaches(id);
+    }
+
+    @Override
     @CacheEvict(cacheNames = "foodLists", allEntries = true)
     @Transactional
     public FoodVO create(
@@ -102,6 +124,10 @@ public class FoodServiceImpl implements FoodService {
             String imageUrl,
             String createdBy
     ) {
+        var uploader = appUserMapper.findByUsername(createdBy);
+        if (uploader == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在");
+        }
         if (appUserMapper.claimFoodUpload(createdBy) != 1) {
             throw new ResponseStatusException(
                     HttpStatus.TOO_MANY_REQUESTS,
@@ -124,7 +150,10 @@ public class FoodServiceImpl implements FoodService {
                 story,
                 ingredients,
                 imageUrl,
-                createdBy
+                createdBy,
+                uploader.getRole() == UserRole.ADMIN
+                        ? FoodReviewStatus.APPROVED
+                        : FoodReviewStatus.PENDING
         );
         foodMapper.insert(food);
         return FoodVO.from(food);
@@ -144,5 +173,16 @@ public class FoodServiceImpl implements FoodService {
 
     private ResponseStatusException notFound(String message) {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+    }
+
+    private void clearFoodCaches(Long id) {
+        var detailCache = cacheManager.getCache("foodDetails");
+        if (detailCache != null) {
+            detailCache.evict(id);
+        }
+        var listCache = cacheManager.getCache("foodLists");
+        if (listCache != null) {
+            listCache.clear();
+        }
     }
 }

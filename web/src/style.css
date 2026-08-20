@@ -7,6 +7,104 @@
   font-synthesis: none;
 }
 
+/* Frosted-glass login surface */
+.login-stage {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+  padding: clamp(28px, 5vw, 72px);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255, 238, 211, 0.72), transparent 34%),
+    linear-gradient(135deg, #d8b79c 0%, #eee1d2 48%, #c79577 100%);
+}
+
+.login-stage::before {
+  position: absolute;
+  inset: -28px;
+  z-index: -2;
+  content: '';
+  background:
+    linear-gradient(115deg, rgba(72, 30, 20, 0.18), rgba(255, 239, 216, 0.3)),
+    url('https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1400&q=80') center / cover;
+  filter: blur(12px) saturate(0.78);
+  opacity: 0.58;
+  transform: scale(1.08);
+}
+
+.login-stage::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: '';
+  background:
+    radial-gradient(circle at 20% 22%, rgba(255, 255, 255, 0.42), transparent 28%),
+    linear-gradient(155deg, rgba(255, 248, 238, 0.12), rgba(89, 41, 27, 0.18));
+}
+
+.login-stage .login-panel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  margin: 0;
+  padding: clamp(36px, 4vw, 58px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(255, 252, 246, 0.78), rgba(248, 235, 219, 0.57));
+  box-shadow:
+    0 28px 80px rgba(57, 29, 18, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(117, 64, 43, 0.08);
+  -webkit-backdrop-filter: blur(26px) saturate(1.2);
+  backdrop-filter: blur(26px) saturate(1.2);
+}
+
+.login-stage .login-panel::before {
+  position: absolute;
+  top: -35%;
+  left: -18%;
+  width: 70%;
+  height: 75%;
+  pointer-events: none;
+  content: '';
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.48), transparent 68%);
+}
+
+.login-stage .role-tabs button {
+  background: rgba(255, 252, 246, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+.login-stage .role-tabs button.active {
+  background: rgba(252, 231, 214, 0.7);
+}
+
+.login-stage .login-form input {
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.login-stage .login-submit {
+  box-shadow: 0 14px 30px rgba(105, 39, 28, 0.2);
+}
+
+@media (max-width: 800px) {
+  .login-stage {
+    padding: 24px 16px 40px;
+  }
+
+  .login-stage .login-panel {
+    padding: 36px 24px;
+    border-radius: 20px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

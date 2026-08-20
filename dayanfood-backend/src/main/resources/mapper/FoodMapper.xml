@@ -15,6 +15,9 @@
         <result property="ingredients" column="ingredients"/>
         <result property="imageUrl" column="image_url"/>
         <result property="heat" column="heat"/>
+        <result property="reviewStatus" column="review_status" javaType="com.dayan.food.entity.enums.FoodReviewStatus"/>
+        <result property="reviewedBy" column="reviewed_by"/>
+        <result property="reviewedAt" column="reviewed_at"/>
         <result property="createdBy" column="created_by"/>
         <result property="createdAt" column="created_at"/>
         <association property="region" javaType="com.dayan.food.entity.po.Region">
@@ -36,6 +39,9 @@
         f.ingredients,
         f.image_url,
         f.heat,
+        f.review_status,
+        f.reviewed_by,
+        f.reviewed_at,
         f.created_by,
         f.created_at,
         r.id AS region_id,
@@ -49,16 +55,24 @@
         FROM food f
         INNER JOIN region r ON r.id = f.region_id
         <where>
+            f.review_status = 'APPROVED'
             <choose>
                 <when test="keyword != null and keyword != ''">
-                    LOWER(f.name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    AND LOWER(f.name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
                 </when>
                 <when test="regionId != null">
-                    f.region_id = #{regionId}
+                    AND f.region_id = #{regionId}
                 </when>
             </choose>
         </where>
         ORDER BY f.heat DESC, f.id DESC
+    </select>
+
+    <select id="findAdminList" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/>
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        ORDER BY FIELD(f.review_status, 'PENDING', 'APPROVED', 'REJECTED'), f.id DESC
     </select>
 
     <select id="findById" resultMap="foodResultMap">
@@ -66,16 +80,18 @@
         FROM food f
         INNER JOIN region r ON r.id = f.region_id
         WHERE f.id = #{id}
+          AND f.review_status = 'APPROVED'
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO food (
             name, region_id, latitude, longitude, address, summary, story,
-            ingredients, image_url, heat, created_by, created_at
+            ingredients, image_url, heat, review_status, reviewed_by, reviewed_at, created_by, created_at
         )
         VALUES (
             #{name}, #{region.id}, #{latitude}, #{longitude}, #{address}, #{summary}, #{story},
-            #{ingredients}, #{imageUrl}, #{heat}, #{createdBy}, #{createdAt}
+            #{ingredients}, #{imageUrl}, #{heat}, #{reviewStatus}, #{reviewedBy}, #{reviewedAt},
+            #{createdBy}, #{createdAt}
         )
     </insert>
 
@@ -93,12 +109,22 @@
         FROM food f
         INNER JOIN app_user u ON u.username = #{username} AND u.active = TRUE
         WHERE f.id = #{foodId}
+          AND f.review_status = 'APPROVED'
     </insert>
 
     <update id="incrementHeat">
         UPDATE food
         SET heat = heat + 1
         WHERE id = #{id}
+    </update>
+
+    <update id="updateReviewStatus">
+        UPDATE food
+        SET review_status = #{status},
+            reviewed_by = #{reviewedBy},
+            reviewed_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+          AND review_status = 'PENDING'
     </update>
 
     <delete id="deleteById">

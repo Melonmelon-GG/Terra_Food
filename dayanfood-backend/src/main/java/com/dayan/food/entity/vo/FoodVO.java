@@ -1,6 +1,7 @@
 package com.dayan.food.entity.vo;
 
 import com.dayan.food.entity.po.Food;
+import com.dayan.food.entity.enums.FoodReviewStatus;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -21,6 +22,9 @@ public record FoodVO(
         String ingredients,
         String imageUrl,
         Integer heat,
+        FoodReviewStatus reviewStatus,
+        String reviewedBy,
+        LocalDateTime reviewedAt,
         String createdBy,
         LocalDateTime createdAt
 ) implements Serializable {
@@ -38,6 +42,9 @@ public record FoodVO(
                 food.getIngredients(),
                 food.getImageUrl(),
                 food.getHeat(),
+                food.getReviewStatus(),
+                food.getReviewedBy(),
+                food.getReviewedAt(),
                 food.getCreatedBy(),
                 food.getCreatedAt()
         );

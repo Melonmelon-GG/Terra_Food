@@ -17,8 +17,17 @@ export interface Food {
   ingredients: string
   imageUrl?: string
   heat: number
+  reviewStatus: FoodReviewStatus
+  reviewedBy?: string
+  reviewedAt?: string
   createdBy: string
   createdAt: string
+}
+
+export type FoodReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface FoodReviewPayload {
+  status: Extract<FoodReviewStatus, 'APPROVED' | 'REJECTED'>
 }
 
 export interface FoodCreatePayload {

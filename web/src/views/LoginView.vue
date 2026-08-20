@@ -50,7 +50,8 @@ async function submit() {
       <blockquote>{{ t('login.quote') }}</blockquote>
     </div>
 
-    <div class="login-panel">
+    <div class="login-stage">
+      <div class="login-panel">
       <div class="login-heading">
         <small>{{ t('login.welcome') }}</small>
         <h2>{{ t('login.title') }}</h2>
@@ -94,6 +95,7 @@ async function submit() {
           <RouterLink to="/register">{{ t('login.registerNow') }}</RouterLink>
         </div>
       </form>
+      </div>
     </div>
   </section>
 </template>

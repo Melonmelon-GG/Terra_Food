@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useAuth } from './auth'
 import { saveLocale, type SupportedLocale } from './i18n'
 
 const { locale, t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const auth = useAuth()
 const nextLocaleLabel = computed(() => locale.value === 'zh-CN' ? 'EN' : '中')
+const isLoginPage = computed(() => route.path === '/login')
 
 function toggleLocale() {
   const nextLocale: SupportedLocale = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
@@ -34,7 +36,7 @@ async function logout() {
     </RouterLink>
 
     <nav>
-      <RouterLink to="/">{{ t('common.catalog') }}</RouterLink>
+      <RouterLink v-if="!isLoginPage" to="/">{{ t('common.catalog') }}</RouterLink>
       <RouterLink v-if="auth.currentUser.value?.role === 'ADMIN'" to="/admin">
         {{ t('common.admin') }}
       </RouterLink>
