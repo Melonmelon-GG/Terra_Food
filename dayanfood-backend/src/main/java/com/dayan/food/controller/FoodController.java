@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/foods")
@@ -36,9 +37,20 @@ public class FoodController {
     @GetMapping
     public List<FoodVO> list(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long regionId
+            @RequestParam(required = false) Long regionId,
+            @RequestParam(required = false) BigDecimal minLatitude,
+            @RequestParam(required = false) BigDecimal maxLatitude,
+            @RequestParam(required = false) BigDecimal minLongitude,
+            @RequestParam(required = false) BigDecimal maxLongitude
     ) {
-        return foodService.list(keyword, regionId);
+        return foodService.list(
+                keyword,
+                regionId,
+                minLatitude,
+                maxLatitude,
+                minLongitude,
+                maxLongitude
+        );
     }
 
     @GetMapping("/{id}")

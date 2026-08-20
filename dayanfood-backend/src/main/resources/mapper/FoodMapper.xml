@@ -64,15 +64,49 @@
                     AND f.region_id = #{regionId}
                 </when>
             </choose>
+            <if test="minLatitude != null and maxLatitude != null and minLongitude != null and maxLongitude != null">
+                AND f.latitude BETWEEN #{minLatitude} AND #{maxLatitude}
+                AND f.longitude BETWEEN #{minLongitude} AND #{maxLongitude}
+            </if>
         </where>
         ORDER BY f.heat DESC, f.id DESC
+        LIMIT #{limit}
     </select>
 
-    <select id="findAdminList" resultMap="foodResultMap">
+    <select id="findAdminPage" resultMap="foodResultMap">
         SELECT <include refid="foodColumns"/>
         FROM food f
         INNER JOIN region r ON r.id = f.region_id
+        <if test="status != null">
+            WHERE f.review_status = #{status}
+        </if>
         ORDER BY FIELD(f.review_status, 'PENDING', 'APPROVED', 'REJECTED'), f.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countAdmin" resultType="int">
+        SELECT COUNT(*)
+        FROM food
+        <if test="status != null">
+            WHERE review_status = #{status}
+        </if>
+    </select>
+
+    <select id="sumHeat" resultType="long">
+        SELECT COALESCE(SUM(heat), 0)
+        FROM food
+    </select>
+
+    <select id="countPending" resultType="int">
+        SELECT COUNT(*)
+        FROM food
+        WHERE review_status = 'PENDING'
+    </select>
+
+    <select id="countByImageUrl" resultType="int">
+        SELECT COUNT(*)
+        FROM food
+        WHERE image_url = #{imageUrl}
     </select>
 
     <select id="findById" resultMap="foodResultMap">

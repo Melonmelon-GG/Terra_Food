@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -25,7 +26,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ActiveSessionFilter activeSessionFilter
+    ) throws Exception {
         return http
                 // 当前前后端通过同源 Vite 代理访问；API 使用 Session，但不依赖表单 CSRF token。
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
@@ -44,6 +48,7 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .logout(logout -> logout.disable())
+                .addFilterBefore(activeSessionFilter, AuthorizationFilter.class)
                 .build();
     }
 }

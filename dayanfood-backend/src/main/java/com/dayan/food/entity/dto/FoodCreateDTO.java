@@ -2,6 +2,9 @@ package com.dayan.food.entity.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -18,9 +21,13 @@ public record FoodCreateDTO(
         Long regionId,
 
         @NotNull
+        @DecimalMin("-90")
+        @DecimalMax("90")
         BigDecimal latitude,
 
         @NotNull
+        @DecimalMin("-180")
+        @DecimalMax("180")
         BigDecimal longitude,
 
         @Size(max = 500)
@@ -31,6 +38,7 @@ public record FoodCreateDTO(
         String summary,
 
         @NotBlank
+        @Size(max = 10000)
         String story,
 
         @NotBlank
@@ -38,6 +46,7 @@ public record FoodCreateDTO(
         String ingredients,
 
         @Size(max = 500)
+        @Pattern(regexp = "^(https?://|/uploads/).*$", message = "图片地址必须是 HTTP(S) 地址或站内上传地址")
         String imageUrl
 ) {
 }

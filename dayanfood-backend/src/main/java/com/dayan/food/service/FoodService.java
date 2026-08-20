@@ -1,6 +1,7 @@
 package com.dayan.food.service;
 
 import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.vo.FoodPageVO;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 
 import java.math.BigDecimal;
@@ -8,9 +9,16 @@ import java.util.List;
 
 public interface FoodService {
 
-    List<FoodVO> list(String keyword, Long regionId);
+    List<FoodVO> list(
+            String keyword,
+            Long regionId,
+            BigDecimal minLatitude,
+            BigDecimal maxLatitude,
+            BigDecimal minLongitude,
+            BigDecimal maxLongitude
+    );
 
-    List<FoodVO> listForAdmin();
+    FoodPageVO listForAdmin(int page, int pageSize, FoodReviewStatus status);
 
     FoodVO detail(Long id);
 

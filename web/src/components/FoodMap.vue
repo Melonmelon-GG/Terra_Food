@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
 
-import type { Food } from '../types'
+import type { Food, MapBounds } from '../types'
 import 'leaflet/dist/leaflet.css'
 
 const props = defineProps<{
@@ -12,6 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   pick: [latitude: number, longitude: number]
+  boundsChange: [bounds: MapBounds]
 }>()
 
 const { locale, t } = useI18n()
@@ -28,16 +29,12 @@ function renderMarkers() {
   const layer = markerLayer
   // 筛选或切换语言后重建图层，避免残留旧标记和旧语言弹窗。
   layer.clearLayers()
-  const bounds: L.LatLngExpression[] = []
-
   props.foods.forEach((food) => {
     if (food.latitude == null || food.longitude == null) {
       return
     }
 
     const position: L.LatLngExpression = [food.latitude, food.longitude]
-    bounds.push(position)
-
     const popup = document.createElement('div')
     popup.className = 'map-popup'
 
@@ -61,12 +58,17 @@ function renderMarkers() {
       .addTo(layer)
   })
 
-  if (bounds.length > 0) {
-    map.fitBounds(L.latLngBounds(bounds), {
-      padding: [50, 50],
-      maxZoom: 6,
-    })
-  }
+}
+
+function emitCurrentBounds() {
+  if (!map) return
+  const bounds = map.getBounds()
+  emit('boundsChange', {
+    minLatitude: bounds.getSouth(),
+    maxLatitude: bounds.getNorth(),
+    minLongitude: bounds.getWest(),
+    maxLongitude: bounds.getEast(),
+  })
 }
 
 onMounted(() => {
@@ -86,8 +88,10 @@ onMounted(() => {
   map.on('click', (event: L.LeafletMouseEvent) => {
     emit('pick', event.latlng.lat, event.latlng.lng)
   })
+  map.on('moveend', emitCurrentBounds)
 
   renderMarkers()
+  emitCurrentBounds()
 })
 
 watch([() => props.foods, locale], renderMarkers, { deep: true })

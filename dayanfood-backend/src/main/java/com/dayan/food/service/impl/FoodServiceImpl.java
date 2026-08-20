@@ -4,6 +4,7 @@ import com.dayan.food.entity.po.Food;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.vo.FoodPageVO;
 import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.mapper.FoodMapper;
 import com.dayan.food.mapper.RegionMapper;
@@ -22,6 +23,8 @@ import java.util.List;
 
 @Service
 public class FoodServiceImpl implements FoodService {
+
+    private static final int MAP_RESULT_LIMIT = 500;
 
     private final FoodMapper foodMapper;
     private final RegionMapper regionMapper;
@@ -43,24 +46,57 @@ public class FoodServiceImpl implements FoodService {
     @Override
     @Cacheable(
             cacheNames = "foodLists",
-            key = "(#keyword == null ? '' : #keyword.trim()) + ':' + (#regionId == null ? '' : #regionId)"
+            key = "(#keyword == null ? '' : #keyword.trim()) + ':' + (#regionId == null ? '' : #regionId)",
+            condition = "#minLatitude == null && #maxLatitude == null && #minLongitude == null && #maxLongitude == null"
     )
     @Transactional(readOnly = true)
-    public List<FoodVO> list(String keyword, Long regionId) {
+    public List<FoodVO> list(
+            String keyword,
+            Long regionId,
+            BigDecimal minLatitude,
+            BigDecimal maxLatitude,
+            BigDecimal minLongitude,
+            BigDecimal maxLongitude
+    ) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        if (normalizedKeyword != null && normalizedKeyword.length() > 100) {
+            throw new IllegalArgumentException("搜索关键词不能超过 100 个字符");
+        }
+        validateBounds(minLatitude, maxLatitude, minLongitude, maxLongitude);
 
         // XML 中的 choose 保持原有规则：同时传入条件时优先按关键词检索。
-        return foodMapper.findList(normalizedKeyword, regionId).stream()
+        return foodMapper.findList(
+                        normalizedKeyword,
+                        regionId,
+                        minLatitude,
+                        maxLatitude,
+                        minLongitude,
+                        maxLongitude,
+                        MAP_RESULT_LIMIT
+                ).stream()
                 .map(FoodVO::from)
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<FoodVO> listForAdmin() {
-        return foodMapper.findAdminList().stream()
+    public FoodPageVO listForAdmin(int page, int pageSize, FoodReviewStatus status) {
+        int normalizedPageSize = normalizePageSize(pageSize);
+        int total = foodMapper.countAdmin(status);
+        int totalPages = Math.max(1, (int) Math.ceil((double) total / normalizedPageSize));
+        int normalizedPage = Math.min(Math.max(1, page), totalPages);
+        int offset = (normalizedPage - 1) * normalizedPageSize;
+        var items = foodMapper.findAdminPage(status, offset, normalizedPageSize).stream()
                 .map(FoodVO::from)
                 .toList();
+        return new FoodPageVO(
+                items,
+                total,
+                normalizedPage,
+                normalizedPageSize,
+                foodMapper.sumHeat(),
+                foodMapper.countPending()
+        );
     }
 
     @Override
@@ -173,6 +209,38 @@ public class FoodServiceImpl implements FoodService {
 
     private ResponseStatusException notFound(String message) {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+    }
+
+    private int normalizePageSize(int pageSize) {
+        return switch (pageSize) {
+            case 20, 50 -> pageSize;
+            default -> 10;
+        };
+    }
+
+    private void validateBounds(
+            BigDecimal minLatitude,
+            BigDecimal maxLatitude,
+            BigDecimal minLongitude,
+            BigDecimal maxLongitude
+    ) {
+        boolean anyBound = minLatitude != null || maxLatitude != null
+                || minLongitude != null || maxLongitude != null;
+        boolean allBounds = minLatitude != null && maxLatitude != null
+                && minLongitude != null && maxLongitude != null;
+        if (anyBound && !allBounds) {
+            throw new IllegalArgumentException("地图范围参数必须完整");
+        }
+        if (!allBounds) {
+            return;
+        }
+        if (minLatitude.compareTo(maxLatitude) > 0 || minLongitude.compareTo(maxLongitude) > 0
+                || minLatitude.compareTo(BigDecimal.valueOf(-90)) < 0
+                || maxLatitude.compareTo(BigDecimal.valueOf(90)) > 0
+                || minLongitude.compareTo(BigDecimal.valueOf(-180)) < 0
+                || maxLongitude.compareTo(BigDecimal.valueOf(180)) > 0) {
+            throw new IllegalArgumentException("地图范围参数无效");
+        }
     }
 
     private void clearFoodCaches(Long id) {

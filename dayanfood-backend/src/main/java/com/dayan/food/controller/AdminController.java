@@ -2,6 +2,8 @@ package com.dayan.food.controller;
 
 import com.dayan.food.entity.vo.AuthUserPageVO;
 import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.vo.FoodPageVO;
+import com.dayan.food.entity.enums.FoodReviewStatus;
 import com.dayan.food.entity.dto.FoodReviewDTO;
 import com.dayan.food.entity.dto.UserActiveUpdateDTO;
 import com.dayan.food.service.AppUserService;
@@ -32,8 +34,12 @@ public class AdminController {
     }
 
     @GetMapping("/foods")
-    public java.util.List<FoodVO> foods() {
-        return foodService.listForAdmin();
+    public FoodPageVO foods(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) FoodReviewStatus status
+    ) {
+        return foodService.listForAdmin(page, pageSize, status);
     }
 
     @PatchMapping("/foods/{id}/review")

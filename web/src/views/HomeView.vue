@@ -7,7 +7,7 @@ import { getFoods, getRegions, resolveMapRegion } from '../api'
 import { useAuth } from '../auth'
 import FoodMap from '../components/FoodMap.vue'
 import FoodUploadModal from '../components/FoodUploadModal.vue'
-import type { Food, Region } from '../types'
+import type { Food, MapBounds, Region } from '../types'
 
 const foods = ref<Food[]>([])
 const regions = ref<Region[]>([])
@@ -22,6 +22,7 @@ const pickedLongitude = ref<number>()
 const pickedRegionId = ref<number>()
 const locationError = ref('')
 const locationResolving = ref(false)
+const mapBounds = ref<MapBounds>()
 const { t } = useI18n()
 const router = useRouter()
 const auth = useAuth()
@@ -45,12 +46,21 @@ async function loadFoods() {
     foods.value = await getFoods({
       keyword: keyword.value || undefined,
       regionId: selectedRegionId.value,
+      ...mapBounds.value,
     })
   } catch {
     error.value = t('home.loadError')
   } finally {
     loading.value = false
   }
+}
+
+let boundsLoadTimer: ReturnType<typeof setTimeout> | undefined
+
+function updateMapBounds(bounds: MapBounds) {
+  mapBounds.value = bounds
+  if (boundsLoadTimer) clearTimeout(boundsLoadTimer)
+  boundsLoadTimer = setTimeout(() => void loadFoods(), 250)
 }
 
 function chooseRegion(regionId?: number) {
@@ -113,7 +123,6 @@ onMounted(async () => {
     error.value = t('home.regionError')
   }
 
-  await loadFoods()
 })
 </script>
 
@@ -181,7 +190,7 @@ onMounted(async () => {
       </div>
 
       <div class="map-frame">
-        <FoodMap :foods="foods" @pick="pickLocation" />
+        <FoodMap :foods="foods" @pick="pickLocation" @bounds-change="updateMapBounds" />
         <div class="map-vignette"></div>
         <div class="map-hint">
           <span v-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>

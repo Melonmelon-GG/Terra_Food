@@ -24,6 +24,22 @@ export interface Food {
   createdAt: string
 }
 
+export interface MapBounds {
+  minLatitude: number
+  maxLatitude: number
+  minLongitude: number
+  maxLongitude: number
+}
+
+export interface PagedFoods {
+  items: Food[]
+  total: number
+  page: number
+  pageSize: number
+  totalHeat: number
+  pendingTotal: number
+}
+
 export type FoodReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export interface FoodReviewPayload {

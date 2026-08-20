@@ -6,6 +6,8 @@ import type {
   FoodCreatePayload,
   FoodImportResult,
   FoodReviewPayload,
+  MapBounds,
+  PagedFoods,
   LoginPayload,
   SetUserActivePayload,
   Region,
@@ -13,7 +15,7 @@ import type {
   RegisterPayload,
 } from './types'
 
-interface FoodQuery {
+interface FoodQuery extends Partial<MapBounds> {
   keyword?: string
   regionId?: number
 }
@@ -235,8 +237,14 @@ export async function deleteFood(id: number): Promise<void> {
   await api.delete(`/foods/${id}`)
 }
 
-export async function getAdminFoods(): Promise<Food[]> {
-  const response = await api.get<Food[]>('/admin/foods')
+export async function getAdminFoods(
+  page = 1,
+  pageSize = 10,
+  status?: Food['reviewStatus'],
+): Promise<PagedFoods> {
+  const response = await api.get<PagedFoods>('/admin/foods', {
+    params: { page, pageSize, status },
+  })
   return response.data
 }
 

@@ -24,6 +24,9 @@ const activeTab = ref<AdminTab>('foods')
 const foods = ref<Food[]>([])
 const regions = ref<Region[]>([])
 const users = ref<AuthUser[]>([])
+const foodsTotal = ref(0)
+const pendingFoodTotal = ref(0)
+const totalHeat = ref(0)
 const usersTotal = ref(0)
 const loading = ref(true)
 const error = ref('')
@@ -40,37 +43,26 @@ const usersPageSize = ref<PageSize>(10)
 const usersLoading = ref(false)
 
 const foodsPageTotal = computed(() => {
-  if (!managedFoods.value.length) {
-    return 1
-  }
-
-  return Math.max(1, Math.ceil(managedFoods.value.length / foodsPageSize.value))
+  return Math.max(1, Math.ceil(foodsTotal.value / foodsPageSize.value))
 })
 
 const usersPageTotal = computed(() => Math.max(1, Math.ceil(usersTotal.value / usersPageSize.value)))
 
-const visibleFoods = computed(() => {
-  const start = (foodsPage.value - 1) * foodsPageSize.value
-  return managedFoods.value.slice(start, start + foodsPageSize.value)
-})
-
-const managedFoods = computed(() => activeTab.value === 'reviews'
-  ? foods.value.filter((food) => food.reviewStatus === 'PENDING')
-  : foods.value)
-
-const totalHeat = computed(() => foods.value.reduce((sum, food) => sum + food.heat, 0))
+const visibleFoods = computed(() => foods.value)
 const canPrevFoods = computed(() => foodsPage.value > 1)
 const canNextFoods = computed(() => foodsPage.value < foodsPageTotal.value)
 const canPrevUsers = computed(() => usersPage.value > 1)
 const canNextUsers = computed(() => usersPage.value < usersPageTotal.value)
 
-const foodsPageStart = computed(() => managedFoods.value.length ? (foodsPage.value - 1) * foodsPageSize.value + 1 : 0)
-const foodsPageEnd = computed(() => Math.min(foodsPage.value * foodsPageSize.value, managedFoods.value.length))
+const foodsPageStart = computed(() => foods.value.length ? (foodsPage.value - 1) * foodsPageSize.value + 1 : 0)
+const foodsPageEnd = computed(() => Math.min(foodsPage.value * foodsPageSize.value, foodsTotal.value))
 
 function switchTab(tab: AdminTab) {
   activeTab.value = tab
   if (tab === 'users' && !users.value.length && !usersLoading.value && !loading.value) {
     void loadUsersPage(1, usersPageSize.value)
+  } else if (tab !== 'users') {
+    void loadFoodsPage(1, foodsPageSize.value)
   }
 }
 
@@ -97,17 +89,39 @@ async function loadFoodsAndMeta() {
 
   try {
     const [loadedFoods, loadedRegions, loadedUsers] = await Promise.all([
-      getAdminFoods(),
+      getAdminFoods(foodsPage.value, foodsPageSize.value),
       getRegions(),
       getUsers(usersPage.value, usersPageSize.value),
     ])
 
-    foods.value = loadedFoods
+    applyFoodsPage(loadedFoods)
     regions.value = loadedRegions
     users.value = loadedUsers.items
     usersTotal.value = loadedUsers.total
     usersPage.value = loadedUsers.page
     usersPageSize.value = clampPageSize(loadedUsers.pageSize)
+  } catch {
+    error.value = t('admin.loadError')
+  } finally {
+    loading.value = false
+  }
+}
+
+function applyFoodsPage(response: Awaited<ReturnType<typeof getAdminFoods>>) {
+  foods.value = response.items
+  foodsTotal.value = response.total
+  foodsPage.value = response.page
+  foodsPageSize.value = clampPageSize(response.pageSize)
+  totalHeat.value = response.totalHeat
+  pendingFoodTotal.value = response.pendingTotal
+}
+
+async function loadFoodsPage(page = foodsPage.value, pageSize = foodsPageSize.value) {
+  loading.value = true
+  error.value = ''
+  try {
+    const status = activeTab.value === 'reviews' ? 'PENDING' : undefined
+    applyFoodsPage(await getAdminFoods(page, pageSize, status))
   } catch {
     error.value = t('admin.loadError')
   } finally {
@@ -123,7 +137,7 @@ async function reviewSubmission(food: Food, status: Extract<FoodReviewStatus, 'A
 
   try {
     await reviewFood(food.id, { status })
-    food.reviewStatus = status
+    await loadFoodsPage(foodsPage.value, foodsPageSize.value)
   } catch {
     error.value = t('admin.reviewError')
   }
@@ -159,12 +173,7 @@ async function removeFood(food: Food) {
 
   try {
     await deleteFood(food.id)
-    foods.value = foods.value.filter((item) => item.id !== food.id)
-
-    const maxPage = foodsPageTotal.value
-    if (foodsPage.value > maxPage) {
-      foodsPage.value = maxPage
-    }
+    await loadFoodsPage(foodsPage.value, foodsPageSize.value)
   } catch {
     error.value = t('admin.deleteError')
   }
@@ -238,8 +247,9 @@ async function handleSpreadsheet(event: Event) {
   }
 }
 
-function foodsPageSizeChanged() {
+async function foodsPageSizeChanged() {
   foodsPage.value = 1
+  await loadFoodsPage(1, foodsPageSize.value)
 }
 
 async function usersPageSizeChanged() {
@@ -247,15 +257,15 @@ async function usersPageSizeChanged() {
   await loadUsersPage(usersPage.value, usersPageSize.value)
 }
 
-function previousFoodsPage() {
+async function previousFoodsPage() {
   if (canPrevFoods.value) {
-    foodsPage.value -= 1
+    await loadFoodsPage(foodsPage.value - 1, foodsPageSize.value)
   }
 }
 
-function nextFoodsPage() {
+async function nextFoodsPage() {
   if (canNextFoods.value) {
-    foodsPage.value += 1
+    await loadFoodsPage(foodsPage.value + 1, foodsPageSize.value)
   }
 }
 
@@ -290,7 +300,7 @@ onMounted(loadFoodsAndMeta)
     </div>
 
     <div class="admin-stats">
-      <article><span>{{ t('admin.foodCount') }}</span><strong>{{ foods.length }}</strong></article>
+      <article><span>{{ t('admin.foodCount') }}</span><strong>{{ foodsTotal }}</strong></article>
       <article><span>{{ t('admin.regionCount') }}</span><strong>{{ regions.length }}</strong></article>
       <article><span>{{ t('admin.userCount') }}</span><strong>{{ usersTotal }}</strong></article>
       <article><span>{{ t('admin.totalHeat') }}</span><strong>{{ totalHeat }}</strong></article>
@@ -301,7 +311,7 @@ onMounted(loadFoodsAndMeta)
         {{ t('admin.tabFoods') }}
       </button>
       <button class="admin-tab" :class="{ active: activeTab === 'reviews' }" type="button" @click="switchTab('reviews')">
-        {{ t('admin.tabReviews') }}（{{ foods.filter((food) => food.reviewStatus === 'PENDING').length }}）
+        {{ t('admin.tabReviews') }}（{{ pendingFoodTotal }}）
       </button>
       <button class="admin-tab" :class="{ active: activeTab === 'users' }" type="button" @click="switchTab('users')">
         {{ t('admin.tabUsers') }}
@@ -313,7 +323,7 @@ onMounted(loadFoodsAndMeta)
         <div class="admin-table-title">
           <div>
             <h2>{{ activeTab === 'reviews' ? t('admin.reviewManagement') : t('admin.foodManagement') }}</h2>
-            <span>{{ t('admin.recordCount', { count: managedFoods.length }) }}</span>
+            <span>{{ t('admin.recordCount', { count: foodsTotal }) }}</span>
           </div>
           <div v-if="activeTab === 'foods'" class="admin-import-actions">
             <span>{{ t('admin.importHint') }}</span>
@@ -396,7 +406,7 @@ onMounted(loadFoodsAndMeta)
             </label>
 
             <p>
-              {{ t('admin.pageInfo', { start: foodsPageStart, end: foodsPageEnd, total: managedFoods.length, page: foodsPage, totalPages: foodsPageTotal }) }}
+              {{ t('admin.pageInfo', { start: foodsPageStart, end: foodsPageEnd, total: foodsTotal, page: foodsPage, totalPages: foodsPageTotal }) }}
             </p>
 
             <div class="admin-page-controls">

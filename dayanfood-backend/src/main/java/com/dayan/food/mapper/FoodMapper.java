@@ -8,9 +8,29 @@ import java.util.List;
 
 public interface FoodMapper {
 
-    List<Food> findList(@Param("keyword") String keyword, @Param("regionId") Long regionId);
+    List<Food> findList(
+            @Param("keyword") String keyword,
+            @Param("regionId") Long regionId,
+            @Param("minLatitude") java.math.BigDecimal minLatitude,
+            @Param("maxLatitude") java.math.BigDecimal maxLatitude,
+            @Param("minLongitude") java.math.BigDecimal minLongitude,
+            @Param("maxLongitude") java.math.BigDecimal maxLongitude,
+            @Param("limit") int limit
+    );
 
-    List<Food> findAdminList();
+    List<Food> findAdminPage(
+            @Param("status") FoodReviewStatus status,
+            @Param("offset") int offset,
+            @Param("pageSize") int pageSize
+    );
+
+    int countAdmin(@Param("status") FoodReviewStatus status);
+
+    long sumHeat();
+
+    int countPending();
+
+    int countByImageUrl(String imageUrl);
 
     Food findById(Long id);
 
