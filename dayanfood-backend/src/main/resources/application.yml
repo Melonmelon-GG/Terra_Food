@@ -37,10 +37,9 @@ app:
     cleanup-cron: ${UPLOAD_CLEANUP_CRON:0 30 3 * * *}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
-  initial-users:
-    enabled: ${INITIAL_USERS_ENABLED:false}
-    admin-password: ${INITIAL_ADMIN_PASSWORD:}
-    user-password: ${INITIAL_USER_PASSWORD:}
+  initial-admin:
+    enabled: ${INITIAL_ADMIN_ENABLED:false}
+    password: ${INITIAL_ADMIN_PASSWORD:}
 server:
   port: ${SERVER_PORT:8080}
   servlet:

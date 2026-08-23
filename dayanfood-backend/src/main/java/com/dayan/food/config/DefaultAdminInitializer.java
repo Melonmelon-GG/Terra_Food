@@ -9,31 +9,25 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "app.initial-users", name = "enabled", havingValue = "true")
-public class DefaultUserInitializer implements ApplicationRunner {
+@ConditionalOnProperty(prefix = "app.initial-admin", name = "enabled", havingValue = "true")
+public class DefaultAdminInitializer implements ApplicationRunner {
 
     private final AppUserService appUserService;
     private final String adminPassword;
-    private final String userPassword;
 
-    public DefaultUserInitializer(
+    public DefaultAdminInitializer(
             AppUserService appUserService,
-            @Value("${app.initial-users.admin-password:}") String adminPassword,
-            @Value("${app.initial-users.user-password:}") String userPassword
+            @Value("${app.initial-admin.password:}") String adminPassword
     ) {
         this.appUserService = appUserService;
         this.adminPassword = adminPassword;
-        this.userPassword = userPassword;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        if (adminPassword.isBlank() || userPassword.isBlank()) {
-            throw new IllegalStateException(
-                    "启用初始用户时必须配置 INITIAL_ADMIN_PASSWORD 和 INITIAL_USER_PASSWORD"
-            );
+        if (adminPassword.isBlank()) {
+            throw new IllegalStateException("启用初始管理员时必须配置 INITIAL_ADMIN_PASSWORD");
         }
         appUserService.createIfMissing("admin", adminPassword, "珍馐志管理员", UserRole.ADMIN);
-        appUserService.createIfMissing("user", userPassword, "寻味人", UserRole.USER);
     }
 }

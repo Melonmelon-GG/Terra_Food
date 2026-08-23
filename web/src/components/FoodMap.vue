@@ -2,9 +2,20 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
+import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIconUrl from 'leaflet/dist/images/marker-icon.png'
+import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png'
 
 import type { Food, MapBounds } from '../types'
 import 'leaflet/dist/leaflet.css'
+
+// Vite 会内联 Leaflet CSS 中用于探测路径的图片，导致默认图标退回到不存在的
+// /marker-icon.png。显式注入构建后的资源 URL，确保开发和生产环境使用同一图标。
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2xUrl,
+  iconUrl: markerIconUrl,
+  shadowUrl: markerShadowUrl,
+})
 
 const props = defineProps<{
   foods: Food[]

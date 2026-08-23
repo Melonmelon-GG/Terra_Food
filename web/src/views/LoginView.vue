@@ -82,9 +82,6 @@ async function submit() {
           <input v-model="form.password" type="password" autocomplete="current-password" required>
         </label>
 
-        <p class="demo-account">
-          {{ form.role === 'ADMIN' ? t('login.adminDemo') : t('login.userDemo') }}
-        </p>
         <p v-if="error" class="form-error">{{ error }}</p>
 
         <button class="login-submit" :disabled="loading">

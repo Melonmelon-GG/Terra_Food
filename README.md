@@ -69,22 +69,20 @@ npm run dev
 
 前端默认访问地址为 `http://localhost:5173`。
 
-## 本地演示账号
+## 初始管理员
 
-演示账号默认不会自动创建。需要初始化演示账号时，请在启动后端前配置：
+管理员默认不会自动创建。首次部署需要初始化管理员时，请在启动后端前配置：
 
 ```bash
 DB_PASSWORD=你的数据库密码
-INITIAL_USERS_ENABLED=true
-INITIAL_USER_PASSWORD=自定义普通用户密码
+INITIAL_ADMIN_ENABLED=true
 INITIAL_ADMIN_PASSWORD=自定义管理员密码
 ```
 
-启用后，首次启动会创建以下账号：
+启用后会创建以下账号（已存在时不会重复创建）：
 
 | 角色 | 用户名 |
 | --- | --- |
-| 普通用户 | `user` |
 | 管理员 | `admin` |
 
-生产环境不要启用演示账号初始化。MySQL 和 Redis 连接可以通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT` 和 `REDIS_PASSWORD` 配置；跨域前端地址通过 `CORS_ALLOWED_ORIGINS` 配置，多个地址使用英文逗号分隔。HTTPS 部署时还应设置 `SESSION_COOKIE_SECURE=true`。
+管理员创建成功后应关闭 `INITIAL_ADMIN_ENABLED` 并从运行环境移除 `INITIAL_ADMIN_PASSWORD`。普通用户只能通过前台注册。MySQL 和 Redis 连接可以通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT` 和 `REDIS_PASSWORD` 配置；跨域前端地址通过 `CORS_ALLOWED_ORIGINS` 配置，多个地址使用英文逗号分隔。HTTPS 部署时还应设置 `SESSION_COOKIE_SECURE=true`。

@@ -88,8 +88,6 @@ export default {
     adminHint: 'Open the management dashboard',
     username: 'Username',
     password: 'Password',
-    userDemo: 'Demo user: user / user123',
-    adminDemo: 'Demo admin: admin / admin123',
     error: 'Sign-in failed. Check your role, username, and password.',
     loggingIn: 'Signing in…',
     submit: 'Enter the Collection',

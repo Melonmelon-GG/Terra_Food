@@ -88,8 +88,6 @@ export default {
     adminHint: '进入内容管理后台',
     username: '用户名',
     password: '密码',
-    userDemo: '演示用户：user / user123',
-    adminDemo: '演示管理员：admin / admin123',
     error: '登录失败，请检查身份、用户名和密码。',
     loggingIn: '正在登录……',
     submit: '进入珍馐志',
