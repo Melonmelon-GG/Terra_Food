@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
 import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png'
@@ -28,9 +28,26 @@ const emit = defineEmits<{
 
 const { locale, t } = useI18n()
 
-const mapElement = ref<HTMLElement>()
+const mapElement = ref<HTMLDivElement>()
+const mapReady = ref(false)
+const mapLoadError = ref(false)
 let map: L.Map | undefined
 let markerLayer: L.LayerGroup | undefined
+let tileLayer: L.TileLayer | undefined
+let annotationLayer: L.TileLayer | undefined
+let resizeObserver: ResizeObserver | undefined
+let resizeFrame: number | undefined
+let mountFrame: number | undefined
+let primaryLoadTimer: ReturnType<typeof setTimeout> | undefined
+let tileErrorCount = 0
+let activeTileProvider: 'tianditu' | 'osm' = 'tianditu'
+
+const tiandituKey = import.meta.env.VITE_TIANDITU_KEY?.trim()
+const tiandituSubdomains = ['0', '1', '2', '3', '4', '5', '6', '7']
+
+function tiandituTileUrl(layer: 'vec_w' | 'cva_w') {
+  return `https://t{s}.tianditu.gov.cn/DataServer?T=${layer}&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituKey || '')}`
+}
 
 function renderMarkers() {
   if (!map || !markerLayer) {
@@ -82,18 +99,104 @@ function emitCurrentBounds() {
   })
 }
 
-onMounted(() => {
+function invalidateMapSize() {
+  if (!map) return
+  if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame)
+  resizeFrame = requestAnimationFrame(() => {
+    map?.invalidateSize({ animate: false, pan: false })
+  })
+}
+
+function markTilesReady() {
+  if (primaryLoadTimer) clearTimeout(primaryLoadTimer)
+  mapReady.value = true
+  mapLoadError.value = false
+  tileErrorCount = 0
+}
+
+function switchToOpenStreetMap() {
+  if (!map || activeTileProvider === 'osm') return
+
+  tileLayer?.remove()
+  annotationLayer?.remove()
+  if (primaryLoadTimer) clearTimeout(primaryLoadTimer)
+  activeTileProvider = 'osm'
+  tileErrorCount = 0
+  mapReady.value = false
+  mapLoadError.value = false
+
+  tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 18,
+    updateWhenIdle: true,
+    keepBuffer: 3,
+  })
+    .on('tileload', markTilesReady)
+    .on('tileerror', () => {
+      tileErrorCount += 1
+      if (!mapReady.value && tileErrorCount >= 3) mapLoadError.value = true
+    })
+    .addTo(map)
+}
+
+function handleTiandituTileError() {
+  tileErrorCount += 1
+  if (tileErrorCount >= 3) switchToOpenStreetMap()
+}
+
+function createTileLayer() {
+  tileLayer?.remove()
+  annotationLayer?.remove()
+  if (primaryLoadTimer) clearTimeout(primaryLoadTimer)
+  activeTileProvider = 'tianditu'
+  tileErrorCount = 0
+  mapReady.value = false
+  mapLoadError.value = false
+
+  if (!tiandituKey) {
+    switchToOpenStreetMap()
+    return
+  }
+
+  tileLayer = L.tileLayer(tiandituTileUrl('vec_w'), {
+    attribution: '&copy; <a href="https://www.tianditu.gov.cn/" target="_blank" rel="noopener">天地图</a>',
+    maxZoom: 18,
+    subdomains: tiandituSubdomains,
+    updateWhenIdle: true,
+    keepBuffer: 3,
+  })
+    .on('tileload', markTilesReady)
+    .on('tileerror', handleTiandituTileError)
+    .addTo(map!)
+
+  // 天地图把道路底图和中文地名标注拆成两个图层，需要按顺序叠加。
+  annotationLayer = L.tileLayer(tiandituTileUrl('cva_w'), {
+    maxZoom: 18,
+    subdomains: tiandituSubdomains,
+    updateWhenIdle: true,
+    keepBuffer: 3,
+  })
+    .on('tileerror', handleTiandituTileError)
+    .addTo(map!)
+
+  // 海外或运营商网络若无法及时连接天地图，自动启用国际备用底图。
+  primaryLoadTimer = setTimeout(() => {
+    if (!mapReady.value) switchToOpenStreetMap()
+  }, 8_000)
+}
+
+function initializeMap() {
+  if (!mapElement.value || map) return
+
   // Leaflet 必须在真实 DOM 挂载后创建，否则无法正确计算地图尺寸。
   map = L.map(mapElement.value!, {
     center: [35.5, 104.2],
     zoom: 4,
     zoomControl: true,
+    preferCanvas: true,
   })
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 18,
-  }).addTo(map)
+  createTileLayer()
 
   markerLayer = L.layerGroup().addTo(map)
   map.on('click', (event: L.LeafletMouseEvent) => {
@@ -103,16 +206,50 @@ onMounted(() => {
 
   renderMarkers()
   emitCurrentBounds()
+
+  // 手机地址栏伸缩、横竖屏切换和父容器重排都会改变地图尺寸。
+  // 监听真实容器，而不是只监听 window.resize，避免 Leaflet 保留过期尺寸。
+  resizeObserver = new ResizeObserver(invalidateMapSize)
+  resizeObserver.observe(mapElement.value)
+  window.visualViewport?.addEventListener('resize', invalidateMapSize)
+  window.addEventListener('orientationchange', invalidateMapSize)
+  invalidateMapSize()
+}
+
+function retryTiles() {
+  createTileLayer()
+  invalidateMapSize()
+}
+
+onMounted(async () => {
+  await nextTick()
+  // 等一帧，确保移动端媒体查询已经完成布局后再读取容器尺寸。
+  mountFrame = requestAnimationFrame(initializeMap)
 })
 
 watch([() => props.foods, locale], renderMarkers, { deep: true })
 
 onBeforeUnmount(() => {
   // 主动释放地图事件和 DOM 引用，避免路由往返时重复初始化。
+  resizeObserver?.disconnect()
+  window.visualViewport?.removeEventListener('resize', invalidateMapSize)
+  window.removeEventListener('orientationchange', invalidateMapSize)
+  if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame)
+  if (mountFrame !== undefined) cancelAnimationFrame(mountFrame)
+  if (primaryLoadTimer) clearTimeout(primaryLoadTimer)
   map?.remove()
 })
 </script>
 
 <template>
-  <div ref="mapElement" class="food-map"></div>
+  <div class="food-map-shell" :aria-busy="!mapReady">
+    <div ref="mapElement" class="food-map"></div>
+    <div v-if="!mapReady" class="map-loading" role="status">
+      <template v-if="mapLoadError">
+        <span>{{ t('map.loadError') }}</span>
+        <button type="button" @click="retryTiles">{{ t('map.retry') }}</button>
+      </template>
+      <span v-else>{{ t('map.loading') }}</span>
+    </div>
+  </div>
 </template>

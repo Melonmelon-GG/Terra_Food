@@ -44,6 +44,9 @@ export default {
   },
   map: {
     detail: 'View details →',
+    loading: 'Loading map…',
+    loadError: 'The map tiles could not be loaded. Check your connection and try again.',
+    retry: 'Reload map',
   },
   detail: {
     back: '← Back to the Food Atlas',

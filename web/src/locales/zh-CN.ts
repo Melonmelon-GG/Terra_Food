@@ -44,6 +44,9 @@ export default {
   },
   map: {
     detail: '查看珍馐志 →',
+    loading: '地图加载中……',
+    loadError: '地图底图加载失败，请检查网络后重试。',
+    retry: '重新加载',
   },
   detail: {
     back: '← 返回珍馐图鉴',

@@ -1245,6 +1245,42 @@ footer {
   font-family: 'Microsoft YaHei', sans-serif;
 }
 
+.food-map-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: #e9dfcd;
+}
+
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 600;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: #6e5849;
+  font-size: 13px;
+  text-align: center;
+  background:
+    radial-gradient(circle at center, #fbf7edcc, #e9dfcddd),
+    #e9dfcd;
+}
+
+.map-loading button {
+  min-height: 42px;
+  padding: 8px 18px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  background: #842d26;
+  border: 1px solid #842d26;
+}
+
 .map-hint {
   position: absolute;
   right: 18px;
@@ -1378,12 +1414,51 @@ footer {
 }
 
 @media (max-width: 700px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  header {
+    height: 68px;
+    padding: 0 14px;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 9px;
+  }
+
+  .seal {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    font-size: 21px;
+  }
+
+  .brand strong {
+    font-size: 16px;
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+
+  .brand small {
+    display: none;
+  }
+
   nav a {
     display: none;
   }
 
   nav {
-    gap: 0;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .account-link {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .grid {
@@ -1398,8 +1473,27 @@ footer {
     display: none;
   }
 
+  .content {
+    padding: 48px 12px 70px;
+  }
+
+  .section-title {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .section-title h2 {
+    font-size: 27px;
+  }
+
   .section-actions {
+    width: 100%;
     gap: 8px;
+  }
+
+  .section-actions .outline-action {
+    flex: 1;
   }
 
   .outline-action {
@@ -1408,7 +1502,23 @@ footer {
   }
 
   .hero {
-    padding: 65px 20px;
+    padding: 52px 16px 58px;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 12vw, 52px);
+  }
+
+  .hero form {
+    width: 100%;
+  }
+
+  .hero input {
+    min-width: 0;
+  }
+
+  .hero button {
+    padding: 0 18px;
   }
 
   .detail-hero {
@@ -1431,7 +1541,7 @@ footer {
 
   .map-journal {
     margin-bottom: 45px;
-    padding: 12px;
+    padding: 10px;
   }
 
   .map-journal-title {
@@ -1442,9 +1552,38 @@ footer {
     display: none;
   }
 
+  .map-journal-title h2 {
+    font-size: 23px;
+  }
+
   .map-frame {
-    height: 420px;
-    border-radius: 20px 6px 20px 6px;
+    height: clamp(340px, 56svh, 430px);
+    min-height: 340px;
+    border-radius: 16px 5px 16px 5px;
+  }
+
+  .map-hint {
+    right: 10px;
+    bottom: 12px;
+    left: 10px;
+    padding: 9px 11px;
+    text-align: center;
+  }
+
+  .food-map .leaflet-control-zoom a {
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    line-height: 44px;
+  }
+
+  .food-map .leaflet-popup-content-wrapper {
+    max-width: calc(100vw - 56px);
+  }
+
+  .food-map .leaflet-popup-content {
+    width: min(230px, calc(100vw - 96px)) !important;
+    margin: 14px 16px;
   }
 
   .map-workspace {

@@ -41,6 +41,20 @@ export async function getRegions(): Promise<Region[]> {
   return response.data
 }
 
+interface TiandituAddressComponent {
+  province?: string
+  city?: string
+  county?: string
+}
+
+interface TiandituGeocoderResult {
+  status?: string | number
+  msg?: string
+  result?: {
+    addressComponent?: TiandituAddressComponent
+  }
+}
+
 interface PhotonProperties {
   state?: string
   province?: string
@@ -78,6 +92,7 @@ interface MapLocation {
 }
 
 const mapRegionCache = new Map<string, MapLocation>()
+const tiandituKey = import.meta.env.VITE_TIANDITU_KEY?.trim()
 
 export async function resolveMapRegion(
   latitude: number,
@@ -88,12 +103,15 @@ export async function resolveMapRegion(
   let location = mapRegionCache.get(key)
   if (!location) {
     try {
-      location = await reverseWithPhoton(latitude, longitude, signal)
+      location = await reverseWithTianditu(latitude, longitude, signal)
     } catch (error) {
-      if (signal?.aborted) {
-        throw error
+      if (signal?.aborted) throw error
+      try {
+        location = await reverseWithPhoton(latitude, longitude, signal)
+      } catch (fallbackError) {
+        if (signal?.aborted) throw fallbackError
+        location = await reverseWithNominatim(latitude, longitude, signal)
       }
-      location = await reverseWithNominatim(latitude, longitude, signal)
     }
     mapRegionCache.set(key, location)
   }
@@ -102,13 +120,44 @@ export async function resolveMapRegion(
   return response.data
 }
 
+async function reverseWithTianditu(
+  latitude: number,
+  longitude: number,
+  signal?: AbortSignal,
+): Promise<MapLocation> {
+  if (!tiandituKey) {
+    throw new Error('VITE_TIANDITU_KEY is not configured')
+  }
+
+  const response = await axios.get<TiandituGeocoderResult>('https://api.tianditu.gov.cn/geocoder', {
+    params: {
+      postStr: JSON.stringify({ lon: longitude, lat: latitude, ver: 1 }),
+      type: 'geocode',
+      tk: tiandituKey,
+    },
+    signal,
+    timeout: 8000,
+  })
+  if (String(response.data.status) !== '0') {
+    throw new Error(response.data.msg || 'Tianditu reverse geocoding failed')
+  }
+
+  const address = response.data.result?.addressComponent
+  return extractMapLocation({
+    province: address?.province,
+    city: address?.city,
+    county: address?.county,
+  })
+}
+
 async function reverseWithPhoton(
   latitude: number,
   longitude: number,
   signal?: AbortSignal,
 ): Promise<MapLocation> {
   const response = await axios.get<PhotonResult>('https://photon.komoot.io/reverse', {
-    params: { lat: latitude, lon: longitude, lang: 'zh', limit: 1 },
+    // Photon 不接受 zh 作为语言代码；省略该参数可返回地点本地名称。
+    params: { lat: latitude, lon: longitude, limit: 1 },
     signal,
     timeout: 8000,
   })
