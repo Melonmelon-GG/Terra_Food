@@ -40,7 +40,7 @@ let resizeObserver: ResizeObserver | undefined
 let resizeFrame: number | undefined
 let mountFrame: number | undefined
 let primaryLoadTimer: ReturnType<typeof setTimeout> | undefined
-let tileErrorCount = 0
+let tileLoadGeneration = 0
 let activeTileProvider: 'tianditu' | 'osm' = 'tianditu'
 
 const tiandituKey = import.meta.env.VITE_TIANDITU_KEY?.trim()
@@ -108,21 +108,30 @@ function invalidateMapSize() {
   })
 }
 
-function markTilesReady() {
-  if (primaryLoadTimer) clearTimeout(primaryLoadTimer)
+function clearPrimaryLoadTimer() {
+  if (primaryLoadTimer) {
+    clearTimeout(primaryLoadTimer)
+    primaryLoadTimer = undefined
+  }
+}
+
+function markTilesReady(generation: number) {
+  if (generation !== tileLoadGeneration) return
+
+  clearPrimaryLoadTimer()
   mapReady.value = true
   mapLoadError.value = false
-  tileErrorCount = 0
 }
 
 function switchToOpenStreetMap() {
   if (!map || activeTileProvider === 'osm') return
 
+  const generation = ++tileLoadGeneration
+
   tileLayer?.remove()
   annotationLayer?.remove()
-  if (primaryLoadTimer) clearTimeout(primaryLoadTimer)
+  clearPrimaryLoadTimer()
   activeTileProvider = 'osm'
-  tileErrorCount = 0
   mapReady.value = false
   mapLoadError.value = false
 
@@ -132,25 +141,25 @@ function switchToOpenStreetMap() {
     updateWhenIdle: true,
     keepBuffer: 3,
   })
-    .on('tileload', markTilesReady)
-    .on('tileerror', () => {
-      tileErrorCount += 1
-      if (!mapReady.value && tileErrorCount >= 3) mapLoadError.value = true
-    })
+    .on('tileload', () => markTilesReady(generation))
     .addTo(map)
-}
 
-function handleTiandituTileError() {
-  tileErrorCount += 1
-  if (tileErrorCount >= 3) switchToOpenStreetMap()
+  // 缩放时会并发请求很多瓦片，少量请求失败不代表整张地图不可用。
+  // 只有一段时间内完全没有瓦片成功加载，才显示底图错误。
+  primaryLoadTimer = setTimeout(() => {
+    if (generation === tileLoadGeneration && !mapReady.value) {
+      mapLoadError.value = true
+    }
+  }, 12_000)
 }
 
 function createTileLayer() {
+  const generation = ++tileLoadGeneration
+
   tileLayer?.remove()
   annotationLayer?.remove()
-  if (primaryLoadTimer) clearTimeout(primaryLoadTimer)
+  clearPrimaryLoadTimer()
   activeTileProvider = 'tianditu'
-  tileErrorCount = 0
   mapReady.value = false
   mapLoadError.value = false
 
@@ -166,8 +175,7 @@ function createTileLayer() {
     updateWhenIdle: true,
     keepBuffer: 3,
   })
-    .on('tileload', markTilesReady)
-    .on('tileerror', handleTiandituTileError)
+    .on('tileload', () => markTilesReady(generation))
     .addTo(map!)
 
   // 天地图把道路底图和中文地名标注拆成两个图层，需要按顺序叠加。
@@ -176,16 +184,13 @@ function createTileLayer() {
     subdomains: tiandituSubdomains,
     updateWhenIdle: true,
     keepBuffer: 3,
-  })
-    .on('tileerror', handleTiandituTileError)
-    .addTo(map!)
+  }).addTo(map!)
 
   // 海外或运营商网络若无法及时连接天地图，自动启用国际备用底图。
   primaryLoadTimer = setTimeout(() => {
-    if (!mapReady.value) switchToOpenStreetMap()
+    if (generation === tileLoadGeneration && !mapReady.value) switchToOpenStreetMap()
   }, 8_000)
 }
-
 function initializeMap() {
   if (!mapElement.value || map) return
 
