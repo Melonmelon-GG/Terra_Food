@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dayan.food.mapper.FoodCommentMapper">
+
+    <resultMap id="foodCommentResultMap" type="com.dayan.food.entity.po.FoodComment">
+        <id property="id" column="comment_id"/>
+        <result property="foodId" column="food_id"/>
+        <result property="content" column="content"/>
+        <result property="createdAt" column="created_at"/>
+        <association property="author" javaType="com.dayan.food.entity.po.AppUser">
+            <id property="id" column="author_id"/>
+            <result property="username" column="author_username"/>
+            <result property="displayName" column="author_display_name"/>
+            <result property="avatarUrl" column="author_avatar_url"/>
+        </association>
+    </resultMap>
+
+    <select id="findByFoodId" resultMap="foodCommentResultMap">
+        SELECT c.id AS comment_id,
+               c.food_id,
+               c.content,
+               c.created_at,
+               u.id AS author_id,
+               u.username AS author_username,
+               u.display_name AS author_display_name,
+               u.avatar_url AS author_avatar_url
+        FROM food_comment c
+        INNER JOIN app_user u ON u.id = c.user_id
+        WHERE c.food_id = #{foodId}
+        ORDER BY c.created_at DESC, c.id DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO food_comment (food_id, user_id, content, created_at)
+        VALUES (#{foodId}, #{author.id}, #{content}, #{createdAt})
+    </insert>
+</mapper>

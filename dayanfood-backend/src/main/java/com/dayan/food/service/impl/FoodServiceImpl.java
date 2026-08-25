@@ -156,7 +156,7 @@ public class FoodServiceImpl implements FoodService {
         if (food == null) {
             throw notFound("美食不存在");
         }
-        return FoodVO.from(food);
+        return FoodVO.from(food, appUserMapper.findByUsername(food.getCreatedBy()));
     }
 
     @Override

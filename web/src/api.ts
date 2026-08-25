@@ -3,6 +3,8 @@ import axios from 'axios'
 import type {
   AuthUser,
   Food,
+  FoodComment,
+  FoodCommentCreatePayload,
   FoodCreatePayload,
   FoodUpdatePayload,
   FoodImportResult,
@@ -39,6 +41,19 @@ export async function getFoods(params?: FoodQuery): Promise<Food[]> {
 
 export async function getFood(id: number): Promise<Food> {
   const response = await api.get<Food>(`/foods/${id}`)
+  return response.data
+}
+
+export async function getFoodComments(foodId: number): Promise<FoodComment[]> {
+  const response = await api.get<FoodComment[]>('/foods/' + foodId + '/comments')
+  return response.data
+}
+
+export async function createFoodComment(
+  foodId: number,
+  payload: FoodCommentCreatePayload,
+): Promise<FoodComment> {
+  const response = await api.post<FoodComment>('/foods/' + foodId + '/comments', payload)
   return response.data
 }
 

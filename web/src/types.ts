@@ -7,6 +7,12 @@ export interface Region {
   centerLongitude?: number
 }
 
+export interface UserSummary {
+  username: string
+  displayName: string
+  avatarUrl: string | null
+}
+
 export interface Food {
   id: number
   name: string
@@ -24,7 +30,20 @@ export interface Food {
   reviewedBy?: string
   reviewedAt?: string
   createdBy: string
+  creator: UserSummary
   createdAt: string
+}
+
+export interface FoodComment {
+  id: number
+  foodId: number
+  author: UserSummary
+  content: string
+  createdAt: string
+}
+
+export interface FoodCommentCreatePayload {
+  content: string
 }
 
 export interface MapBounds {
