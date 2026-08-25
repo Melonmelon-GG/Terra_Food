@@ -5,6 +5,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useAuth } from './auth'
 import { saveLocale, type SupportedLocale } from './i18n'
+import BackgroundMusic from './components/BackgroundMusic.vue'
 
 const { locale, t } = useI18n()
 const route = useRoute()
@@ -53,6 +54,8 @@ async function logout() {
   <main>
     <RouterView />
   </main>
+
+  <BackgroundMusic />
 
   <footer id="about">
     {{ t('footer') }}
