@@ -2,23 +2,27 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { getMyFoods, getRegions, updateAvatar, uploadImage } from '../api'
+import { getAchievements, getMyFoods, getRegions, selectAchievement, updateAvatar, uploadImage } from '../api'
 import { useAuth } from '../auth'
 import FoodEditModal from '../components/FoodEditModal.vue'
-import type { Food, FoodReviewStatus, Region } from '../types'
+import type { Achievement, Food, FoodReviewStatus, Region } from '../types'
 
 const { locale, t } = useI18n()
 const auth = useAuth()
 const foods = ref<Food[]>([])
 const regions = ref<Region[]>([])
+const achievements = ref<Achievement[]>([])
 const selectedFood = ref<Food>()
 const loading = ref(true)
 const error = ref('')
 const avatarInput = ref<HTMLInputElement>()
 const avatarSaving = ref(false)
 const avatarError = ref('')
+const achievementSaving = ref<number>()
+const achievementError = ref('')
 
 const user = computed(() => auth.currentUser.value)
+const selectedAchievement = computed(() => achievements.value.find((achievement) => achievement.selected))
 const avatarText = computed(() => (user.value?.displayName || user.value?.username || '食').trim().slice(0, 1).toUpperCase())
 const statusCounts = computed(() => ({
   total: foods.value.length,
@@ -45,6 +49,23 @@ function handleSaved(updated: Food) {
   selectedFood.value = undefined
 }
 
+async function chooseAchievement(achievementId: number) {
+  if (selectedAchievement.value?.id === achievementId) return
+
+  achievementSaving.value = achievementId
+  achievementError.value = ''
+  try {
+    const selected = await selectAchievement(achievementId)
+    achievements.value = achievements.value.map((achievement) => ({
+      ...achievement,
+      selected: achievement.id === selected.id,
+    }))
+  } catch {
+    achievementError.value = t('profile.sealSelectionError')
+  } finally {
+    achievementSaving.value = undefined
+  }
+}
 async function changeAvatar(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -65,7 +86,11 @@ async function changeAvatar(event: Event) {
 
 onMounted(async () => {
   try {
-    ;[foods.value, regions.value] = await Promise.all([getMyFoods(), getRegions()])
+    ;[foods.value, regions.value, achievements.value] = await Promise.all([
+      getMyFoods(),
+      getRegions(),
+      getAchievements(),
+    ])
   } catch {
     error.value = t('profile.loadError')
   } finally {
@@ -172,13 +197,50 @@ onMounted(async () => {
       <aside class="etching-panel">
         <small>{{ t('profile.sealEyebrow') }}</small>
         <h2>{{ t('profile.sealTitle') }}</h2>
-        <div class="etching-seal" aria-hidden="true">
-          <div>
-            <span>章</span>
-            <small>LOCKED</small>
+
+        <div v-if="selectedAchievement" class="selected-etching">
+          <div class="selected-etching-image">
+            <img :src="selectedAchievement.imageUrl" :alt="selectedAchievement.name">
           </div>
+          <strong>{{ selectedAchievement.name }}</strong>
+          <p>{{ selectedAchievement.description }}</p>
         </div>
-        <p>{{ t('profile.sealPlaceholder') }}</p>
+        <template v-else>
+          <div class="etching-seal" aria-hidden="true">
+            <div>
+              <span>章</span>
+              <small>LOCKED</small>
+            </div>
+          </div>
+          <p>{{ achievements.length ? t('profile.sealChooseHint') : t('profile.sealEmpty') }}</p>
+        </template>
+
+        <div v-if="achievements.length" class="etching-picker">
+          <small>{{ t('profile.sealChoose') }}</small>
+          <button
+            v-for="achievement in achievements"
+            :key="achievement.id"
+            type="button"
+            :class="{ active: achievement.selected }"
+            :disabled="achievementSaving !== undefined"
+            @click="chooseAchievement(achievement.id)"
+          >
+            <img :src="achievement.imageUrl" :alt="achievement.name">
+            <span>
+              <strong>{{ achievement.name }}</strong>
+              <small>
+                {{
+                  achievement.selected
+                    ? t('profile.sealSelected')
+                    : achievementSaving === achievement.id
+                      ? t('profile.sealSelecting')
+                      : t('profile.sealSelect')
+                }}
+              </small>
+            </span>
+          </button>
+        </div>
+        <p v-if="achievementError" class="etching-error">{{ achievementError }}</p>
       </aside>
     </section>
 

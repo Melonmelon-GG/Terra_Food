@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dayan.food.mapper.AchievementMapper">
+
+    <resultMap id="achievementResultMap" type="com.dayan.food.entity.po.Achievement">
+        <id property="id" column="achievement_id"/>
+        <result property="code" column="code"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="unlockedAt" column="unlocked_at"/>
+        <result property="notifiedAt" column="notified_at"/>
+        <result property="selected" column="selected"/>
+    </resultMap>
+
+    <select id="findByCode" resultMap="achievementResultMap">
+        SELECT id AS achievement_id,
+               code,
+               name,
+               description,
+               image_url,
+               NULL AS unlocked_at,
+               NULL AS notified_at,
+               FALSE AS selected
+        FROM achievement
+        WHERE code = #{code}
+    </select>
+
+    <insert id="unlock">
+        INSERT IGNORE INTO user_achievement (
+            user_id, achievement_id, unlocked_at, notified_at, selected
+        )
+        VALUES (#{userId}, #{achievementId}, CURRENT_TIMESTAMP, NULL, FALSE)
+    </insert>
+
+    <sql id="unlockedAchievementColumns">
+        a.id AS achievement_id,
+        a.code,
+        a.name,
+        a.description,
+        a.image_url,
+        ua.unlocked_at,
+        ua.notified_at,
+        ua.selected
+    </sql>
+
+    <select id="findUnlockedByUsername" resultMap="achievementResultMap">
+        SELECT <include refid="unlockedAchievementColumns"/>
+        FROM user_achievement ua
+        INNER JOIN achievement a ON a.id = ua.achievement_id
+        INNER JOIN app_user u ON u.id = ua.user_id
+        WHERE u.username = #{username}
+        ORDER BY ua.selected DESC, ua.unlocked_at DESC, a.id DESC
+    </select>
+
+    <select id="findUnnotifiedByUsername" resultMap="achievementResultMap">
+        SELECT <include refid="unlockedAchievementColumns"/>
+        FROM user_achievement ua
+        INNER JOIN achievement a ON a.id = ua.achievement_id
+        INNER JOIN app_user u ON u.id = ua.user_id
+        WHERE u.username = #{username}
+          AND ua.notified_at IS NULL
+        ORDER BY ua.unlocked_at, a.id
+    </select>
+
+    <update id="markNotified">
+        UPDATE user_achievement ua
+        INNER JOIN app_user u ON u.id = ua.user_id
+        SET ua.notified_at = CURRENT_TIMESTAMP
+        WHERE u.username = #{username}
+          AND ua.achievement_id = #{achievementId}
+          AND ua.notified_at IS NULL
+    </update>
+
+    <update id="clearSelection">
+        UPDATE user_achievement ua
+        INNER JOIN app_user u ON u.id = ua.user_id
+        SET ua.selected = FALSE
+        WHERE u.username = #{username}
+          AND ua.selected = TRUE
+    </update>
+
+    <update id="select">
+        UPDATE user_achievement ua
+        INNER JOIN app_user u ON u.id = ua.user_id
+        SET ua.selected = TRUE
+        WHERE u.username = #{username}
+          AND ua.achievement_id = #{achievementId}
+    </update>
+</mapper>

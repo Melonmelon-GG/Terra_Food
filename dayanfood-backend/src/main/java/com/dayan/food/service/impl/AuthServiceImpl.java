@@ -7,6 +7,7 @@ import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.entity.vo.AuthUserVO;
 import com.dayan.food.mapper.AppUserMapper;
+import com.dayan.food.service.AchievementService;
 import com.dayan.food.service.AuthService;
 import com.dayan.food.service.PasswordResetCodeService;
 import com.dayan.food.service.RegistrationCodeService;
@@ -27,23 +28,26 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final RegistrationCodeService registrationCodeService;
     private final PasswordResetCodeService passwordResetCodeService;
+    private final AchievementService achievementService;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
             AppUserMapper appUserMapper,
             PasswordEncoder passwordEncoder,
             RegistrationCodeService registrationCodeService,
-            PasswordResetCodeService passwordResetCodeService
+            PasswordResetCodeService passwordResetCodeService,
+            AchievementService achievementService
     ) {
         this.authenticationManager = authenticationManager;
         this.appUserMapper = appUserMapper;
         this.passwordEncoder = passwordEncoder;
         this.registrationCodeService = registrationCodeService;
         this.passwordResetCodeService = passwordResetCodeService;
+        this.achievementService = achievementService;
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResult login(LoginDTO request) {
         Authentication authentication = authenticationManager.authenticate(
                 UsernamePasswordAuthenticationToken.unauthenticated(request.username(), request.password())
@@ -56,6 +60,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BadCredentialsException("登录类型与账号角色不匹配");
         }
 
+        achievementService.awardFirstLogin(authentication.getName());
         return new LoginResult(authentication, findUser(authentication.getName()));
     }
 
@@ -111,6 +116,7 @@ public class AuthServiceImpl implements AuthService {
         }
         passwordResetCodeService.consume(request.username(), normalizedEmail);
     }
+
     private AuthUserVO findUser(String username) {
         AppUser user = appUserMapper.findByUsername(username);
         if (user == null) {

@@ -108,6 +108,15 @@ export interface AuthUser {
   createdAt: string
 }
 
+export interface Achievement {
+  id: number
+  code: string
+  name: string
+  description: string
+  imageUrl: string
+  unlockedAt: string
+  selected: boolean
+}
 export interface LoginPayload {
   username: string
   password: string

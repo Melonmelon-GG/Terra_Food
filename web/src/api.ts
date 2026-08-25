@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 import type {
+  Achievement,
   AuthUser,
   Food,
   FoodComment,
@@ -348,6 +349,24 @@ export async function updateAvatar(avatarUrl: string): Promise<AuthUser> {
   return response.data
 }
 
+export async function getAchievements(): Promise<Achievement[]> {
+  const response = await api.get<Achievement[]>('/achievements/me')
+  return response.data
+}
+
+export async function getAchievementNotifications(): Promise<Achievement[]> {
+  const response = await api.get<Achievement[]>('/achievements/notifications')
+  return response.data
+}
+
+export async function markAchievementNotificationRead(achievementId: number): Promise<void> {
+  await api.post('/achievements/' + achievementId + '/notification-read')
+}
+
+export async function selectAchievement(achievementId: number): Promise<Achievement> {
+  const response = await api.put<Achievement>('/achievements/selection', { achievementId })
+  return response.data
+}
 export async function logout(): Promise<void> {
   await api.post('/auth/logout')
 }

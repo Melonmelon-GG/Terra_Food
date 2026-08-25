@@ -6,6 +6,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { isAdminRole, useAuth } from './auth'
 import { saveLocale, type SupportedLocale } from './i18n'
 import BackgroundMusic from './components/BackgroundMusic.vue'
+import AchievementToast from './components/AchievementToast.vue'
 
 const { locale, t } = useI18n()
 const route = useRoute()
@@ -59,6 +60,7 @@ async function logout() {
   </main>
 
   <BackgroundMusic />
+  <AchievementToast />
 
   <footer id="about">
     {{ t('footer') }}
