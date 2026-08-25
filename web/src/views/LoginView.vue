@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import { isAdminRole, useAuth } from '../auth'
+import PasswordResetForm from '../components/PasswordResetForm.vue'
 import type { LoginPayload, LoginRole } from '../types'
 
 const { t } = useI18n()
@@ -19,10 +20,17 @@ const form = reactive<LoginPayload>({
 const loading = ref(false)
 const error = ref('')
 const registrationSucceeded = route.query.registered === '1'
+const resetSucceeded = ref(false)
 
 function selectRole(role: LoginRole) {
   form.role = role
   error.value = ''
+}
+
+function handlePasswordReset(username: string) {
+  form.username = username
+  form.password = ''
+  resetSucceeded.value = true
 }
 
 async function submit() {
@@ -73,6 +81,9 @@ async function submit() {
         <p v-if="registrationSucceeded" class="form-success">
           {{ t('login.registrationSuccess') }}
         </p>
+        <p v-if="resetSucceeded" class="form-success">
+          {{ t('login.resetSuccess') }}
+        </p>
         <label>
           {{ t('login.username') }}
           <input v-model.trim="form.username" autocomplete="username" required>
@@ -92,6 +103,7 @@ async function submit() {
           <RouterLink to="/register">{{ t('login.registerNow') }}</RouterLink>
         </div>
       </form>
+      <PasswordResetForm @reset="handlePasswordReset" />
       </div>
     </div>
   </section>

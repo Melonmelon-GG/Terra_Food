@@ -39,6 +39,8 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/register",
                                 "/api/auth/registration-code",
+                                "/api/auth/password-reset-code",
+                                "/api/auth/password-reset",
                                 "/uploads/**",
                                 "/error"
                         )

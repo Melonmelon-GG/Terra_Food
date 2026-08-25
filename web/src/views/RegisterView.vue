@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import axios from 'axios'
 import { onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -79,8 +80,10 @@ async function submit() {
         username: form.username,
       },
     })
-  } catch {
-    error.value = t('register.error')
+  } catch (requestError) {
+    error.value = axios.isAxiosError(requestError)
+      ? requestError.response?.data?.message || t('register.error')
+      : t('register.error')
   } finally {
     loading.value = false
   }
@@ -163,11 +166,12 @@ onUnmounted(() => window.clearInterval(cooldownTimer))
         <p v-if="codeSent" class="verification-code-status">{{ t('register.codeSent') }}</p>
         <label>
           {{ t('register.password') }}
-          <input v-model="form.password" type="password" minlength="6" maxlength="72" autocomplete="new-password" required>
+          <input v-model="form.password" type="password" minlength="8" maxlength="16" pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$" autocomplete="new-password" required>
+          <small>{{ t('register.passwordHint') }}</small>
         </label>
         <label>
           {{ t('register.confirmPassword') }}
-          <input v-model="form.confirmPassword" type="password" minlength="6" maxlength="72" autocomplete="new-password" required>
+          <input v-model="form.confirmPassword" type="password" minlength="8" maxlength="16" autocomplete="new-password" required>
         </label>
 
         <p v-if="error" class="form-error">{{ error }}</p>

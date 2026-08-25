@@ -96,6 +96,13 @@
         WHERE id = #{id}
     </update>
 
+    <update id="updatePassword">
+        UPDATE app_user
+        SET password = #{password}
+        WHERE username = #{username}
+          AND LOWER(email) = #{email}
+          AND active = TRUE
+    </update>
     <delete id="deleteById">
         DELETE FROM app_user
         WHERE id = #{id}

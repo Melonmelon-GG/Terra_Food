@@ -107,6 +107,15 @@ export interface SendRegistrationCodePayload {
   email: string
 }
 
+export interface SendPasswordResetCodePayload {
+  username: string
+  email: string
+}
+
+export interface PasswordResetPayload extends SendPasswordResetCodePayload {
+  verificationCode: string
+  newPassword: string
+}
 export interface SetUserActivePayload {
   active: boolean
 }

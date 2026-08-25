@@ -4,6 +4,7 @@ import com.dayan.food.entity.vo.ApiErrorVO;
 import com.dayan.food.service.RegistrationCodeDeliveryException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,9 +18,19 @@ public class ApiExceptionHandler {
         return new ApiErrorVO(exception.getMessage());
     }
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiErrorVO handleBadRequest(MethodArgumentNotValidException exception) {
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage())
+                .orElse("请求参数校验失败");
+        return new ApiErrorVO(message);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiErrorVO handleBadRequest(IllegalArgumentException exception) {
+    public ApiErrorVO handleInvalidRequest(IllegalArgumentException exception) {
         return new ApiErrorVO(exception.getMessage());
     }
 

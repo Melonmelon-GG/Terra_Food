@@ -10,6 +10,7 @@ import type {
   MapBounds,
   PagedFoods,
   LoginPayload,
+  PasswordResetPayload,
   SetUserActivePayload,
   SetUserRolePayload,
   Region,
@@ -17,6 +18,7 @@ import type {
   RegisterPayload,
   ResolvedMapLocation,
   SendRegistrationCodePayload,
+  SendPasswordResetCodePayload,
 } from './types'
 
 interface FoodQuery extends Partial<MapBounds> {
@@ -314,6 +316,13 @@ export async function sendRegistrationCode(payload: SendRegistrationCodePayload)
   await api.post('/auth/registration-code', payload)
 }
 
+export async function sendPasswordResetCode(payload: SendPasswordResetCodePayload): Promise<void> {
+  await api.post('/auth/password-reset-code', payload)
+}
+
+export async function resetPassword(payload: PasswordResetPayload): Promise<void> {
+  await api.post('/auth/password-reset', payload)
+}
 export async function getCurrentUser(): Promise<AuthUser> {
   const response = await api.get<AuthUser>('/auth/me')
   return response.data

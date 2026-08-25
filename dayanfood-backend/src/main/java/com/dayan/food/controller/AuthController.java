@@ -1,10 +1,13 @@
 package com.dayan.food.controller;
 
 import com.dayan.food.entity.dto.LoginDTO;
+import com.dayan.food.entity.dto.PasswordResetCodeSendDTO;
+import com.dayan.food.entity.dto.PasswordResetDTO;
 import com.dayan.food.entity.dto.RegistrationCodeSendDTO;
 import com.dayan.food.entity.dto.RegisterDTO;
 import com.dayan.food.entity.vo.AuthUserVO;
 import com.dayan.food.service.AuthService;
+import com.dayan.food.service.PasswordResetCodeService;
 import com.dayan.food.service.RegistrationCodeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -25,10 +28,16 @@ public class AuthController {
 
     private final AuthService authService;
     private final RegistrationCodeService registrationCodeService;
+    private final PasswordResetCodeService passwordResetCodeService;
 
-    public AuthController(AuthService authService, RegistrationCodeService registrationCodeService) {
+    public AuthController(
+            AuthService authService,
+            RegistrationCodeService registrationCodeService,
+            PasswordResetCodeService passwordResetCodeService
+    ) {
         this.authService = authService;
         this.registrationCodeService = registrationCodeService;
+        this.passwordResetCodeService = passwordResetCodeService;
     }
 
     @PostMapping("/login")
@@ -62,6 +71,18 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void sendRegistrationCode(@Valid @RequestBody RegistrationCodeSendDTO request) {
         registrationCodeService.sendCode(request.email());
+    }
+
+    @PostMapping("/password-reset-code")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendPasswordResetCode(@Valid @RequestBody PasswordResetCodeSendDTO request) {
+        passwordResetCodeService.sendCode(request.username(), request.email());
+    }
+
+    @PostMapping("/password-reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody PasswordResetDTO request) {
+        authService.resetPassword(request);
     }
 
     @GetMapping("/me")

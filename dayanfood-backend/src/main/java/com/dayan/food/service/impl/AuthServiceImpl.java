@@ -1,12 +1,14 @@
 package com.dayan.food.service.impl;
 
 import com.dayan.food.entity.dto.LoginDTO;
+import com.dayan.food.entity.dto.PasswordResetDTO;
 import com.dayan.food.entity.dto.RegisterDTO;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.entity.vo.AuthUserVO;
 import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.service.AuthService;
+import com.dayan.food.service.PasswordResetCodeService;
 import com.dayan.food.service.RegistrationCodeService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,17 +26,20 @@ public class AuthServiceImpl implements AuthService {
     private final AppUserMapper appUserMapper;
     private final PasswordEncoder passwordEncoder;
     private final RegistrationCodeService registrationCodeService;
+    private final PasswordResetCodeService passwordResetCodeService;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
             AppUserMapper appUserMapper,
             PasswordEncoder passwordEncoder,
-            RegistrationCodeService registrationCodeService
+            RegistrationCodeService registrationCodeService,
+            PasswordResetCodeService passwordResetCodeService
     ) {
         this.authenticationManager = authenticationManager;
         this.appUserMapper = appUserMapper;
         this.passwordEncoder = passwordEncoder;
         this.registrationCodeService = registrationCodeService;
+        this.passwordResetCodeService = passwordResetCodeService;
     }
 
     @Override
@@ -88,6 +93,24 @@ public class AuthServiceImpl implements AuthService {
         return AuthUserVO.from(user);
     }
 
+    @Override
+    @Transactional
+    public void resetPassword(PasswordResetDTO request) {
+        String normalizedEmail = passwordResetCodeService.verify(
+                request.username(),
+                request.email(),
+                request.verificationCode()
+        );
+        int updated = appUserMapper.updatePassword(
+                request.username().trim(),
+                normalizedEmail,
+                passwordEncoder.encode(request.newPassword())
+        );
+        if (updated != 1) {
+            throw new IllegalArgumentException("用户名与邮箱不匹配，或账号不可用");
+        }
+        passwordResetCodeService.consume(request.username(), normalizedEmail);
+    }
     private AuthUserVO findUser(String username) {
         AppUser user = appUserMapper.findByUsername(username);
         if (user == null) {

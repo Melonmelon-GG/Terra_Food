@@ -31,6 +31,12 @@ public interface AppUserMapper {
 
     int updateRole(@Param("id") Long id, @Param("role") com.dayan.food.entity.enums.UserRole role);
 
+    int updatePassword(
+            @Param("username") String username,
+            @Param("email") String email,
+            @Param("password") String password
+    );
+
     int deleteById(Long id);
 
     int insert(AppUser user);
