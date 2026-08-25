@@ -1,0 +1,138 @@
+/*
+ * 弹窗与表单样式（FoodUploadModal / FoodEditModal 共用）
+ * 遮罩、弹窗容器、标题、图标按钮、表单网格、区域选择触发器。
+ */
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #251916b8;
+  backdrop-filter: blur(4px);
+}
+
+.upload-modal {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 48px);
+  padding: 28px;
+  overflow-y: auto;
+  background: #faf7ef;
+  border: 1px solid #d4c5ae;
+  box-shadow: 0 25px 70px #160c0966;
+}
+
+.modal-title {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid #d9cdbb;
+}
+
+.modal-title h2 {
+  margin: 4px 0 0;
+  font-size: 28px;
+}
+
+.icon-button {
+  width: 36px;
+  height: 36px;
+  color: #765f50;
+  font-size: 25px;
+  background: transparent;
+  border: 1px solid #cbbb9f;
+}
+
+/* ===== 表单 ===== */
+
+.upload-modal form,
+.upload-modal label {
+  display: grid;
+  gap: 7px;
+}
+
+.upload-modal form {
+  gap: 16px;
+}
+
+.upload-modal label {
+  color: #5b463a;
+  font-size: 13px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.coordinate-tip {
+  margin: -6px 0 0;
+  color: #907a69;
+  font-size: 11px;
+}
+
+.form-error {
+  margin: 0;
+  color: #a72d25;
+  font-size: 13px;
+}
+
+.form-success {
+  margin: 0;
+  padding: 10px 12px;
+  color: #42623f;
+  font-size: 13px;
+  background: #edf3e8;
+  border-left: 3px solid #768b62;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 5px;
+}
+
+/* ===== 区域选择触发器 ===== */
+
+.region-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 43px;
+  padding: 10px 13px;
+  color: #49352a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid var(--border-map);
+}
+
+.region-select-trigger:hover,
+.region-select-trigger:focus-visible {
+  border-color: #8b342b;
+  box-shadow: 0 0 0 2px #8b342b1a;
+  outline: none;
+}
+
+.region-select-trigger b {
+  color: #96352c;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.coordinate-warning {
+  margin: -6px 0 0;
+  padding: 10px 12px;
+  color: #a13228;
+  font-size: 12px;
+  line-height: 1.6;
+  background: #f8e8df;
+  border-left: 3px solid #a23b30;
+}

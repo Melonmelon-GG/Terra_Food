@@ -11,7 +11,16 @@ import RegisterView from './views/RegisterView.vue'
 import { isAdminRole, useAuth } from './auth'
 import { i18n, saveLocale } from './i18n'
 
-import './style.css'
+// 样式按功能域拆分：基础 → 各页面 → 响应式（顺序即级联优先级）
+import './base.css'
+import './login.css'
+import './admin.css'
+import './home.css'
+import './detail.css'
+import './map.css'
+import './modal.css'
+import './region-drawer.css'
+import './responsive.css'
 import './profile.css'
 
 const router = createRouter({
