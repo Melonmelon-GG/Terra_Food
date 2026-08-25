@@ -3,8 +3,8 @@ import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
-import { useAuth } from '../auth'
-import type { LoginPayload, UserRole } from '../types'
+import { isAdminRole, useAuth } from '../auth'
+import type { LoginPayload, LoginRole } from '../types'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -20,7 +20,7 @@ const loading = ref(false)
 const error = ref('')
 const registrationSucceeded = route.query.registered === '1'
 
-function selectRole(role: UserRole) {
+function selectRole(role: LoginRole) {
   form.role = role
   error.value = ''
 }
@@ -32,7 +32,7 @@ async function submit() {
   try {
     const user = await auth.login(form)
     const requestedRedirect = typeof route.query.redirect === 'string' ? route.query.redirect : undefined
-    await router.replace(user.role === 'ADMIN' ? '/admin' : requestedRedirect || '/')
+    await router.replace(isAdminRole(user.role) ? '/admin' : requestedRedirect || '/')
   } catch {
     error.value = t('login.error')
   } finally {

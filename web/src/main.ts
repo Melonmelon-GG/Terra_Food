@@ -6,11 +6,13 @@ import AdminView from './views/AdminView.vue'
 import FoodDetailView from './views/FoodDetailView.vue'
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
+import ProfileView from './views/ProfileView.vue'
 import RegisterView from './views/RegisterView.vue'
-import { useAuth } from './auth'
+import { isAdminRole, useAuth } from './auth'
 import { i18n, saveLocale } from './i18n'
 
 import './style.css'
+import './profile.css'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -34,6 +36,11 @@ const router = createRouter({
       component: RegisterView,
     },
     {
+      path: '/profile',
+      component: ProfileView,
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/admin',
       component: AdminView,
       meta: { requiresAuth: true, requiresAdmin: true },
@@ -55,12 +62,12 @@ router.beforeEach(async (to) => {
     }
   }
 
-  if (to.meta.requiresAdmin && auth.currentUser.value?.role !== 'ADMIN') {
+  if (to.meta.requiresAdmin && !isAdminRole(auth.currentUser.value?.role)) {
     return '/'
   }
 
   if ((to.path === '/login' || to.path === '/register') && auth.currentUser.value) {
-    return auth.currentUser.value.role === 'ADMIN' ? '/admin' : '/'
+    return isAdminRole(auth.currentUser.value.role) ? '/admin' : '/'
   }
 })
 

@@ -6,7 +6,7 @@ import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIconUrl from 'leaflet/dist/images/marker-icon.png'
 import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png'
 
-import type { Food, MapBounds } from '../types'
+import type { Food, MapBounds, MapFocus } from '../types'
 import 'leaflet/dist/leaflet.css'
 
 // Vite 会内联 Leaflet CSS 中用于探测路径的图片，导致默认图标退回到不存在的
@@ -19,6 +19,7 @@ L.Icon.Default.mergeOptions({
 
 const props = defineProps<{
   foods: Food[]
+  focus?: MapFocus
 }>()
 
 const emit = defineEmits<{
@@ -190,8 +191,8 @@ function initializeMap() {
 
   // Leaflet 必须在真实 DOM 挂载后创建，否则无法正确计算地图尺寸。
   map = L.map(mapElement.value!, {
-    center: [35.5, 104.2],
-    zoom: 4,
+    center: props.focus ? [props.focus.latitude, props.focus.longitude] : [35.5, 104.2],
+    zoom: props.focus?.zoom ?? 4,
     zoomControl: true,
     preferCanvas: true,
   })
@@ -228,6 +229,15 @@ onMounted(async () => {
 })
 
 watch([() => props.foods, locale], renderMarkers, { deep: true })
+watch(
+  () => props.focus,
+  (focus) => {
+    if (map && focus) {
+      map.flyTo([focus.latitude, focus.longitude], focus.zoom, { duration: 0.8 })
+    }
+  },
+  { deep: true },
+)
 
 onBeforeUnmount(() => {
   // 主动释放地图事件和 DOM 引用，避免路由往返时重复初始化。

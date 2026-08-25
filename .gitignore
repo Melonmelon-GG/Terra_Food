@@ -5,6 +5,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 .env.local
+application-local.yml
 uploads/
 .m2/
 *.log

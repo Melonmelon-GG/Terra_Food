@@ -31,6 +31,8 @@ public class Food {
 
     private String imageUrl;
 
+    private String remark;
+
     private Integer heat;
 
     private FoodReviewStatus reviewStatus;
@@ -53,6 +55,7 @@ public class Food {
             String story,
             String ingredients,
             String imageUrl,
+            String remark,
             String createdBy,
             FoodReviewStatus reviewStatus
     ) {
@@ -65,6 +68,7 @@ public class Food {
         this.story = story;
         this.ingredients = ingredients;
         this.imageUrl = imageUrl;
+        this.remark = remark;
         this.heat = 0;
         this.reviewStatus = reviewStatus;
         if (reviewStatus == FoodReviewStatus.APPROVED) {

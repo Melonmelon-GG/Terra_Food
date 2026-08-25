@@ -82,6 +82,16 @@ public class CityCenterServiceImpl implements CityCenterService {
     }
 
     @Override
+    public CityCenterVO findCenter(String province, String city) {
+        String normalizedProvince = normalizeProvince(province);
+        String municipality = MUNICIPALITIES.get(normalizedProvince);
+        CityCenterVO center = municipality == null
+                ? centers.get(normalizeCity(city))
+                : centers.get(municipality);
+        return center != null && center.province().equals(normalizedProvince) ? center : null;
+    }
+
+    @Override
     public String normalizeProvince(String province) {
         if (province == null) {
             return "";

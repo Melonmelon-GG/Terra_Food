@@ -8,6 +8,8 @@ public record AuthUserVO(
         Long id,
         String username,
         String displayName,
+        String email,
+        String avatarUrl,
         UserRole role,
         boolean active,
         LocalDateTime createdAt
@@ -18,6 +20,8 @@ public record AuthUserVO(
                 user.getId(),
                 user.getUsername(),
                 user.getDisplayName(),
+                user.getEmail(),
+                user.getAvatarUrl(),
                 user.getRole(),
                 user.isActive(),
                 user.getCreatedAt()

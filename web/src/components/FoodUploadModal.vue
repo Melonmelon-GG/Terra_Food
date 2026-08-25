@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import axios from 'axios'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { createFood, uploadImage } from '../api'
+import RegionDrawer from './RegionDrawer.vue'
 import type { Food, FoodCreatePayload, Region } from '../types'
 
 const props = defineProps<{
@@ -11,6 +11,7 @@ const props = defineProps<{
   latitude?: number
   longitude?: number
   regionId?: number
+  address?: string
 }>()
 
 const emit = defineEmits<{
@@ -23,16 +24,32 @@ const form = reactive<FoodCreatePayload>({
   regionId: 0,
   latitude: 35.5,
   longitude: 104.2,
+  address: '',
   summary: '',
   story: '',
   ingredients: '',
-  imageUrl: '',
+  remark: '',
 })
 
 const image = ref<File>()
 const saving = ref(false)
 const error = ref('')
+const regionDrawerOpen = ref(false)
 const { t } = useI18n()
+
+const selectedRegion = computed(() => props.regions.find((region) => region.id === form.regionId))
+const pickedCoordinatesUnchanged = computed(() => {
+  return props.latitude != null
+    && props.longitude != null
+    && Math.abs(form.latitude - props.latitude) < 0.000001
+    && Math.abs(form.longitude - props.longitude) < 0.000001
+})
+const regionMismatch = computed(() => {
+  return pickedCoordinatesUnchanged.value
+    && props.regionId != null
+    && form.regionId > 0
+    && form.regionId !== props.regionId
+})
 
 watch(
   () => [props.latitude, props.longitude],
@@ -55,6 +72,21 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => props.address,
+  (address) => {
+    form.address = address || ''
+  },
+  { immediate: true },
+)
+
+function selectRegion(regionId?: number) {
+  if (regionId != null) {
+    form.regionId = regionId
+    error.value = ''
+  }
+}
+
 function selectImage(event: Event) {
   const input = event.target as HTMLInputElement
   image.value = input.files?.[0]
@@ -65,6 +97,11 @@ async function submit() {
 
   if (!form.regionId) {
     error.value = t('upload.regionRequired')
+    return
+  }
+
+  if (regionMismatch.value) {
+    error.value = t('upload.regionCoordinateMismatch')
     return
   }
 
@@ -80,10 +117,8 @@ async function submit() {
       window.alert(t('upload.pendingSuccess'))
     }
     emit('saved', food)
-  } catch (requestError) {
-    error.value = axios.isAxiosError(requestError) && requestError.response?.status === 429
-      ? t('upload.rateLimitError')
-      : t('upload.saveError')
+  } catch {
+    error.value = t('upload.saveError')
   } finally {
     saving.value = false
   }
@@ -109,12 +144,15 @@ async function submit() {
           </label>
           <label>
             {{ t('upload.region') }}
-            <select v-model.number="form.regionId" required>
-              <option :value="0" disabled>{{ t('upload.selectRegion') }}</option>
-              <option v-for="region in regions" :key="region.id" :value="region.id">
-                {{ region.province }} · {{ region.name }}
-              </option>
-            </select>
+            <button class="region-select-trigger" type="button" @click="regionDrawerOpen = true">
+              <span>
+                {{ selectedRegion
+                  ? t('upload.regionPath', { province: selectedRegion.province, city: selectedRegion.name })
+                  : t('upload.selectRegion')
+                }}
+              </span>
+              <b>›</b>
+            </button>
           </label>
           <label>
             {{ t('upload.latitude') }}
@@ -127,6 +165,12 @@ async function submit() {
         </div>
 
         <p class="coordinate-tip">{{ t('upload.coordinateTip') }}</p>
+        <p v-if="regionMismatch" class="coordinate-warning">{{ t('upload.regionCoordinateMismatch') }}</p>
+
+        <label>
+          {{ t('upload.address') }}
+          <input v-model.trim="form.address" maxlength="500" :placeholder="t('upload.addressPlaceholder')">
+        </label>
 
         <label>
           {{ t('upload.summary') }}
@@ -139,6 +183,10 @@ async function submit() {
         <label>
           {{ t('upload.story') }}
           <textarea v-model="form.story" required rows="4"></textarea>
+        </label>
+        <label>
+          {{ t('upload.remark') }}
+          <textarea v-model="form.remark" maxlength="1000" rows="3" :placeholder="t('upload.remarkPlaceholder')"></textarea>
         </label>
         <label>
           {{ t('upload.cover') }}
@@ -158,5 +206,13 @@ async function submit() {
         </div>
       </form>
     </section>
+
+    <RegionDrawer
+      :open="regionDrawerOpen"
+      :regions="regions"
+      :model-value="form.regionId || undefined"
+      @close="regionDrawerOpen = false"
+      @select="selectRegion"
+    />
   </div>
 </template>

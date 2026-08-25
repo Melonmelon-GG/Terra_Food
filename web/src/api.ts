@@ -4,15 +4,19 @@ import type {
   AuthUser,
   Food,
   FoodCreatePayload,
+  FoodUpdatePayload,
   FoodImportResult,
   FoodReviewPayload,
   MapBounds,
   PagedFoods,
   LoginPayload,
   SetUserActivePayload,
+  SetUserRolePayload,
   Region,
   PagedAuthUsers,
   RegisterPayload,
+  ResolvedMapLocation,
+  SendRegistrationCodePayload,
 } from './types'
 
 interface FoodQuery extends Partial<MapBounds> {
@@ -51,6 +55,7 @@ interface TiandituGeocoderResult {
   status?: string | number
   msg?: string
   result?: {
+    formatted_address?: string
     addressComponent?: TiandituAddressComponent
   }
 }
@@ -63,6 +68,8 @@ interface PhotonProperties {
   district?: string
   locality?: string
   name?: string
+  street?: string
+  housenumber?: string
 }
 
 interface PhotonResult {
@@ -83,12 +90,14 @@ interface NominatimAddress {
 }
 
 interface NominatimResult {
+  display_name?: string
   address?: NominatimAddress
 }
 
 interface MapLocation {
   province: string
   city: string
+  address: string
 }
 
 const mapRegionCache = new Map<string, MapLocation>()
@@ -98,7 +107,7 @@ export async function resolveMapRegion(
   latitude: number,
   longitude: number,
   signal?: AbortSignal,
-): Promise<Region> {
+): Promise<ResolvedMapLocation> {
   const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`
   let location = mapRegionCache.get(key)
   if (!location) {
@@ -116,8 +125,11 @@ export async function resolveMapRegion(
     mapRegionCache.set(key, location)
   }
 
-  const response = await api.post<Region>('/regions/resolve', location, { signal })
-  return response.data
+  const response = await api.post<Region>('/regions/resolve', {
+    province: location.province,
+    city: location.city,
+  }, { signal })
+  return { region: response.data, address: location.address }
 }
 
 async function reverseWithTianditu(
@@ -147,7 +159,7 @@ async function reverseWithTianditu(
     province: address?.province,
     city: address?.city,
     county: address?.county,
-  })
+  }, response.data.result?.formatted_address)
 }
 
 async function reverseWithPhoton(
@@ -169,7 +181,13 @@ async function reverseWithPhoton(
     district: properties?.district,
     locality: properties?.locality,
     name: properties?.name,
-  })
+  }, formatAddress([
+    properties?.state || properties?.province,
+    properties?.city,
+    properties?.district || properties?.county,
+    properties?.street,
+    properties?.housenumber || properties?.name,
+  ]))
 }
 
 async function reverseWithNominatim(
@@ -196,7 +214,7 @@ async function reverseWithNominatim(
     county: address?.county || address?.city_district,
     district: address?.district,
     locality: address?.village,
-  })
+  }, response.data.display_name)
 }
 
 function extractMapLocation(value: {
@@ -206,7 +224,7 @@ function extractMapLocation(value: {
   district?: string
   locality?: string
   name?: string
-}): MapLocation {
+}, address = ''): MapLocation {
   const province = normalizeProvince(value.province || '')
   const municipality = ['北京', '上海', '天津', '重庆', '香港', '澳门'].includes(province)
   const city = normalizeCity(
@@ -217,7 +235,16 @@ function extractMapLocation(value: {
   if (!province || !city) {
     throw new Error('Reverse geocoding response does not contain an administrative region')
   }
-  return { province, city }
+  return {
+    province,
+    city,
+    address: address.trim() || formatAddress([value.province, value.city, value.district, value.name]),
+  }
+}
+
+function formatAddress(parts: Array<string | undefined>): string {
+  return [...new Set(parts.map((part) => part?.trim()).filter(Boolean))]
+    .join(' · ')
 }
 
 function normalizeProvince(value: string): string {
@@ -247,6 +274,16 @@ export async function createFood(payload: FoodCreatePayload): Promise<Food> {
   return response.data
 }
 
+export async function getMyFoods(): Promise<Food[]> {
+  const response = await api.get<Food[]>('/profile/foods')
+  return response.data
+}
+
+export async function updateMyFood(id: number, payload: FoodUpdatePayload): Promise<Food> {
+  const response = await api.patch<Food>(`/profile/foods/${id}`, payload)
+  return response.data
+}
+
 export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData()
   formData.append('file', file)
@@ -273,8 +310,17 @@ export async function register(payload: RegisterPayload): Promise<AuthUser> {
   return response.data
 }
 
+export async function sendRegistrationCode(payload: SendRegistrationCodePayload): Promise<void> {
+  await api.post('/auth/registration-code', payload)
+}
+
 export async function getCurrentUser(): Promise<AuthUser> {
   const response = await api.get<AuthUser>('/auth/me')
+  return response.data
+}
+
+export async function updateAvatar(avatarUrl: string): Promise<AuthUser> {
+  const response = await api.patch<AuthUser>('/profile/avatar', { avatarUrl })
   return response.data
 }
 
@@ -310,6 +356,10 @@ export async function getUsers(page = 1, pageSize = 10): Promise<PagedAuthUsers>
 
 export async function setUserActive(id: number, payload: SetUserActivePayload): Promise<void> {
   await api.patch(`/admin/users/${id}/active`, payload)
+}
+
+export async function setUserRole(id: number, payload: SetUserRolePayload): Promise<void> {
+  await api.patch(`/admin/users/${id}/role`, payload)
 }
 
 export async function deleteUser(id: number): Promise<void> {

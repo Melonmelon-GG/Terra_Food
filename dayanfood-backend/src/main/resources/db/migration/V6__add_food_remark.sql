@@ -1,0 +1,2 @@
+ALTER TABLE food
+    ADD COLUMN remark VARCHAR(1000) NULL AFTER image_url;

@@ -28,7 +28,7 @@ public class RegionServiceImpl implements RegionService {
     @Transactional(readOnly = true)
     public List<RegionVO> list() {
         return regionMapper.findAll().stream()
-                .map(RegionVO::from)
+                .map(this::toVO)
                 .toList();
     }
 
@@ -51,7 +51,11 @@ public class RegionServiceImpl implements RegionService {
             );
             regionMapper.insert(region);
         }
-        return RegionVO.from(region);
+        return toVO(region);
+    }
+
+    private RegionVO toVO(Region region) {
+        return RegionVO.from(region, cityCenterService.findCenter(region.getProvince(), region.getName()));
     }
 
     private String normalizeCity(String city) {

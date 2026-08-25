@@ -1,5 +1,6 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.service.ImageStorageService;
 import com.dayan.food.mapper.FoodMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,17 +25,20 @@ public class ImageStorageServiceImpl implements ImageStorageService {
     private final long maxImageBytes;
     private final Duration orphanRetention;
     private final FoodMapper foodMapper;
+    private final AppUserMapper appUserMapper;
 
     public ImageStorageServiceImpl(
             @Value("${app.upload-directory:uploads}") String uploadDirectory,
             @Value("${app.upload.max-image-bytes:5242880}") long maxImageBytes,
             @Value("${app.upload.orphan-retention:24h}") Duration orphanRetention,
-            FoodMapper foodMapper
+            FoodMapper foodMapper,
+            AppUserMapper appUserMapper
     ) {
         this.uploadDirectory = Path.of(uploadDirectory).toAbsolutePath().normalize();
         this.maxImageBytes = maxImageBytes;
         this.orphanRetention = orphanRetention;
         this.foodMapper = foodMapper;
+        this.appUserMapper = appUserMapper;
     }
 
     @Override
@@ -55,7 +59,9 @@ public class ImageStorageServiceImpl implements ImageStorageService {
                     continue;
                 }
                 String imageUrl = "/uploads/" + path.getFileName();
-                if (foodMapper.countByImageUrl(imageUrl) == 0 && Files.deleteIfExists(path)) {
+                boolean referenced = foodMapper.countByImageUrl(imageUrl) > 0
+                        || appUserMapper.countByAvatarUrl(imageUrl) > 0;
+                if (!referenced && Files.deleteIfExists(path)) {
                     deleted++;
                 }
             }

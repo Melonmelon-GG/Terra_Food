@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-import { register } from '../api'
+import { register, sendRegistrationCode } from '../api'
 import type { RegisterPayload } from '../types'
 
 const { t } = useI18n()
@@ -12,11 +12,49 @@ const router = useRouter()
 const form = reactive<RegisterPayload & { confirmPassword: string }>({
   username: '',
   displayName: '',
+  email: '',
+  verificationCode: '',
   password: '',
   confirmPassword: '',
 })
+const emailInput = ref<HTMLInputElement | null>(null)
 const loading = ref(false)
+const sendingCode = ref(false)
+const codeCooldown = ref(0)
+const codeSent = ref(false)
 const error = ref('')
+let cooldownTimer: number | undefined
+
+function startCooldown() {
+  codeCooldown.value = 60
+  window.clearInterval(cooldownTimer)
+  cooldownTimer = window.setInterval(() => {
+    codeCooldown.value -= 1
+    if (codeCooldown.value <= 0) {
+      window.clearInterval(cooldownTimer)
+      cooldownTimer = undefined
+    }
+  }, 1000)
+}
+
+async function requestCode() {
+  error.value = ''
+  codeSent.value = false
+  if (!emailInput.value?.reportValidity()) {
+    return
+  }
+
+  sendingCode.value = true
+  try {
+    await sendRegistrationCode({ email: form.email })
+    codeSent.value = true
+    startCooldown()
+  } catch {
+    error.value = t('register.codeError')
+  } finally {
+    sendingCode.value = false
+  }
+}
 
 async function submit() {
   error.value = ''
@@ -30,6 +68,8 @@ async function submit() {
     await register({
       username: form.username,
       displayName: form.displayName,
+      email: form.email,
+      verificationCode: form.verificationCode,
       password: form.password,
     })
     await router.replace({
@@ -45,6 +85,8 @@ async function submit() {
     loading.value = false
   }
 }
+
+onUnmounted(() => window.clearInterval(cooldownTimer))
 </script>
 
 <template>
@@ -80,6 +122,45 @@ async function submit() {
           {{ t('register.displayName') }}
           <input v-model.trim="form.displayName" minlength="2" maxlength="50" required>
         </label>
+        <label>
+          {{ t('register.email') }}
+          <input
+            ref="emailInput"
+            v-model.trim="form.email"
+            type="email"
+            maxlength="254"
+            autocomplete="email"
+            required
+          >
+          <small>{{ t('register.emailHint') }}</small>
+        </label>
+        <label>
+          {{ t('register.verificationCode') }}
+          <span class="verification-code-row">
+            <input
+              v-model.trim="form.verificationCode"
+              inputmode="numeric"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              autocomplete="one-time-code"
+              required
+            >
+            <button
+              type="button"
+              :disabled="sendingCode || codeCooldown > 0"
+              @click="requestCode"
+            >
+              {{
+                sendingCode
+                  ? t('register.sendingCode')
+                  : codeCooldown > 0
+                    ? t('register.resendCode', { seconds: codeCooldown })
+                    : t('register.sendCode')
+              }}
+            </button>
+          </span>
+        </label>
+        <p v-if="codeSent" class="verification-code-status">{{ t('register.codeSent') }}</p>
         <label>
           {{ t('register.password') }}
           <input v-model="form.password" type="password" minlength="6" maxlength="72" autocomplete="new-password" required>

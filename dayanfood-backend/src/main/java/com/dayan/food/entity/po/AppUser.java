@@ -18,6 +18,10 @@ public class AppUser {
 
     private String displayName;
 
+    private String email;
+
+    private String avatarUrl;
+
     private UserRole role;
 
     private boolean active;
@@ -27,9 +31,14 @@ public class AppUser {
     private LocalDateTime createdAt;
 
     public AppUser(String username, String password, String displayName, UserRole role) {
+        this(username, password, displayName, null, role);
+    }
+
+    public AppUser(String username, String password, String displayName, String email, UserRole role) {
         this.username = username;
         this.password = password;
         this.displayName = displayName;
+        this.email = email;
         this.role = role;
         this.active = true;
         this.createdAt = LocalDateTime.now();

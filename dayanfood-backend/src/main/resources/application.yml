@@ -22,6 +22,22 @@ spring:
     timeout: ${SESSION_TIMEOUT:30m}
     redis:
       namespace: dayan-food:session
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS_ENABLED:true}
+          ssl:
+            enable: ${MAIL_SSL_ENABLED:false}
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -40,6 +56,11 @@ app:
   initial-admin:
     enabled: ${INITIAL_ADMIN_ENABLED:false}
     password: ${INITIAL_ADMIN_PASSWORD:}
+  registration-code:
+    from: ${MAIL_FROM:}
+    expiration: ${REGISTRATION_CODE_EXPIRATION:10m}
+    resend-interval: ${REGISTRATION_CODE_RESEND_INTERVAL:60s}
+    max-attempts: ${REGISTRATION_CODE_MAX_ATTEMPTS:5}
 server:
   port: ${SERVER_PORT:8080}
   servlet:

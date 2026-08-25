@@ -10,8 +10,10 @@ import {
   getUsers,
   importFoodSpreadsheet,
   setUserActive,
+  setUserRole,
   reviewFood,
 } from '../api'
+import { useAuth } from '../auth'
 import type { AuthUser, Food, FoodImportResult, FoodReviewStatus, Region } from '../types'
 
 type AdminTab = 'foods' | 'reviews' | 'users'
@@ -20,6 +22,7 @@ type PageSize = 10 | 20 | 50
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const
 
 const { t } = useI18n()
+const auth = useAuth()
 const activeTab = ref<AdminTab>('foods')
 const foods = ref<Food[]>([])
 const regions = ref<Region[]>([])
@@ -53,6 +56,7 @@ const canPrevFoods = computed(() => foodsPage.value > 1)
 const canNextFoods = computed(() => foodsPage.value < foodsPageTotal.value)
 const canPrevUsers = computed(() => usersPage.value > 1)
 const canNextUsers = computed(() => usersPage.value < usersPageTotal.value)
+const canManageRoles = computed(() => auth.currentUser.value?.role === 'ADMIN')
 
 const foodsPageStart = computed(() => foods.value.length ? (foodsPage.value - 1) * foodsPageSize.value + 1 : 0)
 const foodsPageEnd = computed(() => Math.min(foodsPage.value * foodsPageSize.value, foodsTotal.value))
@@ -76,7 +80,9 @@ function formatDateTime(value: string) {
 }
 
 function roleLabel(role: AuthUser['role']) {
-  return role === 'ADMIN' ? t('admin.adminRole') : t('admin.userRole')
+  if (role === 'ADMIN') return t('admin.adminRole')
+  if (role === 'SUB_ADMIN') return t('admin.subAdminRole')
+  return t('admin.userRole')
 }
 
 function clampPageSize(size: number): PageSize {
@@ -195,6 +201,25 @@ async function toggleUserActive(user: AuthUser) {
     await loadUsersPage(usersPage.value, usersPageSize.value)
   } catch {
     usersError.value = t('admin.userActionError')
+  } finally {
+    usersLoading.value = false
+  }
+}
+
+async function toggleSubAdmin(user: AuthUser) {
+  const role = user.role === 'SUB_ADMIN' ? 'USER' : 'SUB_ADMIN'
+  const action = role === 'SUB_ADMIN' ? t('admin.promoteSubAdmin') : t('admin.revokeSubAdmin')
+  if (!window.confirm(t('admin.roleChangeConfirm', { action, name: user.displayName || user.username }))) {
+    return
+  }
+
+  usersLoading.value = true
+  usersError.value = ''
+  try {
+    await setUserRole(user.id, { role })
+    await loadUsersPage(usersPage.value, usersPageSize.value)
+  } catch {
+    usersError.value = t('admin.roleActionError')
   } finally {
     usersLoading.value = false
   }
@@ -438,6 +463,7 @@ onMounted(loadFoodsAndMeta)
                   <th>{{ t('admin.userId') }}</th>
                   <th>{{ t('admin.username') }}</th>
                   <th>{{ t('admin.displayName') }}</th>
+                  <th>{{ t('admin.email') }}</th>
                   <th>{{ t('admin.role') }}</th>
                   <th>{{ t('admin.status') }}</th>
                   <th>{{ t('admin.createdAt') }}</th>
@@ -449,6 +475,7 @@ onMounted(loadFoodsAndMeta)
                   <td>{{ user.id }}</td>
                   <td>{{ user.username }}</td>
                   <td>{{ user.displayName }}</td>
+                  <td>{{ user.email || '—' }}</td>
                   <td>{{ roleLabel(user.role) }}</td>
                   <td>
                     <span class="admin-user-status" :class="{ inactive: !user.active }">
@@ -458,6 +485,14 @@ onMounted(loadFoodsAndMeta)
                   <td>{{ formatDateTime(user.createdAt) }}</td>
                   <td>
                     <div class="admin-user-actions">
+                      <button
+                        v-if="canManageRoles && user.role !== 'ADMIN'"
+                        class="admin-user-action"
+                        type="button"
+                        @click="toggleSubAdmin(user)"
+                      >
+                        {{ user.role === 'SUB_ADMIN' ? t('admin.revokeSubAdmin') : t('admin.promoteSubAdmin') }}
+                      </button>
                       <button class="admin-user-action" type="button" @click="toggleUserActive(user)">
                         {{ user.active ? t('admin.disable') : t('admin.enable') }}
                       </button>

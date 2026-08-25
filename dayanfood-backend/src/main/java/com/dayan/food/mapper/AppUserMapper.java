@@ -9,9 +9,13 @@ public interface AppUserMapper {
 
     AppUser findByUsername(String username);
 
+    AppUser findByUsernameOrEmail(String identity);
+
     AppUser findByUsernameOrDisplayName(String identity);
 
     int countByUsername(String username);
+
+    int countByEmail(String email);
 
     AppUser findById(Long id);
 
@@ -19,11 +23,15 @@ public interface AppUserMapper {
 
     int count();
 
+    int countByAvatarUrl(String avatarUrl);
+
+    int updateAvatar(@Param("username") String username, @Param("avatarUrl") String avatarUrl);
+
     int updateActive(@Param("id") Long id, @Param("active") boolean active);
 
-    int deleteById(Long id);
+    int updateRole(@Param("id") Long id, @Param("role") com.dayan.food.entity.enums.UserRole role);
 
-    int claimFoodUpload(String username);
+    int deleteById(Long id);
 
     int insert(AppUser user);
 }

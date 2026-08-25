@@ -1,6 +1,7 @@
 package com.dayan.food.controller;
 
 import com.dayan.food.entity.vo.ApiErrorVO;
+import com.dayan.food.service.RegistrationCodeDeliveryException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,6 +20,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiErrorVO handleBadRequest(IllegalArgumentException exception) {
+        return new ApiErrorVO(exception.getMessage());
+    }
+
+    @ExceptionHandler(RegistrationCodeDeliveryException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ApiErrorVO handleMailDelivery(RegistrationCodeDeliveryException exception) {
         return new ApiErrorVO(exception.getMessage());
     }
 }

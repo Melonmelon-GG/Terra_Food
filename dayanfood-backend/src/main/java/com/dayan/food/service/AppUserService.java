@@ -13,7 +13,11 @@ public interface AppUserService {
 
     int countUsers();
 
+    AuthUserVO updateAvatar(String username, String avatarUrl);
+
     void setActive(Long id, boolean active, String operatorUsername);
+
+    void setRole(Long id, UserRole role, String operatorUsername);
 
     void deleteById(Long id, String operatorUsername);
 }

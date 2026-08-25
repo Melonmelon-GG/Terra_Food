@@ -14,6 +14,7 @@
         <result property="story" column="story"/>
         <result property="ingredients" column="ingredients"/>
         <result property="imageUrl" column="image_url"/>
+        <result property="remark" column="remark"/>
         <result property="heat" column="heat"/>
         <result property="reviewStatus" column="review_status" javaType="com.dayan.food.entity.enums.FoodReviewStatus"/>
         <result property="reviewedBy" column="reviewed_by"/>
@@ -38,6 +39,7 @@
         f.story,
         f.ingredients,
         f.image_url,
+        f.remark,
         f.heat,
         f.review_status,
         f.reviewed_by,
@@ -84,6 +86,41 @@
         LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
+    <select id="findByCreatedBy" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/>
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        WHERE f.created_by = #{username}
+        ORDER BY f.created_at DESC, f.id DESC
+    </select>
+
+    <select id="findOwnedById" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/>
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        WHERE f.id = #{id}
+          AND f.created_by = #{username}
+    </select>
+
+    <update id="updateOwnedDetails">
+        UPDATE food
+        SET name = #{name},
+            region_id = #{regionId},
+            latitude = #{latitude},
+            longitude = #{longitude},
+            address = #{address},
+            summary = #{summary},
+            story = #{story},
+            ingredients = #{ingredients},
+            image_url = #{imageUrl},
+            remark = #{remark},
+            review_status = #{status},
+            reviewed_by = #{reviewedBy},
+            reviewed_at = CASE WHEN #{status} = 'APPROVED' THEN CURRENT_TIMESTAMP ELSE NULL END
+        WHERE id = #{id}
+          AND created_by = #{username}
+    </update>
+
     <select id="countAdmin" resultType="int">
         SELECT COUNT(*)
         FROM food
@@ -120,11 +157,11 @@
     <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO food (
             name, region_id, latitude, longitude, address, summary, story,
-            ingredients, image_url, heat, review_status, reviewed_by, reviewed_at, created_by, created_at
+            ingredients, image_url, remark, heat, review_status, reviewed_by, reviewed_at, created_by, created_at
         )
         VALUES (
             #{name}, #{region.id}, #{latitude}, #{longitude}, #{address}, #{summary}, #{story},
-            #{ingredients}, #{imageUrl}, #{heat}, #{reviewStatus}, #{reviewedBy}, #{reviewedAt},
+            #{ingredients}, #{imageUrl}, #{remark}, #{heat}, #{reviewStatus}, #{reviewedBy}, #{reviewedAt},
             #{createdBy}, #{createdAt}
         )
     </insert>

@@ -72,6 +72,7 @@ public class FoodController {
                 request.story(),
                 request.ingredients(),
                 request.imageUrl(),
+                request.remark(),
                 authentication == null ? "无名" : authentication.getName()
         );
     }

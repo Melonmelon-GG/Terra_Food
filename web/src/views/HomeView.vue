@@ -7,7 +7,8 @@ import { getFoods, getRegions, resolveMapRegion } from '../api'
 import { useAuth } from '../auth'
 import FoodMap from '../components/FoodMap.vue'
 import FoodUploadModal from '../components/FoodUploadModal.vue'
-import type { Food, MapBounds, Region } from '../types'
+import RegionDrawer from '../components/RegionDrawer.vue'
+import type { Food, MapBounds, MapFocus, Region } from '../types'
 
 const foods = ref<Food[]>([])
 const regions = ref<Region[]>([])
@@ -16,10 +17,12 @@ const selectedRegionId = ref<number>()
 const loading = ref(true)
 const error = ref('')
 const uploadOpen = ref(false)
-const regionsExpanded = ref(false)
+const regionDrawerOpen = ref(false)
+const mapFocus = ref<MapFocus>()
 const pickedLatitude = ref<number>()
 const pickedLongitude = ref<number>()
 const pickedRegionId = ref<number>()
+const pickedAddress = ref('')
 const locationError = ref('')
 const locationResolving = ref(false)
 const mapBounds = ref<MapBounds>()
@@ -28,14 +31,10 @@ const router = useRouter()
 const auth = useAuth()
 
 const regionToggleLabel = computed(() => {
-  if (regionsExpanded.value) {
-    return t('home.hideRegions')
-  }
-
   const selectedRegion = regions.value.find((region) => region.id === selectedRegionId.value)
   return selectedRegion
-    ? t('home.showRegionsCurrent', { name: selectedRegion.name })
-    : t('home.showRegions', { count: regions.value.length })
+    ? t('home.regionPath', { province: selectedRegion.province, city: selectedRegion.name })
+    : t('home.allRegionsPath', { count: regions.value.length })
 })
 
 async function loadFoods() {
@@ -63,9 +62,33 @@ function updateMapBounds(bounds: MapBounds) {
   boundsLoadTimer = setTimeout(() => void loadFoods(), 250)
 }
 
-function chooseRegion(regionId?: number) {
+async function chooseRegion(regionId?: number) {
   selectedRegionId.value = regionId
-  loadFoods()
+  mapBounds.value = undefined
+
+  const region = regions.value.find((item) => item.id === regionId)
+  if (!region) {
+    mapFocus.value = { latitude: 35.5, longitude: 104.2, zoom: 4 }
+    await loadFoods()
+    return
+  }
+
+  if (region.centerLatitude != null && region.centerLongitude != null) {
+    mapFocus.value = { latitude: region.centerLatitude, longitude: region.centerLongitude, zoom: 9 }
+  }
+
+  await loadFoods()
+
+  if (region.centerLatitude == null || region.centerLongitude == null) {
+    const locatedFoods = foods.value.filter((food) => food.latitude != null && food.longitude != null)
+    mapFocus.value = locatedFoods.length
+      ? {
+          latitude: locatedFoods.reduce((sum, food) => sum + food.latitude, 0) / locatedFoods.length,
+          longitude: locatedFoods.reduce((sum, food) => sum + food.longitude, 0) / locatedFoods.length,
+          zoom: 9,
+        }
+      : { latitude: 35.5, longitude: 104.2, zoom: 4 }
+  }
 }
 
 let locationLookupSequence = 0
@@ -74,6 +97,7 @@ let locationLookupController: AbortController | undefined
 async function pickLocation(latitude: number, longitude: number) {
   pickedLatitude.value = latitude
   pickedLongitude.value = longitude
+  pickedAddress.value = ''
   locationError.value = ''
   locationResolving.value = true
   locationLookupController?.abort()
@@ -81,9 +105,11 @@ async function pickLocation(latitude: number, longitude: number) {
 
   const lookupSequence = ++locationLookupSequence
   try {
-    const resolvedRegion = await resolveMapRegion(latitude, longitude, locationLookupController.signal)
+    const resolvedLocation = await resolveMapRegion(latitude, longitude, locationLookupController.signal)
     if (lookupSequence === locationLookupSequence) {
+      const resolvedRegion = resolvedLocation.region
       pickedRegionId.value = resolvedRegion.id
+      pickedAddress.value = resolvedLocation.address
       if (!regions.value.some((region) => region.id === resolvedRegion.id)) {
         regions.value = [...regions.value, resolvedRegion]
       }
@@ -150,9 +176,8 @@ onMounted(async () => {
         <button
           class="outline-action region-toggle"
           type="button"
-          :aria-expanded="regionsExpanded"
-          aria-controls="region-filters"
-          @click="regionsExpanded = !regionsExpanded"
+          :aria-expanded="regionDrawerOpen"
+          @click="regionDrawerOpen = true"
         >
           {{ regionToggleLabel }}
         </button>
@@ -162,25 +187,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-show="regionsExpanded" id="region-filters" class="regions">
-      <button
-        :class="{ active: selectedRegionId === undefined }"
-        @click="chooseRegion()"
-      >
-        {{ t('home.allRegions') }}
-      </button>
-      <button
-        v-for="region in regions"
-        :key="region.id"
-        :class="{ active: selectedRegionId === region.id }"
-        @click="chooseRegion(region.id)"
-      >
-        {{ region.name }}
-        <small>{{ region.province }}</small>
-      </button>
-    </div>
-
-    <section class="map-journal">
+     <section class="map-journal">
       <div class="map-journal-title">
         <div>
           <small>{{ t('home.mapEyebrow') }}</small>
@@ -190,16 +197,23 @@ onMounted(async () => {
       </div>
 
       <div class="map-frame">
-        <FoodMap :foods="foods" @pick="pickLocation" @bounds-change="updateMapBounds" />
+        <FoodMap :foods="foods" :focus="mapFocus" @pick="pickLocation" @bounds-change="updateMapBounds" />
         <div class="map-vignette"></div>
         <div class="map-hint">
           <span v-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>
           <span v-else-if="locationError" class="error">{{ locationError }}</span>
           <span v-else-if="pickedLatitude">
-            {{ t('home.mapPicked', {
-              latitude: pickedLatitude.toFixed(3),
-              longitude: pickedLongitude?.toFixed(3),
-            }) }}
+            {{ pickedAddress
+              ? t('home.mapPickedAddress', {
+                  address: pickedAddress,
+                  latitude: pickedLatitude.toFixed(3),
+                  longitude: pickedLongitude?.toFixed(3),
+                })
+              : t('home.mapPicked', {
+                  latitude: pickedLatitude.toFixed(3),
+                  longitude: pickedLongitude?.toFixed(3),
+                })
+            }}
           </span>
           <span v-else>{{ t('home.mapHint') }}</span>
         </div>
@@ -223,7 +237,8 @@ onMounted(async () => {
       >
         <div
           class="photo"
-          :style="{ backgroundImage: `url(${food.imageUrl})` }"
+          :class="{ 'no-cover': !food.imageUrl }"
+          :style="{ backgroundImage: food.imageUrl ? `url(${food.imageUrl})` : undefined }"
         >
           <span>{{ food.region.province }} · {{ food.region.name }}</span>
         </div>
@@ -249,7 +264,17 @@ onMounted(async () => {
     :latitude="pickedLatitude"
     :longitude="pickedLongitude"
     :region-id="pickedRegionId"
+    :address="pickedAddress"
     @close="uploadOpen = false"
     @saved="handleSaved"
+  />
+
+  <RegionDrawer
+    :open="regionDrawerOpen"
+    :regions="regions"
+    :model-value="selectedRegionId"
+    allow-nationwide
+    @close="regionDrawerOpen = false"
+    @select="chooseRegion"
   />
 </template>

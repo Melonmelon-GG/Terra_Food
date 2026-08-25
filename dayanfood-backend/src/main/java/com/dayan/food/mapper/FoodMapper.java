@@ -24,6 +24,27 @@ public interface FoodMapper {
             @Param("pageSize") int pageSize
     );
 
+    List<Food> findByCreatedBy(String username);
+
+    Food findOwnedById(@Param("id") Long id, @Param("username") String username);
+
+    int updateOwnedDetails(
+            @Param("id") Long id,
+            @Param("username") String username,
+            @Param("name") String name,
+            @Param("regionId") Long regionId,
+            @Param("latitude") java.math.BigDecimal latitude,
+            @Param("longitude") java.math.BigDecimal longitude,
+            @Param("address") String address,
+            @Param("summary") String summary,
+            @Param("story") String story,
+            @Param("ingredients") String ingredients,
+            @Param("imageUrl") String imageUrl,
+            @Param("remark") String remark,
+            @Param("status") FoodReviewStatus status,
+            @Param("reviewedBy") String reviewedBy
+    );
+
     int countAdmin(@Param("status") FoodReviewStatus status);
 
     long sumHeat();

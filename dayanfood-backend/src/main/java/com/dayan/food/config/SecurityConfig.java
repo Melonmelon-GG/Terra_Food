@@ -35,14 +35,24 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/uploads/**", "/error")
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/registration-code",
+                                "/uploads/**",
+                                "/error"
+                        )
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/foods/**", "/api/regions/**").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/foods/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/foods/import").hasRole("ADMIN")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // 角色授予只能由主管理员执行，必须放在后台通配规则之前。
+                        .requestMatchers(HttpMethod.PATCH, "/api/admin/users/*/role").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/foods/**")
+                        .hasAnyRole("ADMIN", "SUB_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/foods/import")
+                        .hasAnyRole("ADMIN", "SUB_ADMIN")
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUB_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/foods/**", "/api/images/**")
-                        .hasAnyRole("USER", "ADMIN")
+                        .hasAnyRole("USER", "ADMIN", "SUB_ADMIN")
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())

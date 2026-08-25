@@ -1,9 +1,11 @@
 package com.dayan.food.controller;
 
 import com.dayan.food.entity.dto.LoginDTO;
+import com.dayan.food.entity.dto.RegistrationCodeSendDTO;
 import com.dayan.food.entity.dto.RegisterDTO;
 import com.dayan.food.entity.vo.AuthUserVO;
 import com.dayan.food.service.AuthService;
+import com.dayan.food.service.RegistrationCodeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
@@ -22,9 +24,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class AuthController {
 
     private final AuthService authService;
+    private final RegistrationCodeService registrationCodeService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, RegistrationCodeService registrationCodeService) {
         this.authService = authService;
+        this.registrationCodeService = registrationCodeService;
     }
 
     @PostMapping("/login")
@@ -52,6 +56,12 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public AuthUserVO register(@Valid @RequestBody RegisterDTO request) {
         return authService.register(request);
+    }
+
+    @PostMapping("/registration-code")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendRegistrationCode(@Valid @RequestBody RegistrationCodeSendDTO request) {
+        registrationCodeService.sendCode(request.email());
     }
 
     @GetMapping("/me")

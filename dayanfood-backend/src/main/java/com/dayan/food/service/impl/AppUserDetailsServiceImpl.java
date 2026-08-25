@@ -20,8 +20,9 @@ public class AppUserDetailsServiceImpl implements AppUserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        AppUser appUser = appUserMapper.findByUsername(username);
+    public UserDetails loadUserByUsername(String identity) throws UsernameNotFoundException {
+        String normalizedIdentity = identity == null ? "" : identity.trim();
+        AppUser appUser = appUserMapper.findByUsernameOrEmail(normalizedIdentity);
         if (appUser == null) {
             throw new UsernameNotFoundException("用户不存在");
         }

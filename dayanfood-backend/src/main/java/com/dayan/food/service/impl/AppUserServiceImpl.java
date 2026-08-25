@@ -54,11 +54,24 @@ public class AppUserServiceImpl implements AppUserService {
 
     @Override
     @Transactional
-    public void setActive(Long id, boolean active, String operatorUsername) {
-        var user = appUserMapper.findById(id);
-        if (user == null) {
-            throw new IllegalArgumentException("用户不存在");
+    public AuthUserVO updateAvatar(String username, String avatarUrl) {
+        String normalizedAvatarUrl = avatarUrl.trim();
+        if (appUserMapper.updateAvatar(username, normalizedAvatarUrl) != 1) {
+            throw new IllegalArgumentException("当前用户不存在或已被停用");
         }
+        var updated = appUserMapper.findByUsername(username);
+        if (updated == null) {
+            throw new IllegalArgumentException("当前用户不存在");
+        }
+        return AuthUserVO.from(updated);
+    }
+
+    @Override
+    @Transactional
+    public void setActive(Long id, boolean active, String operatorUsername) {
+        var operator = findRequiredOperator(operatorUsername);
+        var user = findRequiredUser(id);
+        ensureCanManageTarget(operator, user);
 
         if (user.getUsername().equals(operatorUsername) && !active) {
             throw new IllegalArgumentException("不能停用当前登录管理员");
@@ -72,11 +85,33 @@ public class AppUserServiceImpl implements AppUserService {
 
     @Override
     @Transactional
-    public void deleteById(Long id, String operatorUsername) {
-        var user = appUserMapper.findById(id);
-        if (user == null) {
-            throw new IllegalArgumentException("用户不存在");
+    public void setRole(Long id, UserRole role, String operatorUsername) {
+        if (role != UserRole.USER && role != UserRole.SUB_ADMIN) {
+            throw new IllegalArgumentException("只能在普通用户和子管理员之间调整角色");
         }
+
+        var operator = findRequiredOperator(operatorUsername);
+        if (operator.getRole() != UserRole.ADMIN) {
+            throw new IllegalArgumentException("只有主管理员可以调整用户角色");
+        }
+
+        var user = findRequiredUser(id);
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new IllegalArgumentException("不能修改主管理员角色");
+        }
+
+        int updated = appUserMapper.updateRole(id, role);
+        if (updated != 1) {
+            throw new IllegalArgumentException("用户角色更新失败");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(Long id, String operatorUsername) {
+        var operator = findRequiredOperator(operatorUsername);
+        var user = findRequiredUser(id);
+        ensureCanManageTarget(operator, user);
 
         if (user.getUsername().equals(operatorUsername)) {
             throw new IllegalArgumentException("不能删除当前登录管理员");
@@ -85,6 +120,28 @@ public class AppUserServiceImpl implements AppUserService {
         int deleted = appUserMapper.deleteById(id);
         if (deleted != 1) {
             throw new IllegalArgumentException("删除用户失败");
+        }
+    }
+
+    private AppUser findRequiredUser(Long id) {
+        var user = appUserMapper.findById(id);
+        if (user == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        return user;
+    }
+
+    private AppUser findRequiredOperator(String username) {
+        var operator = appUserMapper.findByUsername(username);
+        if (operator == null) {
+            throw new IllegalArgumentException("当前管理员不存在");
+        }
+        return operator;
+    }
+
+    private void ensureCanManageTarget(AppUser operator, AppUser target) {
+        if (operator.getRole() == UserRole.SUB_ADMIN && target.getRole() != UserRole.USER) {
+            throw new IllegalArgumentException("子管理员不能管理其他管理员");
         }
     }
 

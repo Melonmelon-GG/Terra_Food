@@ -26,7 +26,10 @@ onMounted(async () => {
 
     <div
       class="detail-hero"
-      :style="{ backgroundImage: `linear-gradient(90deg, rgba(25, 12, 8, 0.78), rgba(25, 12, 8, 0.12)), url(${food.imageUrl})` }"
+      :style="{ backgroundImage: food.imageUrl
+        ? `linear-gradient(90deg, rgba(25, 12, 8, 0.78), rgba(25, 12, 8, 0.12)), url(${food.imageUrl})`
+        : 'linear-gradient(135deg, #79483a, #211512)'
+      }"
     >
       <div>
         <small>{{ food.region.province }} · {{ food.region.name }}</small>
@@ -44,6 +47,11 @@ onMounted(async () => {
         <small>{{ t('detail.storyEyebrow') }}</small>
         <h2>{{ t('detail.story') }}</h2>
         <p>{{ food.story }}</p>
+      </section>
+      <section v-if="food.remark">
+        <small>{{ t('detail.remarkEyebrow') }}</small>
+        <h2>{{ t('detail.remark') }}</h2>
+        <p>{{ food.remark }}</p>
       </section>
     </article>
   </div>

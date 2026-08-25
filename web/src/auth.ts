@@ -1,10 +1,14 @@
 import { readonly, ref } from 'vue'
 
 import { getCurrentUser, login as requestLogin, logout as requestLogout } from './api'
-import type { AuthUser, LoginPayload } from './types'
+import type { AuthUser, LoginPayload, UserRole } from './types'
 
 const currentUser = ref<AuthUser | null>(null)
 let sessionChecked = false
+
+export function isAdminRole(role?: UserRole): boolean {
+  return role === 'ADMIN' || role === 'SUB_ADMIN'
+}
 
 export function useAuth() {
   async function restoreSession() {
@@ -36,10 +40,15 @@ export function useAuth() {
     }
   }
 
+  function setCurrentUser(user: AuthUser) {
+    currentUser.value = user
+  }
+
   return {
     currentUser: readonly(currentUser),
     restoreSession,
     login,
     logout,
+    setCurrentUser,
   }
 }

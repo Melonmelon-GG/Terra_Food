@@ -1,0 +1,311 @@
+.profile-page {
+  max-width: 1440px;
+  min-height: calc(100vh - 120px);
+  margin: 0 auto;
+  padding: 58px 48px 90px;
+}
+
+.profile-hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(480px, 1.4fr);
+  gap: 44px;
+  align-items: center;
+  padding: 38px 42px;
+  background: linear-gradient(120deg, #fffaf0 0%, #f1e5d2 100%);
+  border: 1px solid #d6c4a8;
+  box-shadow: 0 24px 60px rgba(75, 47, 31, 0.09);
+}
+
+.profile-identity {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+
+.profile-avatar-control {
+  position: relative;
+  flex: 0 0 104px;
+}
+
+.profile-avatar {
+  position: relative;
+  display: grid;
+  width: 104px;
+  height: 104px;
+  padding: 0;
+  overflow: hidden;
+  place-items: center;
+  color: #fff7e8;
+  background:
+    radial-gradient(circle at 28% 24%, rgba(255,255,255,.22) 0 2px, transparent 3px),
+    linear-gradient(145deg, #a54035, #64221d);
+  border: 5px solid #efe1c9;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #9e6d55, 0 12px 25px rgba(75, 31, 25, .22);
+  cursor: pointer;
+}
+
+.profile-avatar:disabled {
+  cursor: wait;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar span {
+  font-size: 42px;
+  font-family: "Noto Serif SC", serif;
+}
+
+.profile-avatar em {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 7px 3px 9px;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  background: rgba(48, 27, 21, .76);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: .2s ease;
+}
+
+.profile-avatar:hover em,
+.profile-avatar:focus-visible em,
+.profile-avatar:disabled em {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.avatar-file-input {
+  display: none;
+}
+
+.avatar-error {
+  position: absolute;
+  top: 112px;
+  left: 0;
+  width: 230px;
+  margin: 0;
+  color: #a3312a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.profile-identity small,
+.profile-section-title small,
+.etching-panel > small {
+  color: #9a352e;
+  letter-spacing: 3px;
+}
+
+.profile-identity h1 {
+  margin: 5px 0 4px;
+  color: #30231d;
+  font-size: clamp(34px, 4vw, 52px);
+}
+
+.profile-identity p {
+  margin: 0;
+  color: #826c5b;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid #d7c6ad;
+}
+
+.profile-stats article {
+  display: grid;
+  min-height: 105px;
+  padding: 18px;
+  place-content: center;
+  text-align: center;
+  border-right: 1px solid #d7c6ad;
+}
+
+.profile-stats article:last-child { border-right: 0; }
+.profile-stats strong { color: #8f3029; font-size: 34px; font-weight: 500; }
+.profile-stats span { color: #7c6756; font-size: 13px; }
+
+.profile-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 30px;
+  margin-top: 32px;
+}
+
+.profile-foods,
+.etching-panel {
+  background: #fffdf7;
+  border: 1px solid #d9c9b0;
+}
+
+.profile-foods { padding: 34px; }
+.profile-section-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 25px;
+  align-items: end;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #ddcfba;
+}
+
+.profile-section-title h2,
+.etching-panel h2 {
+  margin: 5px 0 0;
+  color: #32241d;
+  font-size: 30px;
+}
+
+.profile-section-title p {
+  max-width: 360px;
+  margin: 0;
+  color: #8c7765;
+}
+
+.profile-food-list { display: grid; gap: 18px; margin-top: 24px; }
+.profile-food-card {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  min-height: 220px;
+  overflow: hidden;
+  border: 1px solid #dfd0bc;
+  background: #fffbf3;
+}
+
+.profile-food-cover {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  color: rgba(255,255,255,.85);
+  font-size: 58px;
+  background: linear-gradient(145deg, #a45c48, #433027);
+  background-position: center;
+  background-size: cover;
+}
+
+.profile-food-body { display: flex; flex-direction: column; padding: 23px 25px; }
+.profile-food-heading { display: flex; justify-content: space-between; gap: 16px; }
+.profile-food-heading small { color: #a0473c; letter-spacing: 1px; }
+.profile-food-heading h3 { margin: 5px 0 0; color: #34261f; font-size: 25px; }
+.profile-food-body > p { color: #796657; line-height: 1.7; }
+
+.review-status {
+  align-self: start;
+  padding: 5px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  border: 1px solid;
+}
+.review-status.is-pending { color: #956518; background: #fff5d8; border-color: #d7b66f; }
+.review-status.is-approved { color: #317044; background: #edf8ed; border-color: #83b489; }
+.review-status.is-rejected { color: #9d332d; background: #fff0ed; border-color: #cf857d; }
+
+.food-remark {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding: 10px 12px;
+  color: #756251;
+  font-size: 13px;
+  background: #f4ecdf;
+}
+.food-remark b { flex: 0 0 auto; color: #9a3c33; }
+.profile-food-body footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
+.profile-food-body time { color: #a18c79; font-size: 12px; }
+.profile-food-body footer div { display: flex; gap: 9px; }
+.profile-food-body footer a,
+.profile-food-body footer button,
+.profile-empty a {
+  padding: 7px 12px;
+  color: #8d3029;
+  font: inherit;
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid #b98d76;
+  cursor: pointer;
+}
+
+.etching-panel {
+  align-self: start;
+  padding: 32px 28px;
+  text-align: center;
+}
+
+.etching-seal {
+  display: grid;
+  width: 190px;
+  height: 215px;
+  margin: 30px auto 24px;
+  place-items: center;
+  background: linear-gradient(145deg, #c7b9a4, #8f7c68);
+  clip-path: polygon(25% 6.7%, 75% 6.7%, 100% 50%, 75% 93.3%, 25% 93.3%, 0 50%);
+}
+
+.etching-seal::before {
+  position: absolute;
+  content: "";
+}
+
+.etching-seal > div {
+  display: grid;
+  width: 164px;
+  height: 187px;
+  place-content: center;
+  color: #927d68;
+  background: #f4ecdf;
+  clip-path: inherit;
+}
+
+.etching-seal span { font-size: 52px; opacity: .55; }
+.etching-seal small { font-size: 9px; letter-spacing: 3px; }
+.etching-panel p { color: #8a7564; line-height: 1.8; }
+
+.profile-empty { padding: 70px 20px; text-align: center; color: #806b59; }
+.profile-empty > span {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  place-items: center;
+  color: #9b372f;
+  font-size: 30px;
+  border: 1px solid #bda98c;
+}
+.profile-empty h3 { color: #3b2b23; font-size: 24px; }
+.profile-empty a { display: inline-block; margin-top: 12px; }
+.profile-review-tip { margin: -5px 0 22px; padding: 10px 13px; color: #866242; background: #f7edda; }
+.profile-edit-modal { max-height: calc(100vh - 50px); overflow-y: auto; }
+
+@media (max-width: 980px) {
+  .profile-page { padding: 35px 22px 70px; }
+  .profile-hero { grid-template-columns: 1fr; }
+  .profile-layout { grid-template-columns: 1fr; }
+  .etching-panel { width: 100%; }
+}
+
+@media (max-width: 700px) {
+  .profile-page { padding: 20px 12px 55px; }
+  .profile-hero { padding: 24px 18px; }
+  .profile-avatar-control { flex-basis: 76px; }
+  .profile-avatar { width: 76px; height: 76px; }
+  .profile-avatar span { font-size: 30px; }
+  .avatar-error { top: 84px; width: 190px; }
+  .profile-stats { grid-template-columns: repeat(2, 1fr); }
+  .profile-stats article:nth-child(2) { border-right: 0; }
+  .profile-stats article:nth-child(-n+2) { border-bottom: 1px solid #d7c6ad; }
+  .profile-foods { padding: 22px 14px; }
+  .profile-section-title { align-items: start; }
+  .profile-section-title p { display: none; }
+  .profile-food-card { grid-template-columns: 1fr; }
+  .profile-food-cover { min-height: 180px; }
+  .profile-food-body { padding: 19px 16px; }
+  .profile-food-body footer { align-items: flex-start; gap: 12px; }
+}

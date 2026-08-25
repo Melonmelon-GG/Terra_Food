@@ -3,6 +3,8 @@ export interface Region {
   name: string
   province: string
   description: string
+  centerLatitude?: number
+  centerLongitude?: number
 }
 
 export interface Food {
@@ -16,6 +18,7 @@ export interface Food {
   story: string
   ingredients: string
   imageUrl?: string
+  remark?: string
   heat: number
   reviewStatus: FoodReviewStatus
   reviewedBy?: string
@@ -29,6 +32,17 @@ export interface MapBounds {
   maxLatitude: number
   minLongitude: number
   maxLongitude: number
+}
+
+export interface MapFocus {
+  latitude: number
+  longitude: number
+  zoom: number
+}
+
+export interface ResolvedMapLocation {
+  region: Region
+  address: string
 }
 
 export interface PagedFoods {
@@ -56,14 +70,20 @@ export interface FoodCreatePayload {
   story: string
   ingredients: string
   imageUrl?: string
+  remark?: string
 }
 
-export type UserRole = 'USER' | 'ADMIN'
+export type FoodUpdatePayload = FoodCreatePayload
+
+export type UserRole = 'USER' | 'SUB_ADMIN' | 'ADMIN'
+export type LoginRole = Extract<UserRole, 'USER' | 'ADMIN'>
 
 export interface AuthUser {
   id: number
   username: string
   displayName: string
+  email: string | null
+  avatarUrl?: string
   role: UserRole
   active: boolean
   createdAt: string
@@ -72,17 +92,27 @@ export interface AuthUser {
 export interface LoginPayload {
   username: string
   password: string
-  role: UserRole
+  role: LoginRole
 }
 
 export interface RegisterPayload {
   username: string
   password: string
   displayName: string
+  email: string
+  verificationCode: string
+}
+
+export interface SendRegistrationCodePayload {
+  email: string
 }
 
 export interface SetUserActivePayload {
   active: boolean
+}
+
+export interface SetUserRolePayload {
+  role: Extract<UserRole, 'USER' | 'SUB_ADMIN'>
 }
 
 export interface FoodImportIssue {

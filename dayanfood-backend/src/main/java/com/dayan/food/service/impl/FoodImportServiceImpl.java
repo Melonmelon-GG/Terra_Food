@@ -116,6 +116,7 @@ public class FoodImportServiceImpl implements FoodImportService {
                     row.story(),
                     row.ingredients(),
                     null,
+                    null,
                     creator,
                     FoodReviewStatus.APPROVED
             );

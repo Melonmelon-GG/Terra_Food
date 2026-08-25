@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
-import { useAuth } from './auth'
+import { isAdminRole, useAuth } from './auth'
 import { saveLocale, type SupportedLocale } from './i18n'
 import BackgroundMusic from './components/BackgroundMusic.vue'
 
@@ -38,7 +38,10 @@ async function logout() {
 
     <nav>
       <RouterLink v-if="!isLoginPage" to="/">{{ t('common.catalog') }}</RouterLink>
-      <RouterLink v-if="auth.currentUser.value?.role === 'ADMIN'" to="/admin">
+      <RouterLink v-if="auth.currentUser.value && !isLoginPage" to="/profile">
+        {{ t('common.profile') }}
+      </RouterLink>
+      <RouterLink v-if="isAdminRole(auth.currentUser.value?.role)" to="/admin">
         {{ t('common.admin') }}
       </RouterLink>
       <a href="#about">{{ t('common.about') }}</a>

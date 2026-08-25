@@ -1,5 +1,6 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.entity.dto.FoodUpdateDTO;
 import com.dayan.food.entity.po.Food;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 import com.dayan.food.entity.enums.UserRole;
@@ -100,6 +101,54 @@ public class FoodServiceImpl implements FoodService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<FoodVO> listMine(String username) {
+        return foodMapper.findByCreatedBy(username).stream()
+                .map(FoodVO::from)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public FoodVO updateMine(Long id, FoodUpdateDTO request, String username) {
+        var owner = appUserMapper.findByUsername(username);
+        if (owner == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在");
+        }
+        if (foodMapper.findOwnedById(id, username) == null) {
+            throw notFound("只能补全自己上传的菜品");
+        }
+        if (regionMapper.findById(request.regionId()) == null) {
+            throw notFound("地区不存在");
+        }
+
+        boolean isAdmin = owner.getRole() == UserRole.ADMIN || owner.getRole() == UserRole.SUB_ADMIN;
+        FoodReviewStatus nextStatus = isAdmin ? FoodReviewStatus.APPROVED : FoodReviewStatus.PENDING;
+        String reviewedBy = isAdmin ? username : null;
+        int updated = foodMapper.updateOwnedDetails(
+                id,
+                username,
+                request.name().trim(),
+                request.regionId(),
+                request.latitude(),
+                request.longitude(),
+                normalizeOptional(request.address()),
+                request.summary().trim(),
+                request.story().trim(),
+                request.ingredients().trim(),
+                normalizeOptional(request.imageUrl()),
+                normalizeOptional(request.remark()),
+                nextStatus,
+                reviewedBy
+        );
+        if (updated != 1) {
+            throw notFound("只能补全自己上传的菜品");
+        }
+        clearFoodCaches(id);
+        return FoodVO.from(foodMapper.findOwnedById(id, username));
+    }
+
+    @Override
     @Cacheable(cacheNames = "foodDetails", key = "#id")
     @Transactional(readOnly = true)
     public FoodVO detail(Long id) {
@@ -158,23 +207,19 @@ public class FoodServiceImpl implements FoodService {
             String story,
             String ingredients,
             String imageUrl,
+            String remark,
             String createdBy
     ) {
         var uploader = appUserMapper.findByUsername(createdBy);
         if (uploader == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在");
         }
-        if (appUserMapper.claimFoodUpload(createdBy) != 1) {
-            throw new ResponseStatusException(
-                    HttpStatus.TOO_MANY_REQUESTS,
-                    "每名用户三天内只能上传一次菜品"
-            );
-        }
-
         var region = regionMapper.findById(regionId);
         if (region == null) {
             throw notFound("地区不存在");
         }
+
+        String normalizedImageUrl = imageUrl == null || imageUrl.isBlank() ? null : imageUrl.trim();
 
         var food = new Food(
                 name,
@@ -185,9 +230,10 @@ public class FoodServiceImpl implements FoodService {
                 summary,
                 story,
                 ingredients,
-                imageUrl,
+                normalizedImageUrl,
+                normalizeOptional(remark),
                 createdBy,
-                uploader.getRole() == UserRole.ADMIN
+                uploader.getRole() == UserRole.ADMIN || uploader.getRole() == UserRole.SUB_ADMIN
                         ? FoodReviewStatus.APPROVED
                         : FoodReviewStatus.PENDING
         );
@@ -209,6 +255,10 @@ public class FoodServiceImpl implements FoodService {
 
     private ResponseStatusException notFound(String message) {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+    }
+
+    private String normalizeOptional(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private int normalizePageSize(int pageSize) {
