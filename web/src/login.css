@@ -280,6 +280,25 @@
   font-size: 12px;
 }
 
+.captcha-question {
+  color: #57443a;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 10px 0;
+  background: #fff8ec;
+  border: 1px dashed #a7665d;
+}
+
+.verification-code-row button.captcha-refresh {
+  min-width: 78px;
+}
+
+.captcha-error {
+  color: #a0322b !important;
+}
+
 .login-submit {
   margin-top: 5px;
   padding: 14px;

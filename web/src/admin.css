@@ -308,3 +308,60 @@
   border-color: #8b3028;
   background: #f5efe5;
 }
+/* ===== 审批详情弹窗 ===== */
+
+.admin-detail-modal {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 48px);
+  padding: 28px;
+  overflow-y: auto;
+  background: #faf7ef;
+  border: 1px solid #d4c5ae;
+  box-shadow: 0 25px 70px #160c0966;
+}
+
+.admin-detail-modal .modal-title h2 {
+  font-size: 26px;
+}
+
+.admin-detail-photo {
+  height: 220px;
+  margin-bottom: 18px;
+  background-color: #efe8da;
+  background-position: center;
+  background-size: cover;
+  border: 1px solid #d9cdbb;
+}
+
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+  margin: 0 0 20px;
+}
+
+.admin-detail-grid div {
+  min-width: 0;
+}
+
+.admin-detail-grid dt {
+  margin-bottom: 4px;
+  color: #907a69;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-detail-grid dd {
+  margin: 0;
+  color: #3e2d25;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.admin-detail-modal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

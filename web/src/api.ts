@@ -3,6 +3,7 @@ import axios from 'axios'
 import type {
   Achievement,
   AuthUser,
+  CaptchaChallenge,
   Food,
   FoodComment,
   FoodCommentCreatePayload,
@@ -325,6 +326,11 @@ export async function login(payload: LoginPayload): Promise<AuthUser> {
 
 export async function register(payload: RegisterPayload): Promise<AuthUser> {
   const response = await api.post<AuthUser>('/auth/register', payload)
+  return response.data
+}
+
+export async function getCaptcha(): Promise<CaptchaChallenge> {
+  const response = await api.get<CaptchaChallenge>('/auth/captcha')
   return response.data
 }
 

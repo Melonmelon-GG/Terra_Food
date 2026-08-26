@@ -19,11 +19,18 @@ const emit = defineEmits<{
   saved: [food: Food]
 }>()
 
-const form = reactive<FoodCreatePayload>({
+// 坐标只能来自地图选点（通过 props 注入），表单自身不提供默认坐标，
+// 避免未选点时带上无效经纬度直接创建。
+type UploadForm = Omit<FoodCreatePayload, 'latitude' | 'longitude'> & {
+  latitude?: number
+  longitude?: number
+}
+
+const form = reactive<UploadForm>({
   name: '',
   regionId: 0,
-  latitude: 35.5,
-  longitude: 104.2,
+  latitude: undefined,
+  longitude: undefined,
   address: '',
   summary: '',
   story: '',
@@ -41,6 +48,8 @@ const selectedRegion = computed(() => props.regions.find((region) => region.id =
 const pickedCoordinatesUnchanged = computed(() => {
   return props.latitude != null
     && props.longitude != null
+    && form.latitude != null
+    && form.longitude != null
     && Math.abs(form.latitude - props.latitude) < 0.000001
     && Math.abs(form.longitude - props.longitude) < 0.000001
 })
@@ -95,6 +104,13 @@ function selectImage(event: Event) {
 async function submit() {
   error.value = ''
 
+  // 坐标必须来自地图选点，禁止带着默认值直接创建。
+  if (form.latitude == null || form.longitude == null
+      || !Number.isFinite(form.latitude) || !Number.isFinite(form.longitude)) {
+    error.value = t('upload.coordinateRequired')
+    return
+  }
+
   if (!form.regionId) {
     error.value = t('upload.regionRequired')
     return
@@ -112,7 +128,11 @@ async function submit() {
       form.imageUrl = await uploadImage(image.value)
     }
 
-    const food = await createFood(form)
+    const food = await createFood({
+      ...form,
+      latitude: form.latitude as number,
+      longitude: form.longitude as number,
+    })
     if (food.reviewStatus === 'PENDING') {
       window.alert(t('upload.pendingSuccess'))
     }

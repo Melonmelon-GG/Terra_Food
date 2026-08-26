@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { onUnmounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-import { register, sendRegistrationCode } from '../api'
-import type { RegisterPayload } from '../types'
+import { getCaptcha, register, sendRegistrationCode } from '../api'
+import type { CaptchaChallenge, RegisterPayload } from '../types'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -19,12 +19,26 @@ const form = reactive<RegisterPayload & { confirmPassword: string }>({
   confirmPassword: '',
 })
 const emailInput = ref<HTMLInputElement | null>(null)
+const captchaAnswer = ref('')
+const captcha = ref<CaptchaChallenge>()
+const captchaError = ref('')
 const loading = ref(false)
 const sendingCode = ref(false)
 const codeCooldown = ref(0)
 const codeSent = ref(false)
 const error = ref('')
 let cooldownTimer: number | undefined
+
+async function loadCaptcha() {
+  captchaError.value = ''
+  captchaAnswer.value = ''
+  try {
+    captcha.value = await getCaptcha()
+  } catch {
+    captcha.value = undefined
+    captchaError.value = t('register.captchaLoadError')
+  }
+}
 
 function startCooldown() {
   codeCooldown.value = 60
@@ -44,14 +58,28 @@ async function requestCode() {
   if (!emailInput.value?.reportValidity()) {
     return
   }
+  if (!captcha.value || !captchaAnswer.value.trim()) {
+    captchaError.value = t('register.captchaRequired')
+    return
+  }
 
   sendingCode.value = true
   try {
-    await sendRegistrationCode({ email: form.email })
+    await sendRegistrationCode({
+      email: form.email,
+      captchaId: captcha.value.captchaId,
+      captchaAnswer: captchaAnswer.value.trim(),
+    })
     codeSent.value = true
     startCooldown()
-  } catch {
-    error.value = t('register.codeError')
+    // 验证码一次性使用，成功发送后立即换题，防止旧题被复用。
+    await loadCaptcha()
+  } catch (requestError) {
+    error.value = axios.isAxiosError(requestError)
+      ? requestError.response?.data?.message || t('register.codeError')
+      : t('register.codeError')
+    // 校验失败或过期时同步刷新一道新题。
+    await loadCaptcha()
   } finally {
     sendingCode.value = false
   }
@@ -89,6 +117,7 @@ async function submit() {
   }
 }
 
+onMounted(loadCaptcha)
 onUnmounted(() => window.clearInterval(cooldownTimer))
 </script>
 
@@ -164,6 +193,24 @@ onUnmounted(() => window.clearInterval(cooldownTimer))
           </span>
         </label>
         <p v-if="codeSent" class="verification-code-status">{{ t('register.codeSent') }}</p>
+        <label>
+          {{ t('register.captcha') }}
+          <span class="captcha-question">{{ captcha?.question || t('register.captchaLoading') }}</span>
+          <span class="verification-code-row">
+            <input
+              v-model.trim="captchaAnswer"
+              inputmode="numeric"
+              maxlength="10"
+              :disabled="!captcha"
+              :placeholder="t('register.captchaPlaceholder')"
+              required
+            >
+            <button type="button" class="captcha-refresh" :disabled="!captcha" @click="loadCaptcha">
+              {{ t('register.captchaRefresh') }}
+            </button>
+          </span>
+          <small v-if="captchaError" class="captcha-error">{{ captchaError }}</small>
+        </label>
         <label>
           {{ t('register.password') }}
           <input v-model="form.password" type="password" minlength="8" maxlength="16" pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$" autocomplete="new-password" required>
