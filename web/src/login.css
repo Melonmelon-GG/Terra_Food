@@ -1,0 +1,317 @@
+/*
+ * 登录与注册页样式（LoginView / RegisterView）
+ * 包含访客登录的毛玻璃舞台（login-stage）与注册入口。
+ */
+
+/* Frosted-glass login surface */
+.login-stage {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+  padding: clamp(28px, 5vw, 72px);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255, 238, 211, 0.72), transparent 34%),
+    linear-gradient(135deg, #d8b79c 0%, #eee1d2 48%, #c79577 100%);
+}
+
+.login-stage::before {
+  position: absolute;
+  inset: -28px;
+  z-index: -2;
+  content: '';
+  background:
+    linear-gradient(115deg, rgba(72, 30, 20, 0.18), rgba(255, 239, 216, 0.3)),
+    url('https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1400&q=80') center / cover;
+  filter: blur(12px) saturate(0.78);
+  opacity: 0.58;
+  transform: scale(1.08);
+}
+
+.login-stage::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: '';
+  background:
+    radial-gradient(circle at 20% 22%, rgba(255, 255, 255, 0.42), transparent 28%),
+    linear-gradient(155deg, rgba(255, 248, 238, 0.12), rgba(89, 41, 27, 0.18));
+}
+
+.login-stage .login-panel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  margin: 0;
+  padding: clamp(36px, 4vw, 58px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(255, 252, 246, 0.78), rgba(248, 235, 219, 0.57));
+  box-shadow:
+    0 28px 80px rgba(57, 29, 18, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(117, 64, 43, 0.08);
+  -webkit-backdrop-filter: blur(26px) saturate(1.2);
+  backdrop-filter: blur(26px) saturate(1.2);
+}
+
+.login-stage .login-panel::before {
+  position: absolute;
+  top: -35%;
+  left: -18%;
+  width: 70%;
+  height: 75%;
+  pointer-events: none;
+  content: '';
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.48), transparent 68%);
+}
+
+.login-stage .role-tabs button {
+  background: rgba(255, 252, 246, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+.login-stage .role-tabs button.active {
+  background: rgba(252, 231, 214, 0.7);
+}
+
+.login-stage .login-form input {
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.login-stage .login-submit {
+  box-shadow: 0 14px 30px rgba(105, 39, 28, 0.2);
+}
+
+@media (max-width: 800px) {
+  .login-stage {
+    padding: 24px 16px 40px;
+  }
+
+  .login-stage .login-panel {
+    padding: 36px 24px;
+    border-radius: 20px;
+  }
+}
+
+/* ===== 登录/注册页面主体 ===== */
+
+.login-page {
+  display: grid;
+  grid-template-columns: 1.08fr 0.92fr;
+  min-height: calc(100vh - 82px);
+  background: #f7f1e6;
+}
+
+.login-art {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(50px, 8vw, 120px);
+  overflow: hidden;
+  color: #fff8ed;
+  background:
+    linear-gradient(110deg, #321811e6, #5e2419c9),
+    url('https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1400&q=80') center / cover;
+}
+
+.login-art::after {
+  position: absolute;
+  inset: 22px;
+  content: '';
+  border: 1px solid #e6caa85c;
+  pointer-events: none;
+}
+
+.login-seal {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin-bottom: 42px;
+  font-size: 36px;
+  border: 1px solid #efd5b7;
+}
+
+.login-art > p {
+  margin: 0;
+  color: #e2b891;
+  font-size: 11px;
+  letter-spacing: 4px;
+}
+
+.login-art h1 {
+  max-width: 620px;
+  margin: 17px 0 32px;
+  font-size: clamp(42px, 5vw, 72px);
+  line-height: 1.25;
+}
+
+.login-art blockquote {
+  max-width: 520px;
+  margin: 0;
+  padding-left: 18px;
+  color: #dbc9b7;
+  line-height: 2;
+  border-left: 2px solid #bd765f;
+}
+
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: min(520px, 100%);
+  margin: auto;
+  padding: 55px;
+}
+
+.login-heading h2 {
+  margin: 8px 0 10px;
+  font-size: 34px;
+}
+
+.login-heading p {
+  margin: 0 0 28px;
+  color: #826f60;
+  line-height: 1.8;
+}
+
+.role-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.role-tabs button {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  color: #786456;
+  text-align: left;
+  cursor: pointer;
+  background: #fbf8f1;
+  border: 1px solid #cfc0a9;
+}
+
+.role-tabs button.active {
+  color: #7f2923;
+  background: #f6e9dc;
+  border-color: #9f564d;
+  box-shadow: inset 3px 0 #8d3028;
+}
+
+.role-tabs b {
+  font-size: 15px;
+}
+
+.role-tabs span {
+  font-size: 11px;
+}
+
+.login-form,
+.login-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.login-form label small {
+  color: #9a826e;
+  font-size: 10px;
+}
+
+.login-form {
+  gap: 17px;
+}
+
+.login-form label {
+  color: #57443a;
+  font-size: 13px;
+}
+
+.login-form input {
+  width: 100%;
+  padding: 13px 14px;
+  color: #35251f;
+  font: inherit;
+  background: var(--color-input);
+  border: 1px solid #c8b89f;
+  outline: none;
+}
+
+.login-form input:focus {
+  border-color: #8d342c;
+  box-shadow: 0 0 0 2px #8d342c17;
+}
+
+.verification-code-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+}
+
+.verification-code-row button {
+  min-width: 118px;
+  padding: 0 13px;
+  color: #852d26;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fff8ec;
+  border: 1px solid #a7665d;
+}
+
+.verification-code-row button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.verification-code-status {
+  margin: -8px 0 0;
+  color: #42623f;
+  font-size: 12px;
+}
+
+.login-submit {
+  margin-top: 5px;
+  padding: 14px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  background: #852d26;
+  border: 1px solid #852d26;
+}
+
+.login-submit:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.register-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #8b7667;
+  font-size: 12px;
+}
+
+.register-entry a {
+  color: #8b3029;
+  font-weight: 700;
+  border-bottom: 1px solid #b06c62;
+}
+
+.register-art {
+  background:
+    linear-gradient(110deg, #281a13e8, #693725c7),
+    url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1400&q=80') center / cover;
+}

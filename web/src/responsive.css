@@ -1,0 +1,328 @@
+/*
+ * 移动端 / 窄屏响应式样式（max-width: 700px）
+ * 集中管理所有页面的窄屏适配，必须最后加载以覆盖各功能域样式。
+ */
+
+@media (max-width: 700px) {
+
+  .region-drawer {
+    width: 100%;
+    height: 100dvh;
+  }
+
+  .region-drawer-header {
+    padding: 22px 20px 18px;
+  }
+
+  .region-drawer-header h2 {
+    font-size: 27px;
+  }
+
+  .region-breadcrumb {
+    min-height: 48px;
+    padding: 0 20px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .region-drawer-body {
+    grid-template-columns: minmax(118px, 38%) minmax(0, 1fr);
+  }
+
+  .province-panel {
+    padding: 16px 8px;
+  }
+
+  .province-panel > button {
+    padding: 11px 7px;
+  }
+
+  .province-panel > button small {
+    display: none;
+  }
+
+  .city-panel {
+    padding: 16px 10px 28px;
+  }
+
+  .city-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .city-grid button {
+    min-height: 52px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  header {
+    height: 68px;
+    padding: 0 14px;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 9px;
+  }
+
+  .seal {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    font-size: 21px;
+  }
+
+  .brand strong {
+    font-size: 16px;
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  nav a {
+    display: none;
+  }
+
+  nav {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .account-link {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .photo {
+    height: 220px;
+  }
+
+  .section-title p {
+    display: none;
+  }
+
+  .content {
+    padding: 48px 12px 70px;
+  }
+
+  .section-title {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .section-title h2 {
+    font-size: 27px;
+  }
+
+  .section-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .section-actions .outline-action {
+    flex: 1;
+  }
+
+  .outline-action {
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+
+  .hero {
+    padding: 52px 16px 58px;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 12vw, 52px);
+  }
+
+  .hero form {
+    width: 100%;
+  }
+
+  .hero input {
+    min-width: 0;
+  }
+
+  .hero button {
+    padding: 0 18px;
+  }
+
+  .detail-hero {
+    height: 420px;
+    padding: 30px;
+  }
+
+  .detail-hero h1 {
+    font-size: 40px;
+  }
+
+  .detail article {
+    grid-template-columns: 1fr;
+    padding: 30px;
+  }
+
+  .food-creator {
+    padding: 16px 18px;
+  }
+
+  .comment-section {
+    margin-top: 22px;
+    padding: 26px 18px 30px;
+  }
+
+  .comment-form {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .comment-form-avatar {
+    display: none;
+  }
+
+  .comment-card {
+    padding: 16px;
+  }
+
+  .comment-meta {
+    display: block;
+  }
+
+  .comment-meta time {
+    display: block;
+    margin-top: 4px;
+  }
+
+  .regions button {
+    flex-grow: 1;
+  }
+
+  .map-journal {
+    margin-bottom: 45px;
+    padding: 10px;
+  }
+
+  .map-journal-title {
+    align-items: start;
+  }
+
+  .map-journal-title p {
+    display: none;
+  }
+
+  .map-journal-title h2 {
+    font-size: 23px;
+  }
+
+  .map-frame {
+    height: clamp(340px, 56svh, 430px);
+    min-height: 340px;
+    border-radius: 16px 5px 16px 5px;
+  }
+
+  .map-hint {
+    right: 10px;
+    bottom: 12px;
+    left: 10px;
+    padding: 9px 11px;
+    text-align: center;
+  }
+
+  .food-map .leaflet-control-zoom a {
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    line-height: 44px;
+  }
+
+  .food-map .leaflet-popup-content-wrapper {
+    max-width: calc(100vw - 56px);
+  }
+
+  .food-map .leaflet-popup-content {
+    width: min(230px, calc(100vw - 96px)) !important;
+    margin: 14px 16px;
+  }
+
+  .map-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: 410px 60vh;
+    height: auto;
+  }
+
+  .map-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-map);
+  }
+
+  .food-list {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+  }
+
+  .food-list-card {
+    flex: 0 0 290px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-modal {
+    padding: 22px;
+  }
+
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+
+  .login-art {
+    min-height: 330px;
+    padding: 55px 35px;
+  }
+
+  .login-seal {
+    margin-bottom: 24px;
+  }
+
+  .login-art h1 {
+    font-size: 40px;
+  }
+
+  .login-panel {
+    padding: 45px 24px;
+  }
+
+  .admin-heading {
+    align-items: start;
+  }
+
+  .admin-heading h1 {
+    font-size: 30px;
+  }
+
+  .admin-heading p {
+    display: none;
+  }
+
+  .admin-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-stats article {
+    padding: 18px;
+  }
+}

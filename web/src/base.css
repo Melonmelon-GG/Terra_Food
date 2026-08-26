@@ -1,0 +1,193 @@
+/*
+ * Terra Food 全局基础样式
+ * 内容：字体引入、设计令牌、reset、页面骨架（header/footer）、通用工具与按钮原语。
+ * 引用顺序必须最先加载，供其余按功能域拆分的样式文件共享。
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700;900&display=swap');
+
+/* ===== 设计令牌 ===== */
+:root {
+  --font-serif: 'Noto Serif SC', 'Microsoft YaHei', serif;
+  --color-ink: #30231c;          /* 正文墨色 */
+  --color-bg: #f5f0e5;           /* 页面底色（米白） */
+  --color-paper: #fbf8f0;        /* 卡片/面板纸色 */
+  --color-input: #fffdf8;        /* 输入框底色 */
+  --color-accent: #842d26;       /* 主强调红棕（朱砂） */
+  --color-accent-label: #9e3a2e; /* 眉题/小标签强调 */
+  --border-paper: #d8cbb8;       /* 卡片描边 */
+  --border-map: #cdbfa9;         /* 地图区描边 */
+
+  font-family: var(--font-serif);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  font-synthesis: none;
+}
+
+/* ===== 重置与正文 ===== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-image: radial-gradient(#8e72591f 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ===== 页头：品牌、印章、导航、语言切换、账号入口 ===== */
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 82px;
+  padding: 0 max(5vw, 24px);
+  background: #f9f5ebdd;
+  border-bottom: 1px solid #cabca5;
+  backdrop-filter: blur(10px);
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.brand strong {
+  font-size: 22px;
+  letter-spacing: 4px;
+}
+
+.brand small {
+  display: block;
+  color: #8d7868;
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+.seal {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  color: #fff;
+  font-size: 25px;
+  background: #852b24;
+  border-radius: 4px;
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  color: #6c5547;
+  font-size: 14px;
+}
+
+.language-switch {
+  min-width: 38px;
+  height: 32px;
+  padding: 0 9px;
+  color: #7d3029;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid #bfae96;
+  transition: 0.2s;
+}
+
+.language-switch:hover {
+  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.account-link {
+  padding: 7px 11px;
+  color: #7d3029;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  background: #f5eee2;
+  border: 1px solid #c8b79e;
+}
+
+/* ===== 页脚 ===== */
+
+footer {
+  padding: 30px;
+  color: #cfbdaa;
+  font-size: 12px;
+  text-align: center;
+  letter-spacing: 2px;
+  background: #38251f;
+}
+
+/* ===== 通用工具 ===== */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== 跨页面共享的小字号眉题 ===== */
+
+.eyebrow,
+.section-title small,
+article small {
+  color: var(--color-accent-label);
+  font-size: 11px;
+  letter-spacing: 3px;
+}
+
+.login-heading small,
+.admin-heading small {
+  color: #9b3a30;
+  font-size: 10px;
+  letter-spacing: 3px;
+}
+
+/* ===== 按钮原语 ===== */
+
+.primary-button,
+.secondary-button,
+.icon-button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.primary-button {
+  padding: 10px 16px;
+  color: #fff;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.secondary-button {
+  padding: 10px 16px;
+  color: #6c5547;
+  background: transparent;
+  border: 1px solid #bdad97;
+}

@@ -1,0 +1,250 @@
+/*
+ * 地图工作区样式（FoodMap 及首页地图侧栏）
+ * 侧栏筛选、菜品结果列表、地图舞台、加载态与标记弹窗。
+ */
+
+.map-workspace {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  height: calc(100vh - 82px);
+  min-height: 650px;
+  background: #eee6d8;
+}
+
+.map-sidebar {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #faf7ef;
+  border-right: 1px solid var(--border-map);
+  box-shadow: 8px 0 25px #3724161a;
+}
+
+.sidebar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 20px 18px;
+  border-bottom: 1px solid #ded3c1;
+}
+
+.sidebar-heading small,
+.upload-modal small {
+  color: var(--color-accent-label);
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+.sidebar-heading h1 {
+  margin: 4px 0 0;
+  font-size: 26px;
+}
+
+/* ===== 筛选与搜索结果 ===== */
+
+.map-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #ded3c1;
+}
+
+.map-filters input,
+.map-filters select,
+.upload-modal input,
+.upload-modal select,
+.upload-modal textarea {
+  width: 100%;
+  padding: 10px 11px;
+  color: #382a22;
+  font: inherit;
+  background: #fff;
+  border: 1px solid var(--border-map);
+  border-radius: 0;
+  outline: none;
+}
+
+.map-filters input {
+  grid-column: 1 / -1;
+}
+
+.map-filters input:focus,
+.map-filters select:focus,
+.upload-modal input:focus,
+.upload-modal select:focus,
+.upload-modal textarea:focus {
+  border-color: #8b342b;
+  box-shadow: 0 0 0 2px #8b342b1a;
+}
+
+.result-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  color: #756255;
+  font-size: 12px;
+  background: #f1ebdf;
+}
+
+.result-summary small {
+  color: #9b3c32;
+}
+
+.sidebar-error {
+  margin: 12px 20px 0;
+  color: #a3332b;
+  font-size: 13px;
+}
+
+/* ===== 菜品结果列表 ===== */
+
+.food-list {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.food-list-card {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #ded3c1;
+  transition: 0.2s;
+}
+
+.food-list-card:hover {
+  border-color: #9d574d;
+  box-shadow: 0 6px 18px #46302214;
+  transform: translateY(-1px);
+}
+
+.food-list-card img {
+  width: 86px;
+  height: 86px;
+  object-fit: cover;
+}
+
+.food-list-card h3 {
+  margin: 0 0 3px;
+  font-size: 17px;
+}
+
+.food-list-card span {
+  color: #a03d32;
+  font-size: 11px;
+}
+
+.food-list-card p {
+  display: -webkit-box;
+  margin: 7px 0 0;
+  overflow: hidden;
+  color: #756357;
+  font-size: 12px;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.empty-result {
+  padding: 40px 10px;
+  color: #8c7869;
+  text-align: center;
+}
+
+/* ===== 地图舞台 ===== */
+
+.map-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.food-map {
+  width: 100%;
+  height: 100%;
+  font-family: 'Microsoft YaHei', sans-serif;
+}
+
+.food-map-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: #e9dfcd;
+}
+
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 600;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: #6e5849;
+  font-size: 13px;
+  text-align: center;
+  background:
+    radial-gradient(circle at center, #fbf7edcc, #e9dfcddd),
+    #e9dfcd;
+}
+
+.map-loading button {
+  min-height: 42px;
+  padding: 8px 18px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+.map-hint {
+  position: absolute;
+  right: 18px;
+  bottom: 24px;
+  z-index: 500;
+  padding: 9px 13px;
+  color: #f4eadd;
+  font-size: 12px;
+  background: #3c2922d9;
+  box-shadow: 0 5px 18px #2b1a1540;
+  pointer-events: none;
+}
+
+/* ===== 标记弹窗 ===== */
+
+.map-popup {
+  max-width: 230px;
+  color: #443129;
+}
+
+.map-popup strong,
+.map-popup span {
+  display: block;
+}
+
+.map-popup strong {
+  margin-bottom: 3px;
+  font-size: 17px;
+}
+
+.map-popup span,
+.map-popup a {
+  color: #922f28;
+  font-size: 11px;
+}
+
+.map-popup p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
