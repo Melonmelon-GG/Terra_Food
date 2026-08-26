@@ -53,9 +53,11 @@ public class AuthServiceImpl implements AuthService {
                 UsernamePasswordAuthenticationToken.unauthenticated(request.username(), request.password())
         );
 
+        // 登录渠道只决定默认入口，不应成为账号类型的硬门禁：管理员/子管理员同样可以从
+        // 用户渠道登录（浏览、收录等前台行为）；管理员渠道仍要求管理员权限，防止普通用户借壳登录。
         boolean roleMatches = request.role() == UserRole.ADMIN
                 ? hasAnyAuthority(authentication, "ROLE_ADMIN", "ROLE_SUB_ADMIN")
-                : request.role() == UserRole.USER && hasAnyAuthority(authentication, "ROLE_USER");
+                : hasAnyAuthority(authentication, "ROLE_USER", "ROLE_ADMIN", "ROLE_SUB_ADMIN");
         if (!roleMatches) {
             throw new BadCredentialsException("登录类型与账号角色不匹配");
         }

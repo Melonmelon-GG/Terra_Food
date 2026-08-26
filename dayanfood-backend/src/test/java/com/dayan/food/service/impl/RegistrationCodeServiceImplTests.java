@@ -1,6 +1,7 @@
 package com.dayan.food.service.impl;
 
 import com.dayan.food.mapper.AppUserMapper;
+import com.dayan.food.service.CaptchaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,6 +46,9 @@ class RegistrationCodeServiceImplTests {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private CaptchaService captchaService;
+
     private RegistrationCodeServiceImpl service;
 
     @BeforeEach
@@ -52,6 +57,7 @@ class RegistrationCodeServiceImplTests {
                 mailSender,
                 redisTemplate,
                 appUserMapper,
+                captchaService,
                 "noreply@example.com",
                 Duration.ofMinutes(10),
                 Duration.ofSeconds(60),
@@ -61,10 +67,11 @@ class RegistrationCodeServiceImplTests {
 
     @Test
     void sendCodeNormalizesEmailAndStoresOnlyDigest() {
+        doNothing().when(captchaService).verify(anyString(), anyString());
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(anyString(), eq("1"), eq(Duration.ofSeconds(60)))).thenReturn(true);
 
-        service.sendCode("  User@Example.COM ");
+        service.sendCode("  User@Example.COM ", "captcha-1", "12");
 
         String identity = sha256(EMAIL);
         ArgumentCaptor<String> digestCaptor = ArgumentCaptor.forClass(String.class);
@@ -87,9 +94,10 @@ class RegistrationCodeServiceImplTests {
 
     @Test
     void sendCodeRejectsRegisteredEmailBeforeSending() {
+        doNothing().when(captchaService).verify(anyString(), anyString());
         when(appUserMapper.countByEmail(EMAIL)).thenReturn(1);
 
-        assertThrows(IllegalArgumentException.class, () -> service.sendCode(EMAIL));
+        assertThrows(IllegalArgumentException.class, () -> service.sendCode(EMAIL, "captcha-1", "12"));
 
         verify(mailSender, never()).send(org.mockito.ArgumentMatchers.any(SimpleMailMessage.class));
     }

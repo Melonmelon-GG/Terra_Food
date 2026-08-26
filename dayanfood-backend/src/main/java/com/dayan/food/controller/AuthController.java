@@ -70,7 +70,7 @@ public class AuthController {
     @PostMapping("/registration-code")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void sendRegistrationCode(@Valid @RequestBody RegistrationCodeSendDTO request) {
-        registrationCodeService.sendCode(request.email());
+        registrationCodeService.sendCode(request.email(), request.captchaId(), request.captchaAnswer());
     }
 
     @PostMapping("/password-reset-code")
