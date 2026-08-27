@@ -299,6 +299,21 @@
   color: #a0322b !important;
 }
 
+.captcha-block {
+  display: grid;
+  gap: 8px;
+  color: #57443a;
+  font-size: 13px;
+}
+
+.captcha-block .verification-code-status {
+  margin: 0;
+}
+
+.captcha-label {
+  display: block;
+}
+
 .login-submit {
   margin-top: 5px;
   padding: 14px;

@@ -245,6 +245,7 @@ export default {
     captchaPlaceholder: 'Enter the result',
     captchaRefresh: 'New question',
     captchaRequired: 'Please complete human verification first.',
+    captchaPassed: 'Human verification passed. You will need it again before resending the code.',
     captchaLoadError: 'Unable to load the question. Refresh and try again.',
     password: 'Password',
     passwordHint: '8–16 characters, letters and numbers only, with at least one letter and one number.',

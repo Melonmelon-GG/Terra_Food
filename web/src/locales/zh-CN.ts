@@ -245,6 +245,7 @@ export default {
     captchaPlaceholder: '输入计算结果',
     captchaRefresh: '换一题',
     captchaRequired: '请先完成人机验证。',
+    captchaPassed: '人机验证已通过。重发验证码前需再次完成验证。',
     captchaLoadError: '验证题加载失败，请刷新页面重试。',
     password: '密码',
     passwordHint: '8-16位，由字母和数字组成，且需同时包含字母与数字。',
