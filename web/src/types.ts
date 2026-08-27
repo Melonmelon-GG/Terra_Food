@@ -131,8 +131,15 @@ export interface RegisterPayload {
   verificationCode: string
 }
 
+export interface CaptchaChallenge {
+  captchaId: string
+  question: string
+}
+
 export interface SendRegistrationCodePayload {
   email: string
+  captchaId: string
+  captchaAnswer: string
 }
 
 export interface SendPasswordResetCodePayload {

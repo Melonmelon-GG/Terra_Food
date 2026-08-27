@@ -2,7 +2,7 @@ package com.dayan.food.service;
 
 public interface RegistrationCodeService {
 
-    void sendCode(String email);
+    void sendCode(String email, String captchaId, String captchaAnswer);
 
     String verify(String email, String code);
 

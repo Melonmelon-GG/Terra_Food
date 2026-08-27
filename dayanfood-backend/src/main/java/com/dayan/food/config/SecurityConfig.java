@@ -38,6 +38,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/register",
+                                "/api/auth/captcha",
                                 "/api/auth/registration-code",
                                 "/api/auth/password-reset-code",
                                 "/api/auth/password-reset",

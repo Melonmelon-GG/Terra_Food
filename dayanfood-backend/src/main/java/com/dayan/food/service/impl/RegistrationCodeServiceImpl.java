@@ -1,6 +1,7 @@
 package com.dayan.food.service.impl;
 
 import com.dayan.food.mapper.AppUserMapper;
+import com.dayan.food.service.CaptchaService;
 import com.dayan.food.service.RegistrationCodeDeliveryException;
 import com.dayan.food.service.RegistrationCodeService;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,7 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
     private final JavaMailSender mailSender;
     private final StringRedisTemplate redisTemplate;
     private final AppUserMapper appUserMapper;
+    private final CaptchaService captchaService;
     private final String from;
     private final Duration expiration;
     private final Duration resendInterval;
@@ -36,6 +38,7 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
             JavaMailSender mailSender,
             StringRedisTemplate redisTemplate,
             AppUserMapper appUserMapper,
+            CaptchaService captchaService,
             @Value("${app.registration-code.from:}") String from,
             @Value("${app.registration-code.expiration:10m}") Duration expiration,
             @Value("${app.registration-code.resend-interval:60s}") Duration resendInterval,
@@ -44,6 +47,7 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
         this.mailSender = mailSender;
         this.redisTemplate = redisTemplate;
         this.appUserMapper = appUserMapper;
+        this.captchaService = captchaService;
         this.from = from;
         this.expiration = expiration;
         this.resendInterval = resendInterval;
@@ -51,7 +55,10 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
     }
 
     @Override
-    public void sendCode(String email) {
+    public void sendCode(String email, String captchaId, String captchaAnswer) {
+        // 先完成人机验证（一次性），再检查邮箱与冷却，避免让自动化脚本轻易触发真实发信。
+        captchaService.verify(captchaId, captchaAnswer);
+
         String normalizedEmail = normalize(email);
         if (appUserMapper.countByEmail(normalizedEmail) > 0) {
             throw new IllegalArgumentException("该邮箱已注册");

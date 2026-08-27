@@ -6,6 +6,7 @@ import AdminView from './views/AdminView.vue'
 import FoodDetailView from './views/FoodDetailView.vue'
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
+import NotFoundView from './views/NotFoundView.vue'
 import ProfileView from './views/ProfileView.vue'
 import RegisterView from './views/RegisterView.vue'
 import { isAdminRole, useAuth } from './auth'
@@ -53,6 +54,10 @@ const router = createRouter({
       path: '/admin',
       component: AdminView,
       meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      component: NotFoundView,
     },
   ],
 })

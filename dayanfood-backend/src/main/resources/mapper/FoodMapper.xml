@@ -68,7 +68,14 @@
             </choose>
             <if test="minLatitude != null and maxLatitude != null and minLongitude != null and maxLongitude != null">
                 AND f.latitude BETWEEN #{minLatitude} AND #{maxLatitude}
-                AND f.longitude BETWEEN #{minLongitude} AND #{maxLongitude}
+                <choose>
+                    <when test="minLongitude &lt;= maxLongitude">
+                        AND f.longitude BETWEEN #{minLongitude} AND #{maxLongitude}
+                    </when>
+                    <otherwise>
+                        AND (f.longitude &gt;= #{minLongitude} OR f.longitude &lt;= #{maxLongitude})
+                    </otherwise>
+                </choose>
             </if>
         </where>
         ORDER BY f.heat DESC, f.id DESC

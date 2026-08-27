@@ -8,6 +8,14 @@ public record RegistrationCodeSendDTO(
         @NotBlank
         @Email
         @Size(max = 254)
-        String email
+        String email,
+
+        @NotBlank
+        @Size(max = 36)
+        String captchaId,
+
+        @NotBlank
+        @Size(max = 10)
+        String captchaAnswer
 ) {
 }

@@ -49,6 +49,8 @@ const foodsPageTotal = computed(() => {
   return Math.max(1, Math.ceil(foodsTotal.value / foodsPageSize.value))
 })
 
+const viewingFood = ref<Food | null>(null)
+
 const usersPageTotal = computed(() => Math.max(1, Math.ceil(usersTotal.value / usersPageSize.value)))
 
 const visibleFoods = computed(() => foods.value)
@@ -56,6 +58,9 @@ const canPrevFoods = computed(() => foodsPage.value > 1)
 const canNextFoods = computed(() => foodsPage.value < foodsPageTotal.value)
 const canPrevUsers = computed(() => usersPage.value > 1)
 const canNextUsers = computed(() => usersPage.value < usersPageTotal.value)
+const usersPageStart = computed(() => users.value.length ? (usersPage.value - 1) * usersPageSize.value + 1 : 0)
+const usersPageEnd = computed(() => Math.min(usersPage.value * usersPageSize.value, usersTotal.value))
+
 const canManageRoles = computed(() => auth.currentUser.value?.role === 'ADMIN')
 
 const foodsPageStart = computed(() => foods.value.length ? (foodsPage.value - 1) * foodsPageSize.value + 1 : 0)
@@ -410,6 +415,7 @@ onMounted(loadFoodsAndMeta)
                   <td>{{ new Date(food.createdAt).toLocaleDateString() }}</td>
                   <td>
                     <div class="admin-user-actions">
+                      <button class="admin-user-action" type="button" @click="viewingFood = food">{{ t('admin.view') }}</button>
                       <template v-if="food.reviewStatus === 'PENDING'">
                         <button class="admin-user-action" type="button" @click="reviewSubmission(food, 'APPROVED')">{{ t('admin.approve') }}</button>
                         <button class="danger-button" type="button" @click="reviewSubmission(food, 'REJECTED')">{{ t('admin.reject') }}</button>
@@ -513,7 +519,7 @@ onMounted(loadFoodsAndMeta)
             </label>
 
             <p>
-              {{ t('admin.pageInfo', { start: (usersPage - 1) * usersPageSize + 1, end: Math.min(usersPage * usersPageSize, usersTotal), total: usersTotal, page: usersPage, totalPages: usersPageTotal }) }}
+              {{ t('admin.pageInfo', { start: usersPageStart, end: usersPageEnd, total: usersTotal, page: usersPage, totalPages: usersPageTotal }) }}
             </p>
 
             <div class="admin-page-controls">
@@ -525,5 +531,85 @@ onMounted(loadFoodsAndMeta)
         </template>
       </template>
     </section>
+
+    <div v-if="viewingFood" class="modal-mask" @click.self="viewingFood = null">
+      <section class="admin-detail-modal">
+        <div class="modal-title">
+          <div>
+            <small>{{ t('admin.reviewManagement') }}</small>
+            <h2>{{ viewingFood.name }}</h2>
+          </div>
+          <button class="icon-button" @click="viewingFood = null">×</button>
+        </div>
+
+        <div
+          v-if="viewingFood.imageUrl"
+          class="admin-detail-photo"
+          :style="{ backgroundImage: `url(${viewingFood.imageUrl})` }"
+        ></div>
+
+        <dl class="admin-detail-grid">
+          <div>
+            <dt>{{ t('admin.region') }}</dt>
+            <dd>{{ viewingFood.region.province }} · {{ viewingFood.region.name }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('admin.creator') }}</dt>
+            <dd>{{ viewingFood.creator.displayName || viewingFood.createdBy || t('admin.anonymousName') }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('admin.coordinates') }}</dt>
+            <dd>{{ viewingFood.latitude }}, {{ viewingFood.longitude }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('upload.address') }}</dt>
+            <dd>{{ viewingFood.address || '—' }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('upload.summary') }}</dt>
+            <dd>{{ viewingFood.summary }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('upload.ingredients') }}</dt>
+            <dd>{{ viewingFood.ingredients }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('upload.story') }}</dt>
+            <dd>{{ viewingFood.story }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('upload.remark') }}</dt>
+            <dd>{{ viewingFood.remark || '—' }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('admin.heat') }}</dt>
+            <dd>{{ viewingFood.heat }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('admin.reviewStatus') }}</dt>
+            <dd>{{ reviewStatusLabel(viewingFood.reviewStatus) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('admin.createdAt') }}</dt>
+            <dd>{{ formatDateTime(viewingFood.createdAt) }}</dd>
+          </div>
+          <div v-if="viewingFood.reviewedAt">
+            <dt>{{ t('admin.reviewedAt') }}</dt>
+            <dd>{{ viewingFood.reviewedBy || '—' }} · {{ formatDateTime(viewingFood.reviewedAt) }}</dd>
+          </div>
+        </dl>
+
+        <div v-if="viewingFood.reviewStatus === 'PENDING'" class="modal-actions">
+          <button
+            class="admin-user-action"
+            type="button"
+            @click="reviewSubmission(viewingFood, 'APPROVED')"
+          >{{ t('admin.approve') }}</button>
+          <button class="danger-button" type="button" @click="reviewSubmission(viewingFood, 'REJECTED')">
+            {{ t('admin.reject') }}
+          </button>
+        </div>
+      </section>
+    </div>
   </section>
 </template>

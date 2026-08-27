@@ -284,7 +284,10 @@ public class FoodServiceImpl implements FoodService {
         if (!allBounds) {
             return;
         }
-        if (minLatitude.compareTo(maxLatitude) > 0 || minLongitude.compareTo(maxLongitude) > 0
+        // 经度允许 min > max：Leaflet 在世界视口跨过 180° 经线时 west/east 会表现为
+        // minLongitude > maxLongitude（如 170 / -170），这表示跨经线查询而非参数错误；
+        // 纬度始终要求 min <= max。
+        if (minLatitude.compareTo(maxLatitude) > 0
                 || minLatitude.compareTo(BigDecimal.valueOf(-90)) < 0
                 || maxLatitude.compareTo(BigDecimal.valueOf(90)) > 0
                 || minLongitude.compareTo(BigDecimal.valueOf(-180)) < 0

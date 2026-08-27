@@ -25,6 +25,7 @@ const pickedRegionId = ref<number>()
 const pickedAddress = ref('')
 const locationError = ref('')
 const locationResolving = ref(false)
+const pickHint = ref('')
 const mapBounds = ref<MapBounds>()
 const { t } = useI18n()
 const router = useRouter()
@@ -97,6 +98,7 @@ let locationLookupController: AbortController | undefined
 async function pickLocation(latitude: number, longitude: number) {
   pickedLatitude.value = latitude
   pickedLongitude.value = longitude
+  pickHint.value = ''
   pickedAddress.value = ''
   locationError.value = ''
   locationResolving.value = true
@@ -139,6 +141,13 @@ async function openUpload() {
     return
   }
 
+  // 必须先在地图上选点，避免带着默认坐标创建菜品。
+  if (pickedLatitude.value == null || pickedLongitude.value == null) {
+    pickHint.value = t('home.pickCoordinateFirst')
+    return
+  }
+
+  pickHint.value = ''
   uploadOpen.value = true
 }
 
@@ -184,6 +193,7 @@ onMounted(async () => {
         <button class="outline-action" :disabled="locationResolving" @click="openUpload">
           {{ t('home.addFood') }}
         </button>
+        <p v-if="pickHint" class="pick-hint">{{ pickHint }}</p>
       </div>
     </div>
 
@@ -202,7 +212,7 @@ onMounted(async () => {
         <div class="map-hint">
           <span v-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>
           <span v-else-if="locationError" class="error">{{ locationError }}</span>
-          <span v-else-if="pickedLatitude">
+          <span v-else-if="pickedLatitude !== undefined">
             {{ pickedAddress
               ? t('home.mapPickedAddress', {
                   address: pickedAddress,
