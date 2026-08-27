@@ -13,6 +13,10 @@
           <button title="静音" @click="toggleMute">{{ isMuted ? '🔇' : '🔊' }}</button>
           <input v-model.number="volume" type="range" min="0" max="1" step="0.01" aria-label="音量" @input="handleVolumeChange" />
         </div>
+        <div class="play-mode" role="group" aria-label="播放模式">
+          <button type="button" :class="{ active: playMode === 'list' }" @click="setPlayMode('list')">列表播放</button>
+          <button type="button" :class="{ active: playMode === 'random' }" @click="setPlayMode('random')">随机播放</button>
+        </div>
         <div v-show="showPlaylist" class="playlist">
           <button v-for="(song, index) in musicList" :key="song.src" class="song-item" :class="{ playing: currentIndex === index }" @click="playSong(index)">
             <span>{{ index + 1 }}. {{ song.name }}</span><small>{{ song.artist }}</small>
@@ -27,8 +31,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 type Track = { name: string; artist: string; src: string }
+type PlayMode = 'list' | 'random'
 const musicList = ref<Track[]>([]), currentIndex = ref(0), currentTime = ref(0), duration = ref(0)
 const volume = ref(0.35), isMuted = ref(false), isMusicPlaying = ref(false), isPlayerVisible = ref(true), showPlaylist = ref(false)
+const playMode = ref<PlayMode>('list')
 const bgMusic = ref<HTMLAudioElement | null>(null), playerRef = ref<HTMLElement | null>(null)
 const currentMusic = computed(() => musicList.value[currentIndex.value] || { name: '', artist: '', src: '' })
 const progress = computed(() => duration.value ? currentTime.value / duration.value * 100 : 0)
@@ -44,18 +50,25 @@ async function playSong(index: number) {
   await playCurrent()
 }
 function handlePrev() { if (musicList.value.length) playSong((currentIndex.value - 1 + musicList.value.length) % musicList.value.length) }
-function handleNext() { if (musicList.value.length) playSong((currentIndex.value + 1) % musicList.value.length) }
+function getNextIndex() {
+  if (playMode.value === 'list' || musicList.value.length < 2) return (currentIndex.value + 1) % musicList.value.length
+  let nextIndex = currentIndex.value
+  while (nextIndex === currentIndex.value) nextIndex = Math.floor(Math.random() * musicList.value.length)
+  return nextIndex
+}
+function handleNext() { if (musicList.value.length) playSong(getNextIndex()) }
 function updateProgress(e: Event) { currentTime.value = (e.target as HTMLAudioElement).currentTime }
 function updateDuration(e: Event) { duration.value = (e.target as HTMLAudioElement).duration }
 function seekAudio(e: MouseEvent) { if (!bgMusic.value || !duration.value) return; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); bgMusic.value.currentTime = (e.clientX - r.left) / r.width * duration.value }
 function handleVolumeChange() { if (bgMusic.value) bgMusic.value.volume = volume.value; isMuted.value = volume.value === 0 }
 function toggleMute() { isMuted.value = !isMuted.value; if (bgMusic.value) bgMusic.value.muted = isMuted.value }
 function togglePlaylist() { showPlaylist.value = !showPlaylist.value }
+function setPlayMode(mode: PlayMode) { playMode.value = mode; localStorage.setItem('background-music-play-mode', mode) }
 function outside(e: MouseEvent) { if (isPlayerVisible.value && playerRef.value && !playerRef.value.contains(e.target as Node)) { isPlayerVisible.value = false; showPlaylist.value = false } }
-onMounted(async () => { try { musicList.value = await (await fetch('/audio/music-manifest.json')).json(); await playCurrent() } catch { musicList.value = [] }; window.addEventListener('pointerdown', playCurrent, { once: true }); document.addEventListener('click', outside) })
+onMounted(async () => { const savedMode = localStorage.getItem('background-music-play-mode'); if (savedMode === 'list' || savedMode === 'random') playMode.value = savedMode; try { musicList.value = await (await fetch('/audio/music-manifest.json')).json(); await playCurrent() } catch { musicList.value = [] }; window.addEventListener('pointerdown', playCurrent, { once: true }); document.addEventListener('click', outside) })
 onBeforeUnmount(() => { window.removeEventListener('pointerdown', playCurrent); document.removeEventListener('click', outside) })
 </script>
 
 <style scoped>
-#MusicControl{position:fixed;right:20px;bottom:20px;z-index:1000}.control-bar{display:flex;gap:12px;background:rgba(255,255,255,.96);border-radius:24px;box-shadow:0 8px 32px #0002;padding:14px}.reopen-btn{border:0;background:rgba(255,255,255,.96);cursor:pointer;padding:10px 14px;border-radius:50%;font-size:20px;box-shadow:0 4px 16px #0003}.player-content{width:320px}.toggle-btn,button{border:0;background:none;cursor:pointer;padding:8px;border-radius:8px}.song-info{text-align:center}.title{font-size:1.1rem;font-weight:600}.artist,.time-display{font-size:.85rem;color:#718096}.progress-container{height:7px;margin:14px 0 24px;background:#ddd;border-radius:4px;cursor:pointer;position:relative}.progress-bar{height:100%;background:#4299e1;border-radius:4px}.time-display{position:absolute;top:10px;width:100%;text-align:center}.main-controls{display:flex;align-items:center;justify-content:center;gap:4px}.play-btn{font-size:20px;font-weight:700}.main-controls input{width:70px}.playlist{max-height:150px;overflow:auto;margin-top:10px}.song-item{display:flex;width:100%;justify-content:space-between;text-align:left}.song-item.playing{background:#e6f4ff}.song-item small{color:#718096;margin-left:8px}
+#MusicControl{position:fixed;right:20px;bottom:20px;z-index:1000}.control-bar{display:flex;gap:12px;background:rgba(255,255,255,.96);border-radius:24px;box-shadow:0 8px 32px #0002;padding:14px}.reopen-btn{border:0;background:rgba(255,255,255,.96);cursor:pointer;padding:10px 14px;border-radius:50%;font-size:20px;box-shadow:0 4px 16px #0003}.player-content{width:320px}.toggle-btn,button{border:0;background:none;cursor:pointer;padding:8px;border-radius:8px}.song-info{text-align:center}.title{font-size:1.1rem;font-weight:600}.artist,.time-display{font-size:.85rem;color:#718096}.progress-container{height:7px;margin:14px 0 24px;background:#ddd;border-radius:4px;cursor:pointer;position:relative}.progress-bar{height:100%;background:#4299e1;border-radius:4px}.time-display{position:absolute;top:10px;width:100%;text-align:center}.main-controls{display:flex;align-items:center;justify-content:center;gap:4px}.play-btn{font-size:20px;font-weight:700}.main-controls input{width:70px}.play-mode{display:flex;width:max-content;margin:8px auto 0;padding:2px;background:#edf2f7;border-radius:6px}.play-mode button{padding:4px 10px;color:#52606d;font-size:.8rem}.play-mode button.active{background:#fff;color:#1f2937;box-shadow:0 1px 3px #0002}.playlist{max-height:150px;overflow:auto;margin-top:10px}.song-item{display:flex;width:100%;justify-content:space-between;text-align:left}.song-item.playing{background:#e6f4ff}.song-item small{color:#718096;margin-left:8px}
 </style>
