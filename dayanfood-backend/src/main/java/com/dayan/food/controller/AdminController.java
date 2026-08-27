@@ -5,6 +5,7 @@ import com.dayan.food.entity.vo.FoodVO;
 import com.dayan.food.entity.vo.FoodPageVO;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 import com.dayan.food.entity.dto.FoodReviewDTO;
+import com.dayan.food.entity.dto.SignatureReviewDTO;
 import com.dayan.food.entity.dto.UserActiveUpdateDTO;
 import com.dayan.food.entity.dto.UserRoleUpdateDTO;
 import com.dayan.food.service.AppUserService;
@@ -85,6 +86,15 @@ public class AdminController {
             Authentication authentication
     ) {
         appUserService.setRole(id, request.role(), authentication.getName());
+    }
+
+    @PatchMapping("/users/{id}/signature")
+    public void reviewSignature(
+            @PathVariable Long id,
+            @RequestBody @Valid SignatureReviewDTO request,
+            Authentication authentication
+    ) {
+        appUserService.reviewSignature(id, request.status(), authentication.getName());
     }
 
     @DeleteMapping("/users/{id}")

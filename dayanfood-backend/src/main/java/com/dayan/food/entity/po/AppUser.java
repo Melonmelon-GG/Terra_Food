@@ -1,5 +1,6 @@
 package com.dayan.food.entity.po;
 
+import com.dayan.food.entity.enums.SignatureStatus;
 import com.dayan.food.entity.enums.UserRole;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,6 +22,12 @@ public class AppUser {
     private String email;
 
     private String avatarUrl;
+
+    private String signature;
+
+    private String signaturePending;
+
+    private SignatureStatus signatureStatus;
 
     private UserRole role;
 

@@ -5,7 +5,6 @@ import com.dayan.food.entity.vo.RegionVO;
 import com.dayan.food.mapper.RegionMapper;
 import com.dayan.food.service.CityCenterService;
 import com.dayan.food.service.RegionService;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,8 +32,7 @@ public class RegionServiceImpl implements RegionService {
     }
 
     @Override
-    @CacheEvict(cacheNames = "regions", allEntries = true)
-    @Transactional
+    @Transactional(readOnly = true)
     public RegionVO resolveLocation(String province, String city) {
         String normalizedProvince = cityCenterService.normalizeProvince(province);
         String normalizedCity = normalizeCity(city);
@@ -42,14 +40,11 @@ public class RegionServiceImpl implements RegionService {
             throw new IllegalArgumentException("地图未返回可用的省市信息");
         }
 
+        // 地图反编码只做查询，不把用户点选动态写入地区表：地区数据以城市白名单
+        // 与既有 region 为准，避免普通用户通过任意坐标持续新增地区（SEC-11）。
         Region region = regionMapper.findByNameAndProvince(normalizedCity, normalizedProvince);
         if (region == null) {
-            region = new Region(
-                    normalizedCity,
-                    normalizedProvince,
-                    normalizedProvince + " · " + normalizedCity + "地方美食"
-            );
-            regionMapper.insert(region);
+            throw new IllegalArgumentException("该地区尚未收录");
         }
         return toVO(region);
     }

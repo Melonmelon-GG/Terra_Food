@@ -1,5 +1,6 @@
 package com.dayan.food.service;
 
+import com.dayan.food.entity.enums.SignatureStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.vo.AuthUserVO;
 
@@ -14,6 +15,10 @@ public interface AppUserService {
     int countUsers();
 
     AuthUserVO updateAvatar(String username, String avatarUrl);
+
+    AuthUserVO updateSignature(String username, String signature);
+
+    void reviewSignature(Long id, SignatureStatus status, String operatorUsername);
 
     void setActive(Long id, boolean active, String operatorUsername);
 

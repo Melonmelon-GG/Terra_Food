@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import axios from 'axios'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { getAchievements, getMyFoods, getRegions, selectAchievement, updateAvatar, uploadImage } from '../api'
+import { getAchievements, getMyFoods, getRegions, selectAchievement, updateAvatar, updateMySignature, uploadImage } from '../api'
 import { useAuth } from '../auth'
 import FoodEditModal from '../components/FoodEditModal.vue'
-import type { Achievement, Food, FoodReviewStatus, Region } from '../types'
+import type { Achievement, Food, FoodReviewStatus, Region, SignatureStatus } from '../types'
 
 const { locale, t } = useI18n()
 const auth = useAuth()
@@ -20,6 +21,10 @@ const avatarSaving = ref(false)
 const avatarError = ref('')
 const achievementSaving = ref<number>()
 const achievementError = ref('')
+const signatureEditing = ref(false)
+const signatureDraft = ref('')
+const signatureSaving = ref(false)
+const signatureError = ref('')
 
 const user = computed(() => auth.currentUser.value)
 const selectedAchievement = computed(() => achievements.value.find((achievement) => achievement.selected))
@@ -35,6 +40,12 @@ function statusText(status: FoodReviewStatus) {
   return t(`profile.status.${status.toLowerCase()}`)
 }
 
+function signatureStatusText(status: SignatureStatus | undefined) {
+  if (status === 'PENDING') return t('profile.signaturePending')
+  if (status === 'REJECTED') return t('profile.signatureRejected')
+  return ''
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(locale.value === 'zh-CN' ? 'zh-CN' : 'en-US', {
     year: 'numeric',
@@ -47,6 +58,34 @@ function handleSaved(updated: Food) {
   const index = foods.value.findIndex((food) => food.id === updated.id)
   if (index >= 0) foods.value.splice(index, 1, updated)
   selectedFood.value = undefined
+}
+
+function startSignatureEdit() {
+  signatureDraft.value = user.value?.signaturePending || user.value?.signature || ''
+  signatureError.value = ''
+  signatureEditing.value = true
+}
+
+async function saveSignature() {
+  const draft = signatureDraft.value.trim()
+  if (!draft) {
+    signatureError.value = t('profile.signatureRequired')
+    return
+  }
+
+  signatureSaving.value = true
+  signatureError.value = ''
+  try {
+    const updatedUser = await updateMySignature(draft)
+    auth.setCurrentUser(updatedUser)
+    signatureEditing.value = false
+  } catch (requestError) {
+    signatureError.value = axios.isAxiosError(requestError)
+      ? requestError.response?.data?.message || t('profile.signatureError')
+      : t('profile.signatureError')
+  } finally {
+    signatureSaving.value = false
+  }
 }
 
 async function chooseAchievement(achievementId: number) {
@@ -66,6 +105,7 @@ async function chooseAchievement(achievementId: number) {
     achievementSaving.value = undefined
   }
 }
+
 async function changeAvatar(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -128,6 +168,43 @@ onMounted(async () => {
           <small>{{ t('profile.eyebrow') }}</small>
           <h1>{{ user?.displayName }}</h1>
           <p>@{{ user?.username }}<template v-if="user?.email"> · {{ user.email }}</template></p>
+
+          <div class="profile-signature">
+            <template v-if="signatureEditing">
+              <textarea
+                v-model="signatureDraft"
+                maxlength="200"
+                rows="2"
+                :placeholder="t('profile.signaturePlaceholder')"
+              />
+              <span>{{ signatureDraft.length }}/200</span>
+              <div class="profile-signature-actions">
+                <button type="button" :disabled="signatureSaving" @click="saveSignature">
+                  {{ t('profile.signatureSave') }}
+                </button>
+                <button type="button" :disabled="signatureSaving" @click="signatureEditing = false">
+                  {{ t('common.cancel') }}
+                </button>
+              </div>
+            </template>
+
+            <template v-else>
+              <p>
+                {{ user?.signature || t('profile.signatureEmpty') }}
+                <button v-if="user?.signatureStatus === 'PENDING'" type="button" disabled class="signature-status">
+                  {{ t('profile.signaturePending') }}
+                </button>
+                <button v-else-if="user?.signatureStatus === 'REJECTED'" type="button" disabled class="signature-status rejected">
+                  {{ t('profile.signatureRejected') }}
+                </button>
+              </p>
+              <button type="button" class="signature-edit" @click="startSignatureEdit">
+                {{ t('profile.signatureEdit') }}
+              </button>
+            </template>
+
+            <p v-if="signatureError" class="signature-error">{{ signatureError }}</p>
+          </div>
         </div>
       </div>
 

@@ -37,6 +37,32 @@
   line-height: 1.9;
 }
 
+.like-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 9px 18px;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  background: #ffffff1f;
+  border: 1px solid #ffffff66;
+  transition: background 0.2s;
+}
+
+.like-button:hover,
+.like-button.liked {
+  background: #b8402f;
+  border-color: #b8402f;
+}
+
+.like-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .detail article {
   display: grid;
   grid-template-columns: 1fr 2fr;

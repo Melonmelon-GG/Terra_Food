@@ -418,3 +418,80 @@
   .profile-food-body { padding: 19px 16px; }
   .profile-food-body footer { align-items: flex-start; gap: 12px; }
 }
+
+/* ===== 个性签名 ===== */
+
+.profile-signature {
+  margin-top: 10px;
+  max-width: 460px;
+}
+
+.profile-signature > p {
+  margin: 0;
+  color: #6b564a;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.profile-signature textarea {
+  width: 100%;
+  padding: 9px 11px;
+  color: #35251f;
+  font: inherit;
+  font-size: 13px;
+  background: var(--color-input);
+  border: 1px solid #c8b89f;
+  outline: none;
+}
+
+.profile-signature .signature-status {
+  margin-left: 8px;
+  padding: 2px 8px;
+  color: #8b3028;
+  font-size: 11px;
+  background: #f5efe5;
+  border: 1px solid #e3b8a6;
+}
+
+.profile-signature .signature-status.rejected {
+  color: #a0322b;
+}
+
+.profile-signature .signature-edit {
+  margin-top: 6px;
+  padding: 4px 10px;
+  color: #843129;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid #9f675e;
+}
+
+.profile-signature .signature-actions,
+.profile-signature-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.profile-signature-actions button {
+  padding: 6px 12px;
+  color: #843129;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid #9f675e;
+}
+
+.profile-signature-actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.signature-error {
+  margin: 6px 0 0;
+  color: #a0322b;
+  font-size: 12px;
+}

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import axios from 'axios'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -38,20 +39,35 @@ const regionToggleLabel = computed(() => {
     : t('home.allRegionsPath', { count: regions.value.length })
 })
 
+let foodRequestSequence = 0
+
 async function loadFoods() {
-  loading.value = true
+  const requestSequence = ++foodRequestSequence
   error.value = ''
+  // 无数据时才显示整页 loading；已有旧数据时保留列表，仅顶部轻量提示，
+  // 避免地图拖动导致下方目录整块卸载、页面布局与滚动位置抖动。
+  if (foods.value.length === 0) {
+    loading.value = true
+  }
 
   try {
-    foods.value = await getFoods({
+    const nextFoods = await getFoods({
       keyword: keyword.value || undefined,
       regionId: selectedRegionId.value,
       ...mapBounds.value,
     })
+    if (requestSequence !== foodRequestSequence) {
+      return
+    }
+    foods.value = nextFoods
   } catch {
-    error.value = t('home.loadError')
+    if (requestSequence === foodRequestSequence) {
+      error.value = t('home.loadError')
+    }
   } finally {
-    loading.value = false
+    if (requestSequence === foodRequestSequence) {
+      loading.value = false
+    }
   }
 }
 
@@ -62,6 +78,10 @@ function updateMapBounds(bounds: MapBounds) {
   if (boundsLoadTimer) clearTimeout(boundsLoadTimer)
   boundsLoadTimer = setTimeout(() => void loadFoods(), 250)
 }
+
+onBeforeUnmount(() => {
+  if (boundsLoadTimer) clearTimeout(boundsLoadTimer)
+})
 
 async function chooseRegion(regionId?: number) {
   selectedRegionId.value = regionId
@@ -109,17 +129,21 @@ async function pickLocation(latitude: number, longitude: number) {
   try {
     const resolvedLocation = await resolveMapRegion(latitude, longitude, locationLookupController.signal)
     if (lookupSequence === locationLookupSequence) {
-      const resolvedRegion = resolvedLocation.region
-      pickedRegionId.value = resolvedRegion.id
+      pickedRegionId.value = resolvedLocation.region.id
       pickedAddress.value = resolvedLocation.address
-      if (!regions.value.some((region) => region.id === resolvedRegion.id)) {
-        regions.value = [...regions.value, resolvedRegion]
-      }
     }
-  } catch {
+  } catch (requestError) {
     if (lookupSequence === locationLookupSequence) {
       pickedRegionId.value = undefined
-      locationError.value = t('home.mapRegionError')
+      // 地区数据只来自服务器白名单；点选未收录地区时给出明确提示，不再动态加入地区列表。
+      const message = axios.isAxiosError(requestError)
+        ? requestError.response?.data?.message
+        : undefined
+      if (message && message.includes('尚未收录')) {
+        pickHint.value = t('home.regionNotEnrolled')
+      } else {
+        locationError.value = t('home.mapRegionError')
+      }
     }
   } finally {
     if (lookupSequence === locationLookupSequence) {
@@ -158,6 +182,9 @@ onMounted(async () => {
     error.value = t('home.regionError')
   }
 
+  // 独立首载目录数据，不依赖地图初始化事件；地图 bounds 只作为后续增量刷新，
+  // 避免地图初始化异常时下方列表一直停留在 loading。
+  await loadFoods()
 })
 </script>
 
@@ -235,37 +262,39 @@ onMounted(async () => {
       <span>{{ t('home.recordCount', { count: foods.length }) }}</span>
     </div>
 
-    <p v-if="loading" class="state">{{ t('home.loading') }}</p>
-    <p v-else-if="error" class="state error">{{ error }}</p>
+    <!-- 目录常驻渲染：地图拖动刷新只更新容器内部，不影响页面整体布局与滚动位置 -->
+    <div class="catalog-scroll" :aria-busy="loading">
+      <p v-if="loading && foods.length" class="state catalog-refreshing">{{ t('home.refreshing') }}</p>
+      <p v-if="error" class="state error">{{ error }}</p>
 
-    <div v-else class="grid">
-      <RouterLink
-        v-for="food in foods"
-        :key="food.id"
-        :to="`/foods/${food.id}`"
-        class="card"
-      >
-        <div
-          class="photo"
-          :class="{ 'no-cover': !food.imageUrl }"
-          :style="{ backgroundImage: food.imageUrl ? `url(${food.imageUrl})` : undefined }"
+      <p v-if="!foods.length && loading" class="state">{{ t('home.loading') }}</p>
+      <p v-else-if="!foods.length" class="state">{{ t('home.empty') }}</p>
+
+      <div v-else class="grid">
+        <RouterLink
+          v-for="food in foods"
+          :key="food.id"
+          :to="`/foods/${food.id}`"
+          class="card"
         >
-          <span>{{ food.region.province }} · {{ food.region.name }}</span>
-        </div>
-        <div class="card-body">
-          <h3>{{ food.name }}</h3>
-          <p>{{ food.summary }}</p>
-          <div>
-            <b>{{ t('home.heat', { value: food.heat }) }}</b>
-            <span>{{ t('home.readMore') }}</span>
+          <div
+            class="photo"
+            :class="{ 'no-cover': !food.imageUrl }"
+            :style="{ backgroundImage: food.imageUrl ? `url(${food.imageUrl})` : undefined }"
+          >
+            <span>{{ food.region.province }} · {{ food.region.name }}</span>
           </div>
-        </div>
-      </RouterLink>
+          <div class="card-body">
+            <h3>{{ food.name }}</h3>
+            <p>{{ food.summary }}</p>
+            <div>
+              <b>{{ t('home.heat', { value: food.heat }) }}</b>
+              <span>{{ t('home.readMore') }}</span>
+            </div>
+          </div>
+        </RouterLink>
+      </div>
     </div>
-
-    <p v-if="!loading && !error && foods.length === 0" class="state">
-      {{ t('home.empty') }}
-    </p>
   </section>
 
   <FoodUploadModal
