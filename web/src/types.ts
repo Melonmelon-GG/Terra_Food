@@ -75,6 +75,11 @@ export interface PagedFoods {
 
 export type FoodReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
+export interface FoodLikeStatus {
+  likeCount: number
+  likedByMe: boolean
+}
+
 export interface FoodReviewPayload {
   status: Extract<FoodReviewStatus, 'APPROVED' | 'REJECTED'>
 }
@@ -103,10 +108,15 @@ export interface AuthUser {
   displayName: string
   email: string | null
   avatarUrl?: string
+  signature?: string
+  signaturePending?: string
+  signatureStatus?: SignatureStatus
   role: UserRole
   active: boolean
   createdAt: string
 }
+
+export type SignatureStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export interface Achievement {
   id: number

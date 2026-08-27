@@ -8,6 +8,7 @@ import type {
   FoodComment,
   FoodCommentCreatePayload,
   FoodCreatePayload,
+  FoodLikeStatus,
   FoodUpdatePayload,
   FoodImportResult,
   FoodReviewPayload,
@@ -17,6 +18,7 @@ import type {
   PasswordResetPayload,
   SetUserActivePayload,
   SetUserRolePayload,
+  SignatureStatus,
   Region,
   PagedAuthUsers,
   RegisterPayload,
@@ -43,6 +45,21 @@ export async function getFoods(params?: FoodQuery): Promise<Food[]> {
 
 export async function getFood(id: number): Promise<Food> {
   const response = await api.get<Food>(`/foods/${id}`)
+  return response.data
+}
+
+export async function getFoodLikeStatus(id: number): Promise<FoodLikeStatus> {
+  const response = await api.get<FoodLikeStatus>(`/foods/${id}/like/status`)
+  return response.data
+}
+
+export async function likeFood(id: number): Promise<FoodLikeStatus> {
+  const response = await api.post<FoodLikeStatus>(`/foods/${id}/like`)
+  return response.data
+}
+
+export async function unlikeFood(id: number): Promise<FoodLikeStatus> {
+  const response = await api.post<FoodLikeStatus>(`/foods/${id}/like/unlike`)
   return response.data
 }
 
@@ -353,6 +370,18 @@ export async function getCurrentUser(): Promise<AuthUser> {
 export async function updateAvatar(avatarUrl: string): Promise<AuthUser> {
   const response = await api.patch<AuthUser>('/profile/avatar', { avatarUrl })
   return response.data
+}
+
+export async function updateMySignature(signature: string): Promise<AuthUser> {
+  const response = await api.patch<AuthUser>('/profile/signature', { signature })
+  return response.data
+}
+
+export async function reviewUserSignature(
+  id: number,
+  status: Extract<SignatureStatus, 'APPROVED' | 'REJECTED'>,
+): Promise<void> {
+  await api.patch(`/admin/users/${id}/signature`, { status })
 }
 
 export async function getAchievements(): Promise<Achievement[]> {
