@@ -27,6 +27,12 @@ public interface AppUserMapper {
 
     int updateAvatar(@Param("username") String username, @Param("avatarUrl") String avatarUrl);
 
+    int updateSignature(@Param("username") String username, @Param("signature") String signature);
+
+    int approveSignature(@Param("id") Long id);
+
+    int rejectSignature(@Param("id") Long id);
+
     int updateActive(@Param("id") Long id, @Param("active") boolean active);
 
     int updateRole(@Param("id") Long id, @Param("role") com.dayan.food.entity.enums.UserRole role);

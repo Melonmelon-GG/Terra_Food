@@ -9,12 +9,13 @@ import {
   getRegions,
   getUsers,
   importFoodSpreadsheet,
+  reviewUserSignature,
   setUserActive,
   setUserRole,
   reviewFood,
 } from '../api'
 import { useAuth } from '../auth'
-import type { AuthUser, Food, FoodImportResult, FoodReviewStatus, Region } from '../types'
+import type { AuthUser, Food, FoodImportResult, FoodReviewStatus, Region, SignatureStatus } from '../types'
 
 type AdminTab = 'foods' | 'reviews' | 'users'
 type PageSize = 10 | 20 | 50
@@ -225,6 +226,24 @@ async function toggleSubAdmin(user: AuthUser) {
     await loadUsersPage(usersPage.value, usersPageSize.value)
   } catch {
     usersError.value = t('admin.roleActionError')
+  } finally {
+    usersLoading.value = false
+  }
+}
+
+async function reviewSignatureSubmission(user: AuthUser, status: Extract<SignatureStatus, 'APPROVED' | 'REJECTED'>) {
+  const action = status === 'APPROVED' ? t('admin.approve') : t('admin.reject')
+  if (!window.confirm(t('admin.signatureReviewConfirm', { action, name: user.displayName || user.username }))) {
+    return
+  }
+
+  usersLoading.value = true
+  usersError.value = ''
+  try {
+    await reviewUserSignature(user.id, status)
+    await loadUsersPage(usersPage.value, usersPageSize.value)
+  } catch {
+    usersError.value = t('admin.signatureReviewError')
   } finally {
     usersLoading.value = false
   }
@@ -470,6 +489,7 @@ onMounted(loadFoodsAndMeta)
                   <th>{{ t('admin.username') }}</th>
                   <th>{{ t('admin.displayName') }}</th>
                   <th>{{ t('admin.email') }}</th>
+                  <th>{{ t('admin.signature') }}</th>
                   <th>{{ t('admin.role') }}</th>
                   <th>{{ t('admin.status') }}</th>
                   <th>{{ t('admin.createdAt') }}</th>
@@ -482,6 +502,11 @@ onMounted(loadFoodsAndMeta)
                   <td>{{ user.username }}</td>
                   <td>{{ user.displayName }}</td>
                   <td>{{ user.email || '—' }}</td>
+                  <td>
+                    <span v-if="user.signaturePending" class="admin-signature pending">{{ user.signaturePending }}</span>
+                    <span v-else-if="user.signature">{{ user.signature }}</span>
+                    <span v-else>—</span>
+                  </td>
                   <td>{{ roleLabel(user.role) }}</td>
                   <td>
                     <span class="admin-user-status" :class="{ inactive: !user.active }">
@@ -491,6 +516,18 @@ onMounted(loadFoodsAndMeta)
                   <td>{{ formatDateTime(user.createdAt) }}</td>
                   <td>
                     <div class="admin-user-actions">
+                      <template v-if="user.signatureStatus === 'PENDING'">
+                        <button
+                          class="admin-user-action"
+                          type="button"
+                          @click="reviewSignatureSubmission(user, 'APPROVED')"
+                        >{{ t('admin.approve') }}</button>
+                        <button
+                          class="danger-button"
+                          type="button"
+                          @click="reviewSignatureSubmission(user, 'REJECTED')"
+                        >{{ t('admin.reject') }}</button>
+                      </template>
                       <button
                         v-if="canManageRoles && user.role !== 'ADMIN'"
                         class="admin-user-action"

@@ -365,3 +365,21 @@
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* ===== 个性签名列 ===== */
+
+.admin-signature {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-signature.pending {
+  padding: 2px 8px;
+  color: #8b3028;
+  background: #f5efe5;
+  border: 1px solid #e3b8a6;
+}

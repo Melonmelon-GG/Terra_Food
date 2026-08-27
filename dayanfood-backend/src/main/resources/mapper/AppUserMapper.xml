@@ -11,20 +11,28 @@
         <result property="displayName" column="display_name"/>
         <result property="email" column="email"/>
         <result property="avatarUrl" column="avatar_url"/>
+        <result property="signature" column="signature"/>
+        <result property="signaturePending" column="signature_pending"/>
+        <result property="signatureStatus" column="signature_status" javaType="com.dayan.food.entity.enums.SignatureStatus"/>
         <result property="role" column="role" javaType="com.dayan.food.entity.enums.UserRole"/>
         <result property="active" column="active"/>
         <result property="lastFoodUploadAt" column="last_food_upload_at"/>
         <result property="createdAt" column="created_at"/>
     </resultMap>
 
+    <sql id="userColumns">
+        id, username, password, display_name, email, avatar_url, signature, signature_pending,
+        signature_status, role, active, last_food_upload_at, created_at
+    </sql>
+
     <select id="findByUsername" resultMap="appUserResultMap">
-        SELECT id, username, password, display_name, email, avatar_url, role, active, last_food_upload_at, created_at
+        SELECT <include refid="userColumns"/>
         FROM app_user
         WHERE username = #{username}
     </select>
 
     <select id="findByUsernameOrEmail" resultMap="appUserResultMap">
-        SELECT id, username, password, display_name, email, avatar_url, role, active, last_food_upload_at, created_at
+        SELECT <include refid="userColumns"/>
         FROM app_user
         WHERE username = #{identity}
            OR email = #{identity}
@@ -33,7 +41,7 @@
     </select>
 
     <select id="findByUsernameOrDisplayName" resultMap="appUserResultMap">
-        SELECT id, username, password, display_name, email, avatar_url, role, active, last_food_upload_at, created_at
+        SELECT <include refid="userColumns"/>
         FROM app_user
         WHERE username = #{identity}
            OR display_name = #{identity}
@@ -54,13 +62,13 @@
     </select>
 
     <select id="findById" resultMap="appUserResultMap">
-        SELECT id, username, password, display_name, email, avatar_url, role, active, last_food_upload_at, created_at
+        SELECT <include refid="userColumns"/>
         FROM app_user
         WHERE id = #{id}
     </select>
 
     <select id="findPage" resultMap="appUserResultMap">
-        SELECT id, username, password, display_name, email, avatar_url, role, active, last_food_upload_at, created_at
+        SELECT <include refid="userColumns"/>
         FROM app_user
         ORDER BY created_at DESC, id DESC
         LIMIT #{pageSize} OFFSET #{offset}
@@ -82,6 +90,30 @@
         SET avatar_url = #{avatarUrl}
         WHERE username = #{username}
           AND active = TRUE
+    </update>
+
+    <update id="updateSignature">
+        UPDATE app_user
+        SET signature_pending = #{signature},
+            signature_status = 'PENDING'
+        WHERE username = #{username}
+          AND active = TRUE
+    </update>
+
+    <update id="approveSignature">
+        UPDATE app_user
+        SET signature = signature_pending,
+            signature_pending = NULL,
+            signature_status = 'APPROVED'
+        WHERE id = #{id}
+          AND signature_status = 'PENDING'
+    </update>
+
+    <update id="rejectSignature">
+        UPDATE app_user
+        SET signature_status = 'REJECTED'
+        WHERE id = #{id}
+          AND signature_status = 'PENDING'
     </update>
 
     <update id="updateActive">

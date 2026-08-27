@@ -1,5 +1,6 @@
 package com.dayan.food.entity.vo;
 
+import com.dayan.food.entity.enums.SignatureStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.po.AppUser;
 import java.time.LocalDateTime;
@@ -10,6 +11,9 @@ public record AuthUserVO(
         String displayName,
         String email,
         String avatarUrl,
+        String signature,
+        String signaturePending,
+        SignatureStatus signatureStatus,
         UserRole role,
         boolean active,
         LocalDateTime createdAt
@@ -22,6 +26,9 @@ public record AuthUserVO(
                 user.getDisplayName(),
                 user.getEmail(),
                 user.getAvatarUrl(),
+                user.getSignature(),
+                user.getSignaturePending(),
+                user.getSignatureStatus(),
                 user.getRole(),
                 user.isActive(),
                 user.getCreatedAt()

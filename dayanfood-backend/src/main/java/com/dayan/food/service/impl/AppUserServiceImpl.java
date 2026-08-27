@@ -1,5 +1,6 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.entity.enums.SignatureStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.mapper.AppUserMapper;
@@ -64,6 +65,41 @@ public class AppUserServiceImpl implements AppUserService {
             throw new IllegalArgumentException("当前用户不存在");
         }
         return AuthUserVO.from(updated);
+    }
+
+    @Override
+    @Transactional
+    public AuthUserVO updateSignature(String username, String signature) {
+        String normalizedSignature = signature.trim();
+        // 个性签名需要管理员审核：新文本进入待审，不直接生效。
+        if (appUserMapper.updateSignature(username, normalizedSignature) != 1) {
+            throw new IllegalArgumentException("当前用户不存在或已被停用");
+        }
+        var updated = appUserMapper.findByUsername(username);
+        if (updated == null) {
+            throw new IllegalArgumentException("当前用户不存在");
+        }
+        return AuthUserVO.from(updated);
+    }
+
+    @Override
+    @Transactional
+    public void reviewSignature(Long id, SignatureStatus status, String operatorUsername) {
+        if (status != SignatureStatus.APPROVED && status != SignatureStatus.REJECTED) {
+            throw new IllegalArgumentException("审批结果只能是通过或驳回");
+        }
+
+        var operator = findRequiredOperator(operatorUsername);
+        var user = findRequiredUser(id);
+        ensureCanManageTarget(operator, user);
+
+        int updated = status == SignatureStatus.APPROVED
+                ? appUserMapper.approveSignature(id)
+                : appUserMapper.rejectSignature(id);
+        // WHERE signature_status='PENDING' 保障并发下只生效一次。
+        if (updated != 1) {
+            throw new IllegalArgumentException("该签名不存在或已经处理");
+        }
     }
 
     @Override
