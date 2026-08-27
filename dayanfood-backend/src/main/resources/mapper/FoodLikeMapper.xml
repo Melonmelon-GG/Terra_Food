@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dayan.food.mapper.FoodLikeMapper">
+
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO food_like (food_id, user_id, created_at)
+        VALUES (#{foodId}, #{userId}, #{createdAt})
+    </insert>
+
+    <delete id="deleteIgnore">
+        DELETE FROM food_like
+        WHERE food_id = #{foodId}
+          AND user_id = #{userId}
+    </delete>
+
+    <select id="countByFoodId" resultType="int">
+        SELECT COUNT(*)
+        FROM food_like
+        WHERE food_id = #{foodId}
+    </select>
+
+    <select id="exists" resultType="int">
+        SELECT COUNT(*)
+        FROM food_like
+        WHERE food_id = #{foodId}
+          AND user_id = #{userId}
+    </select>
+</mapper>

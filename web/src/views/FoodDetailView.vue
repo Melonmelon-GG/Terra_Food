@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
-import { createFoodComment, getFood, getFoodComments } from '../api'
+import {
+  createFoodComment,
+  getFood,
+  getFoodComments,
+  getFoodLikeStatus,
+  likeFood,
+  unlikeFood,
+} from '../api'
 import { useAuth } from '../auth'
-import type { Food, FoodComment } from '../types'
+import type { Food, FoodComment, FoodLikeStatus } from '../types'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuth()
 const currentUser = auth.currentUser
 const foodId = Number(route.params.id)
@@ -19,7 +27,11 @@ const error = ref('')
 const commentError = ref('')
 const commentsLoading = ref(false)
 const submittingComment = ref(false)
+const likeStatus = ref<FoodLikeStatus>({ likeCount: 0, likedByMe: false })
+const liking = ref(false)
 const { t, locale } = useI18n()
+
+let foodLoadController: AbortController | undefined
 
 const heroStyle = computed(() => ({
   backgroundImage: food.value?.imageUrl
@@ -38,11 +50,11 @@ function formatDate(value: string): string {
   }).format(new Date(value))
 }
 
-async function loadComments() {
+async function loadComments(foodIdValue: number) {
   commentsLoading.value = true
   commentError.value = ''
   try {
-    comments.value = await getFoodComments(foodId)
+    comments.value = await getFoodComments(foodIdValue)
   } catch {
     commentError.value = t('detail.commentLoadError')
   } finally {
@@ -72,13 +84,55 @@ async function submitComment() {
   }
 }
 
-onMounted(async () => {
-  try {
-    food.value = await getFood(foodId)
-    await loadComments()
-  } catch {
-    error.value = t('detail.notFound')
+async function toggleLike() {
+  if (!currentUser.value) {
+    await router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
   }
+  if (liking.value) {
+    return
+  }
+
+  liking.value = true
+  try {
+    likeStatus.value = likeStatus.value.likedByMe
+      ? await unlikeFood(foodId)
+      : await likeFood(foodId)
+  } catch {
+    commentError.value = t('detail.likeError')
+  } finally {
+    liking.value = false
+  }
+}
+
+// 组件复用时随路由 id 变化重新加载（安全报告 6.6），旧请求用 AbortController 丢弃。
+watch(
+  () => route.params.id,
+  async (id) => {
+    const foodIdValue = Number(id)
+    foodLoadController?.abort()
+    foodLoadController = new AbortController()
+    food.value = undefined
+    comments.value = []
+    likeStatus.value = { likeCount: 0, likedByMe: false }
+    error.value = ''
+
+    try {
+      food.value = await getFood(foodIdValue)
+      const [likeSnapshot] = await Promise.all([
+        getFoodLikeStatus(foodIdValue),
+        loadComments(foodIdValue),
+      ])
+      likeStatus.value = likeSnapshot
+    } catch {
+      error.value = t('detail.notFound')
+    }
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  foodLoadController?.abort()
 })
 </script>
 
@@ -93,6 +147,16 @@ onMounted(async () => {
         <small>{{ food.region.province }} · {{ food.region.name }}</small>
         <h1>{{ food.name }}</h1>
         <p>{{ food.summary }}</p>
+        <button
+          class="like-button"
+          :class="{ liked: likeStatus.likedByMe }"
+          :disabled="liking"
+          type="button"
+          @click="toggleLike"
+        >
+          <span aria-hidden="true">{{ likeStatus.likedByMe ? '♥' : '♡' }}</span>
+          {{ t('detail.likeCount', { count: likeStatus.likeCount }) }}
+        </button>
       </div>
     </div>
 
