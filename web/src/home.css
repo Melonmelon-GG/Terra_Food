@@ -242,6 +242,19 @@
   gap: 28px;
 }
 
+/* 目录常驻滚动容器：地图拖动刷新只更新容器内部，页面整体不跳动 */
+.catalog-scroll {
+  max-height: clamp(320px, 56vh, 720px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.catalog-refreshing {
+  padding: 10px;
+  color: #907d6e;
+  font-size: 13px;
+}
+
 .card {
   background: var(--color-paper);
   border: 1px solid var(--border-paper);
