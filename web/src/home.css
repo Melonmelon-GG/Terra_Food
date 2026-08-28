@@ -22,14 +22,14 @@ body:has(main > .map-explorer) > #app > header {
   margin: 0;
   padding-inline: max(3vw, 24px);
   background:
-    linear-gradient(135deg, #fbf8f0dd, #f5f0e5b8);
+    linear-gradient(135deg, #fbf8f0c2, #f5f0e590);
   border: 0;
   border-bottom-color: #cdbfa980;
   border-radius: 0;
   box-shadow:
     0 16px 45px #24130e3d,
     inset 0 1px 0 #ffffffc9;
-  backdrop-filter: blur(24px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.18);
 }
 
 .map-explorer {
@@ -77,14 +77,14 @@ body:has(main > .map-explorer) > #app > header {
   z-index: 30;
   min-width: 0;
   background:
-    linear-gradient(135deg, #fbf8f0d9, #f5f0e5ad);
+    linear-gradient(135deg, #fbf8f0a8, #f5f0e568);
   border: 1px solid #fffdf89c;
   border-radius: 20px;
   box-shadow:
     0 24px 60px #38251f38,
     inset 0 1px 0 #ffffffcf,
     inset 0 0 0 1px #8d786812;
-  backdrop-filter: blur(22px) saturate(1.22);
+  backdrop-filter: blur(16px) saturate(1.16);
 }
 
 /* 左侧：品牌叙事、搜索与核心入口 */
@@ -125,7 +125,7 @@ body:has(main > .map-explorer) > #app > header {
   gap: 8px;
   margin: 28px 0 22px;
   padding: 8px;
-  background: #fffdf8a8;
+  background: #fffdf878;
   border: 1px solid #ffffffa8;
   border-radius: 14px;
   box-shadow:
@@ -168,7 +168,7 @@ body:has(main > .map-explorer) > #app > header {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  background: #fffdf87a;
+  background: #fffdf858;
   border: 1px solid #ffffff8f;
   border-radius: 12px;
   box-shadow: inset 0 1px 0 #ffffffc2;
@@ -346,7 +346,7 @@ body:has(main > .map-explorer) > #app > header {
   grid-template-rows: 88px minmax(0, 1fr);
   min-width: 0;
   overflow: hidden;
-  background: #fffdf8a6;
+  background: #fffdf878;
   border: 1px solid #ffffff9c;
   border-radius: 13px;
   cursor: pointer;

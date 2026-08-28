@@ -451,6 +451,10 @@
     overscroll-behavior-x: none;
   }
 
+  body:has(main > .map-explorer) {
+    overflow: hidden;
+  }
+
   #app > footer {
     padding-bottom: max(30px, calc(18px + env(safe-area-inset-bottom)));
   }
@@ -468,40 +472,43 @@
   }
 
   .map-explorer {
-    gap: 10px;
+    grid-template-rows: auto minmax(0, 1fr) 166px;
+    gap: 8px;
+    height: calc(100dvh - var(--mobile-header-height));
+    min-height: 0;
     padding:
-      10px
-      max(10px, env(safe-area-inset-right))
-      max(14px, env(safe-area-inset-bottom))
-      max(10px, env(safe-area-inset-left));
+      8px
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
   }
 
   .explorer-sidebar {
-    padding: 14px;
-    border-radius: 18px;
+    grid-row: 1;
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+
+  .explorer-sidebar .eyebrow {
+    margin: 0;
+    font-size: 9px;
   }
 
   .explorer-sidebar h1 {
-    margin: 5px 0 8px;
-    font-size: clamp(28px, 8vw, 34px);
-    line-height: 1.2;
+    margin: 2px 0 5px;
+    font-size: clamp(25px, 7.2vw, 30px);
+    line-height: 1.15;
   }
 
   .explorer-intro {
-    display: -webkit-box;
-    margin: 0;
-    overflow: hidden;
-    font-size: 12px;
-    line-height: 1.65;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    display: none;
   }
 
   .explorer-search {
     grid-template-columns: minmax(0, 1fr) minmax(86px, 28%);
     gap: 6px;
-    margin: 12px 0 10px;
-    padding: 5px;
+    margin: 8px 0 7px;
+    padding: 4px;
   }
 
   .explorer-search input {
@@ -509,7 +516,7 @@
   }
 
   .explorer-search button {
-    min-height: 44px;
+    min-height: 42px;
   }
 
   .explorer-sidebar-actions {
@@ -518,8 +525,8 @@
   }
 
   .explorer-outline {
-    min-height: 54px;
-    padding: 8px 10px;
+    min-height: 46px;
+    padding: 6px 9px;
   }
 
   .explorer-sidebar-foot {
@@ -527,16 +534,60 @@
   }
 
   .explorer-map-hint {
-    margin-top: 34dvh;
+    position: absolute;
+    right: 66px;
+    bottom: max(180px, calc(172px + env(safe-area-inset-bottom)));
+    left: max(8px, env(safe-area-inset-left));
+    width: auto;
+    margin: 0;
+    padding: 7px 10px;
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .explorer-catalog {
+    grid-row: 3;
+    height: 166px;
+    min-height: 0;
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .explorer-catalog-heading {
+    min-height: 18px;
+    padding: 0 2px 6px;
   }
 
   .explorer-cards {
+    height: calc(100% - 18px);
     scroll-padding-inline: 2px;
     -webkit-overflow-scrolling: touch;
   }
 
   .explorer-card {
-    flex-basis: min(82vw, 300px);
+    flex-basis: min(70vw, 250px);
+    grid-template-rows: 74px minmax(0, 1fr);
+  }
+
+  .explorer-card-body {
+    padding: 6px 8px;
+  }
+
+  .explorer-card-body h3 {
+    margin-bottom: 4px;
+    font-size: 13px;
+  }
+
+  .explorer-card-body > p {
+    display: none;
+  }
+
+  .explorer-card-body > div {
+    padding-top: 4px;
+  }
+
+  body:has(main > .map-explorer) #MusicControl {
+    bottom: max(180px, calc(172px + env(safe-area-inset-bottom)));
   }
 
   .login-page,
