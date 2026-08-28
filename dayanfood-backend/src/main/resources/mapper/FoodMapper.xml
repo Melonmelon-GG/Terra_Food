@@ -29,6 +29,11 @@
         </association>
     </resultMap>
 
+    <resultMap id="foodFootprintResultMap" type="com.dayan.food.entity.po.FoodFootprint">
+        <result property="visitedAt" column="footprint_visited_at"/>
+        <association property="food" resultMap="foodResultMap"/>
+    </resultMap>
+
     <sql id="foodColumns">
         f.id AS food_id,
         f.name AS food_name,
@@ -188,6 +193,65 @@
         WHERE f.id = #{foodId}
           AND f.review_status = 'APPROVED'
     </insert>
+
+    <update id="touchDailyVisit">
+        UPDATE food_daily_visit v
+        INNER JOIN app_user u ON u.id = v.user_id
+        SET v.visited_at = CURRENT_TIMESTAMP
+        WHERE v.food_id = #{foodId}
+          AND u.username = #{username}
+          AND v.visit_date = CURRENT_DATE
+    </update>
+
+    <select id="findRecentVisits" resultMap="foodFootprintResultMap">
+        SELECT <include refid="foodColumns"/>,
+               v.visited_at AS footprint_visited_at
+        FROM food_daily_visit v
+        INNER JOIN app_user u ON u.id = v.user_id
+        INNER JOIN food f ON f.id = v.food_id
+        INNER JOIN region r ON r.id = f.region_id
+        WHERE u.username = #{username}
+          AND f.review_status = 'APPROVED'
+        ORDER BY v.visited_at DESC, f.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findAgentRecommendations" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/>
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        WHERE f.review_status = 'APPROVED'
+        <if test="province != null and province != ''">
+            AND r.province LIKE CONCAT('%', #{province}, '%')
+        </if>
+        <if test="city != null and city != ''">
+            AND r.name LIKE CONCAT('%', #{city}, '%')
+        </if>
+        <if test="personalized and username != null and username != ''">
+            AND NOT EXISTS (
+                SELECT 1
+                FROM food_daily_visit seen
+                INNER JOIN app_user seen_user ON seen_user.id = seen.user_id
+                WHERE seen.food_id = f.id
+                  AND seen_user.username = #{username}
+                  AND seen.visited_at &gt;= CURRENT_TIMESTAMP - INTERVAL 30 DAY
+            )
+        </if>
+        ORDER BY
+        <if test="personalized and username != null and username != ''">
+            (
+                SELECT COUNT(*)
+                FROM food_daily_visit preference
+                INNER JOIN app_user preference_user ON preference_user.id = preference.user_id
+                INNER JOIN food viewed_food ON viewed_food.id = preference.food_id
+                WHERE preference_user.username = #{username}
+                  AND preference.visited_at &gt;= CURRENT_TIMESTAMP - INTERVAL 30 DAY
+                  AND viewed_food.region_id = f.region_id
+            ) DESC,
+        </if>
+        f.heat DESC, f.id DESC
+        LIMIT #{limit}
+    </select>
 
     <update id="incrementHeat">
         UPDATE food

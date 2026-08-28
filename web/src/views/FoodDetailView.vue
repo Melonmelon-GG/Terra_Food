@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -19,7 +20,6 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuth()
 const currentUser = auth.currentUser
-const foodId = Number(route.params.id)
 const food = ref<Food>()
 const comments = ref<FoodComment[]>([])
 const commentContent = ref('')
@@ -72,7 +72,7 @@ async function submitComment() {
   submittingComment.value = true
   commentError.value = ''
   try {
-    const comment = await createFoodComment(foodId, { content })
+    const comment = await createFoodComment(Number(route.params.id), { content })
     comments.value.unshift(comment)
     commentContent.value = ''
   } catch (requestError) {
@@ -84,27 +84,30 @@ async function submitComment() {
   }
 }
 
+function handleAgentCommentPublished(event: Event) {
+  const publishedFoodId = Number((event as CustomEvent<{ foodId?: number }>).detail?.foodId)
+  if (publishedFoodId === Number(route.params.id)) void loadComments(publishedFoodId)
+}
+
 async function toggleLike() {
   if (!currentUser.value) {
     await router.push({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
-  if (liking.value) {
-    return
-  }
+  if (liking.value) return
 
+  const activeFoodId = Number(route.params.id)
   liking.value = true
   try {
     likeStatus.value = likeStatus.value.likedByMe
-      ? await unlikeFood(foodId)
-      : await likeFood(foodId)
+      ? await unlikeFood(activeFoodId)
+      : await likeFood(activeFoodId)
   } catch {
     commentError.value = t('detail.likeError')
   } finally {
     liking.value = false
   }
 }
-
 // 组件复用时随路由 id 变化重新加载（安全报告 6.6），旧请求用 AbortController 丢弃。
 watch(
   () => route.params.id,
@@ -131,8 +134,13 @@ watch(
   { immediate: true },
 )
 
+onMounted(() => {
+  window.addEventListener('agent:comment-published', handleAgentCommentPublished)
+})
+
 onBeforeUnmount(() => {
   foodLoadController?.abort()
+  window.removeEventListener('agent:comment-published', handleAgentCommentPublished)
 })
 </script>
 

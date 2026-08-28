@@ -56,6 +56,9 @@ app:
   initial-admin:
     enabled: ${INITIAL_ADMIN_ENABLED:false}
     password: ${INITIAL_ADMIN_PASSWORD:}
+  agent:
+    service-url: ${AGENT_SERVICE_URL:http://localhost:8090}
+    internal-token: ${AGENT_INTERNAL_TOKEN:}
   registration-code:
     from: ${MAIL_FROM:}
     expiration: ${REGISTRATION_CODE_EXPIRATION:10m}
@@ -71,6 +74,10 @@ server:
         same-site: lax
   error:
     include-message: never
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
 
 ---
 # 生产环境默认启用 Secure Cookie（站点应部署在 HTTPS 上）；
@@ -85,7 +92,3 @@ server:
     session:
       cookie:
         secure: true
-mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  configuration:
-    map-underscore-to-camel-case: true

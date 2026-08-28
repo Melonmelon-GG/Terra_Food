@@ -7,6 +7,7 @@ import { isAdminRole, useAuth } from './auth'
 import { saveLocale, type SupportedLocale } from './i18n'
 import BackgroundMusic from './components/BackgroundMusic.vue'
 import AchievementToast from './components/AchievementToast.vue'
+import AgentPanel from './components/AgentPanel.vue'
 
 const { locale, t } = useI18n()
 const route = useRoute()
@@ -64,6 +65,7 @@ async function logout() {
 
   <BackgroundMusic />
   <AchievementToast />
+  <AgentPanel v-if="auth.currentUser.value" />
 
   <footer id="about">
     {{ t('footer') }}

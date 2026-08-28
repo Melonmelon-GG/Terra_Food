@@ -1,6 +1,7 @@
 package com.dayan.food.mapper;
 
 import com.dayan.food.entity.po.Food;
+import com.dayan.food.entity.po.FoodFootprint;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 import org.apache.ibatis.annotations.Param;
 
@@ -64,6 +65,18 @@ public interface FoodMapper {
     );
 
     int insertDailyVisit(@Param("foodId") Long foodId, @Param("username") String username);
+
+    int touchDailyVisit(@Param("foodId") Long foodId, @Param("username") String username);
+
+    List<FoodFootprint> findRecentVisits(@Param("username") String username, @Param("limit") int limit);
+
+    List<Food> findAgentRecommendations(
+            @Param("username") String username,
+            @Param("province") String province,
+            @Param("city") String city,
+            @Param("personalized") boolean personalized,
+            @Param("limit") int limit
+    );
 
     int incrementHeat(Long id);
 

@@ -5,7 +5,9 @@ import com.dayan.food.entity.vo.RegionVO;
 import com.dayan.food.mapper.RegionMapper;
 import com.dayan.food.service.CityCenterService;
 import com.dayan.food.service.RegionService;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +26,8 @@ public class RegionServiceImpl implements RegionService {
 
     @Override
     @Cacheable(cacheNames = "regions", key = "'all'")
-    @Transactional(readOnly = true)
+    @CacheEvict(cacheNames = "regions", allEntries = true)
+    @Transactional
     public List<RegionVO> list() {
         return regionMapper.findAll().stream()
                 .map(this::toVO)
@@ -40,11 +43,20 @@ public class RegionServiceImpl implements RegionService {
             throw new IllegalArgumentException("地图未返回可用的省市信息");
         }
 
-        // 地图反编码只做查询，不把用户点选动态写入地区表：地区数据以城市白名单
-        // 与既有 region 为准，避免普通用户通过任意坐标持续新增地区（SEC-11）。
         Region region = regionMapper.findByNameAndProvince(normalizedCity, normalizedProvince);
         if (region == null) {
-            throw new IllegalArgumentException("该地区尚未收录");
+            region = new Region(
+                    normalizedCity,
+                    normalizedProvince,
+                    normalizedProvince + " · " + normalizedCity + "地方美食"
+            );
+            try {
+                regionMapper.insert(region);
+            } catch (DuplicateKeyException exception) {
+                // 两个登录用户同时首次收录同一城市时，复用另一事务刚创建的记录。
+                region = regionMapper.findByNameAndProvince(normalizedCity, normalizedProvince);
+                if (region == null) throw exception;
+            }
         }
         return toVO(region);
     }

@@ -23,6 +23,7 @@ import './modal.css'
 import './region-drawer.css'
 import './responsive.css'
 import './profile.css'
+import './agent.css'
 
 const router = createRouter({
   history: createWebHistory(),

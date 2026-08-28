@@ -393,6 +393,62 @@
 .profile-review-tip { margin: -5px 0 22px; padding: 10px 13px; color: #866242; background: #f7edda; }
 .profile-edit-modal { max-height: calc(100vh - 50px); overflow-y: auto; }
 
+.footprint-panel {
+  margin-top: 30px;
+  padding: 30px 34px;
+  background: #fffdf7;
+  border: 1px solid #d9c9b0;
+}
+
+.footprint-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.footprint-card {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 13px;
+  min-width: 0;
+  padding: 9px;
+  color: #4d382e;
+  text-decoration: none;
+  background: #faf1e4;
+  border: 1px solid #dcc9ae;
+  transition: transform .2s ease, border-color .2s ease;
+}
+
+.footprint-card:hover {
+  border-color: #a75a48;
+  transform: translateY(-2px);
+}
+
+.footprint-cover {
+  display: grid;
+  width: 82px;
+  height: 76px;
+  place-items: center;
+  color: #fff7e8;
+  font-size: 28px;
+  background: linear-gradient(145deg, #a45c48, #433027);
+  background-position: center;
+  background-size: cover;
+}
+
+.footprint-card > div:last-child {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 4px;
+}
+
+.footprint-card small { color: #a0473c; font-size: 11px; }
+.footprint-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.footprint-card time { color: #9a8573; font-size: 11px; }
+.footprint-empty { margin: 22px 0 0; color: #8a7564; }
+
 @media (max-width: 980px) {
   .profile-page { padding: 35px 22px 70px; }
   .profile-hero { grid-template-columns: 1fr; }

@@ -57,6 +57,16 @@ function getNextIndex() {
   return nextIndex
 }
 function handleNext() { if (musicList.value.length) playSong(getNextIndex()) }
+function handleAgentMusicSwitch(event: Event) {
+  const query = (event as CustomEvent<{ query?: string }>).detail?.query?.trim().toLowerCase()
+  if (!query) return
+  const index = musicList.value.findIndex((track) =>
+    track.name.toLowerCase().includes(query)
+      || track.artist.toLowerCase().includes(query)
+      || query.includes(track.name.toLowerCase()),
+  )
+  if (index >= 0) playSong(index)
+}
 function updateProgress(e: Event) { currentTime.value = (e.target as HTMLAudioElement).currentTime }
 function updateDuration(e: Event) { duration.value = (e.target as HTMLAudioElement).duration }
 function seekAudio(e: MouseEvent) { if (!bgMusic.value || !duration.value) return; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); bgMusic.value.currentTime = (e.clientX - r.left) / r.width * duration.value }
@@ -65,8 +75,8 @@ function toggleMute() { isMuted.value = !isMuted.value; if (bgMusic.value) bgMus
 function togglePlaylist() { showPlaylist.value = !showPlaylist.value }
 function setPlayMode(mode: PlayMode) { playMode.value = mode; localStorage.setItem('background-music-play-mode', mode) }
 function outside(e: MouseEvent) { if (isPlayerVisible.value && playerRef.value && !playerRef.value.contains(e.target as Node)) { isPlayerVisible.value = false; showPlaylist.value = false } }
-onMounted(async () => { const savedMode = localStorage.getItem('background-music-play-mode'); if (savedMode === 'list' || savedMode === 'random') playMode.value = savedMode; try { musicList.value = await (await fetch('/audio/music-manifest.json')).json(); await playCurrent() } catch { musicList.value = [] }; window.addEventListener('pointerdown', playCurrent, { once: true }); document.addEventListener('click', outside) })
-onBeforeUnmount(() => { window.removeEventListener('pointerdown', playCurrent); document.removeEventListener('click', outside) })
+onMounted(async () => { const savedMode = localStorage.getItem('background-music-play-mode'); if (savedMode === 'list' || savedMode === 'random') playMode.value = savedMode; try { musicList.value = await (await fetch('/audio/music-manifest.json')).json(); await playCurrent() } catch { musicList.value = [] }; window.addEventListener('pointerdown', playCurrent, { once: true }); window.addEventListener('agent:music-switch', handleAgentMusicSwitch); document.addEventListener('click', outside) })
+onBeforeUnmount(() => { window.removeEventListener('pointerdown', playCurrent); window.removeEventListener('agent:music-switch', handleAgentMusicSwitch); document.removeEventListener('click', outside) })
 </script>
 
 <style scoped>

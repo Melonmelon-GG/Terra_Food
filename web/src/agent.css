@@ -1,0 +1,168 @@
+.agent-shell {
+  position: fixed;
+  right: 24px;
+  bottom: 92px;
+  z-index: 1100;
+}
+
+.agent-orb {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  place-items: center;
+  color: #fff7e8;
+  font: 30px "Noto Serif SC", serif;
+  cursor: pointer;
+  background: linear-gradient(145deg, #9f3a31, #45221e);
+  border: 1px solid #f0d9b7;
+  border-radius: 50%;
+  box-shadow: 0 12px 30px rgba(62, 27, 22, .3), inset 0 0 0 5px rgba(255,255,255,.08);
+}
+
+.agent-panel {
+  display: grid;
+  grid-template-rows: auto minmax(220px, 1fr) auto auto;
+  width: min(390px, calc(100vw - 28px));
+  height: min(590px, calc(100vh - 135px));
+  overflow: hidden;
+  background: #fffaf0;
+  border: 1px solid #b99576;
+  box-shadow: 0 24px 70px rgba(53, 29, 21, .26);
+}
+
+.agent-panel > header {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 32px;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  color: #fff7e9;
+  background: linear-gradient(120deg, #4a2520, #85372f);
+}
+
+.agent-portrait {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  font: 24px "Noto Serif SC", serif;
+  border: 1px solid rgba(255,255,255,.45);
+}
+
+.agent-panel header strong,
+.agent-panel header small { display: block; }
+.agent-panel header small { margin-top: 3px; color: #e8cdb8; font-size: 11px; }
+.agent-panel header button { color: #fff; font-size: 25px; background: transparent; border: 0; cursor: pointer; }
+
+.agent-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 18px;
+  overflow-y: auto;
+  background: linear-gradient(rgba(255,250,240,.93), rgba(255,250,240,.93)),
+    radial-gradient(circle at 20% 20%, #bc8b65 0 1px, transparent 1px);
+  background-size: auto, 18px 18px;
+}
+
+.agent-message {
+  max-width: 86%;
+  padding: 10px 12px;
+  color: #4d382e;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  background: #f0e4d3;
+  border: 1px solid #dbc5a8;
+}
+
+.agent-recommendations {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  white-space: normal;
+}
+
+.agent-food-link {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  color: #5a3028;
+  text-decoration: none;
+  background: #fffaf0;
+  border: 1px solid #c9a989;
+}
+
+.agent-food-link strong {
+  flex: 0 0 auto;
+  color: #923a32;
+  font-size: 11px;
+}
+
+.agent-food-link:hover {
+  color: #fffaf0;
+  background: #8d3932;
+}
+
+.agent-food-link:hover strong {
+  color: #fffaf0;
+}
+
+.agent-comment-draft {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  white-space: normal;
+  background: #fffaf0;
+  border: 1px solid #c9a989;
+}
+
+.agent-comment-draft small { color: #8c6a55; }
+.agent-comment-draft p { margin: 0; line-height: 1.6; }
+.agent-comment-draft button,
+.agent-quick-actions button {
+  padding: 8px 12px;
+  color: #fffaf0;
+  cursor: pointer;
+  background: #8d3932;
+  border: 1px solid #7a302a;
+}
+.agent-comment-draft button:disabled,
+.agent-quick-actions button:disabled { cursor: not-allowed; opacity: .55; }
+
+.agent-quick-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 14px 0;
+  border-top: 1px solid #dac7ac;
+}
+
+.agent-quick-actions button {
+  color: #71372f;
+  background: #f4e5d2;
+  border-color: #c9a989;
+}
+
+.agent-message.is-user { align-self: flex-end; color: #fff9ee; background: #8d3932; border-color: #7a302a; }
+.agent-message.is-thinking { color: #927361; font-size: 13px; }
+.agent-error { margin: 0; padding: 8px 16px; color: #a3312a; font-size: 12px; background: #fff0eb; }
+
+.agent-panel form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 12px 14px 7px;
+  border-top: 1px solid #dac7ac;
+}
+.agent-panel textarea { min-height: 52px; max-height: 110px; padding: 9px; resize: vertical; border: 1px solid #cdb89b; background: #fffdf8; }
+.agent-panel form button { padding: 0 16px; color: #fff; background: #8e342d; border: 0; cursor: pointer; }
+.agent-panel form button:disabled { cursor: not-allowed; opacity: .5; }
+.agent-disclaimer { padding: 0 15px 10px; color: #9b8471; font-size: 10px; }
+
+@media (max-width: 600px) {
+  .agent-shell { right: 14px; bottom: 82px; }
+  .agent-panel { height: min(560px, calc(100vh - 105px)); }
+}

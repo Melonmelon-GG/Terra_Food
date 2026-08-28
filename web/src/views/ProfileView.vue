@@ -3,14 +3,15 @@ import axios from 'axios'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { getAchievements, getMyFoods, getRegions, selectAchievement, updateAvatar, updateMySignature, uploadImage } from '../api'
+import { getAchievements, getMyFoods, getMyFootprints, getRegions, selectAchievement, updateAvatar, updateMySignature, uploadImage } from '../api'
 import { useAuth } from '../auth'
 import FoodEditModal from '../components/FoodEditModal.vue'
-import type { Achievement, Food, FoodReviewStatus, Region, SignatureStatus } from '../types'
+import type { Achievement, Food, FoodFootprint, FoodReviewStatus, Region, SignatureStatus } from '../types'
 
 const { locale, t } = useI18n()
 const auth = useAuth()
 const foods = ref<Food[]>([])
+const footprints = ref<FoodFootprint[]>([])
 const regions = ref<Region[]>([])
 const achievements = ref<Achievement[]>([])
 const selectedFood = ref<Food>()
@@ -126,8 +127,9 @@ async function changeAvatar(event: Event) {
 
 onMounted(async () => {
   try {
-    ;[foods.value, regions.value, achievements.value] = await Promise.all([
+    ;[foods.value, footprints.value, regions.value, achievements.value] = await Promise.all([
       getMyFoods(),
+      getMyFootprints(),
       getRegions(),
       getAchievements(),
     ])
@@ -319,6 +321,37 @@ onMounted(async () => {
         </div>
         <p v-if="achievementError" class="etching-error">{{ achievementError }}</p>
       </aside>
+    </section>
+
+    <section class="footprint-panel">
+      <div class="profile-section-title">
+        <div>
+          <small>{{ t('profile.footprintEyebrow') }}</small>
+          <h2>{{ t('profile.recentFootprints') }}</h2>
+        </div>
+        <p>{{ t('profile.footprintHint') }}</p>
+      </div>
+      <div v-if="footprints.length" class="footprint-list">
+        <RouterLink
+          v-for="footprint in footprints"
+          :key="footprint.food.id + '-' + footprint.visitedAt"
+          :to="'/foods/' + footprint.food.id"
+          class="footprint-card"
+        >
+          <div
+            class="footprint-cover"
+            :style="footprint.food.imageUrl ? { backgroundImage: 'url(' + footprint.food.imageUrl + ')' } : undefined"
+          >
+            <span v-if="!footprint.food.imageUrl">{{ footprint.food.name.slice(0, 1) }}</span>
+          </div>
+          <div>
+            <small>{{ footprint.food.region.province }} · {{ footprint.food.region.name }}</small>
+            <strong>{{ footprint.food.name }}</strong>
+            <time>{{ formatDate(footprint.visitedAt) }}</time>
+          </div>
+        </RouterLink>
+      </div>
+      <p v-else-if="!loading" class="footprint-empty">{{ t('profile.noFootprints') }}</p>
     </section>
 
     <FoodEditModal
