@@ -58,15 +58,14 @@
         INNER JOIN region r ON r.id = f.region_id
         <where>
             f.review_status = 'APPROVED'
-            <choose>
-                <when test="keyword != null and keyword != ''">
-                    AND LOWER(f.name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
-                </when>
-                <when test="regionId != null">
-                    AND f.region_id = #{regionId}
-                </when>
-            </choose>
-            <if test="minLatitude != null and maxLatitude != null and minLongitude != null and maxLongitude != null">
+            <if test="keyword != null and keyword != ''">
+                AND LOWER(f.name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+            </if>
+            <if test="regionId != null">
+                AND f.region_id = #{regionId}
+            </if>
+            <!-- 关键词搜索是全局结果：命中即返回，不随地图可视范围过滤；浏览模式才按视口收窄。 -->
+            <if test="(keyword == null or keyword == '') and minLatitude != null and maxLatitude != null and minLongitude != null and maxLongitude != null">
                 AND f.latitude BETWEEN #{minLatitude} AND #{maxLatitude}
                 <choose>
                     <when test="minLongitude &lt;= maxLongitude">

@@ -55,7 +55,10 @@ public class FoodController {
 
     @GetMapping("/{id}")
     public FoodVO detail(@PathVariable Long id, Authentication authentication) {
-        foodService.recordVisit(id, authentication == null ? null : authentication.getName());
+        // 游客浏览（匿名 token 的 isAuthenticated 为 false）不计入热度与每日访问。
+        if (authentication != null && authentication.isAuthenticated()) {
+            foodService.recordVisit(id, authentication.getName());
+        }
         return foodService.detail(id);
     }
 

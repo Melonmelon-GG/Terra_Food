@@ -8,6 +8,8 @@ public record FoodImportResultVO(
         int skippedCount,
         int duplicateCount,
         int anonymousCount,
+        int invalidCount,
+        int truncatedCount,
         List<FoodImportIssueVO> issues
 ) {
 }
