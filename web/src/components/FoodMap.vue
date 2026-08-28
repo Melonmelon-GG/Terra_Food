@@ -201,6 +201,9 @@ function initializeMap() {
     zoomControl: true,
     preferCanvas: true,
   })
+  // Leaflet 1.8+ 默认 attribution 前缀内嵌乌克兰旗 SVG，与本项目政治中立立场不符；
+  // 覆写为纯文字署名，保留瓦片版权（OSM 政策要求署名，不整体关闭控件）。
+  map.attributionControl?.setPrefix('Leaflet')
 
   createTileLayer()
 

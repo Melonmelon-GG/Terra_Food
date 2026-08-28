@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { updateMyFood, uploadImage } from '../api'
+import {
+  cacheDraftImage,
+  clearDraft,
+  forgetDraftImage,
+  getCachedDraftImage,
+  readDraft,
+  saveDraft,
+  type DraftImageMeta,
+} from '../drafts'
 import type { Food, FoodUpdatePayload, Region } from '../types'
 import RegionDrawer from './RegionDrawer.vue'
 
@@ -24,13 +33,75 @@ const form = reactive<FoodUpdatePayload>({
   remark: props.food.remark || '',
 })
 const image = ref<File>()
+const imageMeta = ref<DraftImageMeta>()
+const previewUrl = ref('')
+const coverInput = ref<HTMLInputElement>()
 const saving = ref(false)
 const error = ref('')
 const regionDrawerOpen = ref(false)
 const selectedRegion = computed(() => props.regions.find((region) => region.id === form.regionId))
 
+// 草稿缓存：按菜品区分，误关弹窗再打开不丢失填写内容；地区/坐标始终以菜品档案为准。
+const DRAFT_KEY = `foodEdit:${props.food.id}`
+
+interface EditDraft {
+  name: string
+  summary: string
+  ingredients: string
+  story: string
+  remark: string
+  image?: DraftImageMeta
+}
+
+const draft = readDraft<EditDraft>(DRAFT_KEY)
+if (draft) {
+  form.name = draft.name
+  form.summary = draft.summary
+  form.ingredients = draft.ingredients
+  form.story = draft.story
+  form.remark = draft.remark
+  if (draft.image) {
+    imageMeta.value = draft.image
+    const cachedImage = getCachedDraftImage(DRAFT_KEY)
+    if (cachedImage) {
+      image.value = cachedImage
+      previewUrl.value = URL.createObjectURL(cachedImage)
+    }
+  }
+}
+
+function persistDraft() {
+  saveDraft(DRAFT_KEY, {
+    name: form.name,
+    summary: form.summary,
+    ingredients: form.ingredients,
+    story: form.story,
+    remark: form.remark,
+    image: imageMeta.value,
+  })
+}
+
+watch(
+  () => [form.name, form.summary, form.ingredients, form.story, form.remark, imageMeta.value],
+  persistDraft,
+)
+
+onBeforeUnmount(() => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+})
+
 function selectImage(event: Event) {
-  image.value = (event.target as HTMLInputElement).files?.[0]
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  // 重置 input 使同一文件可再次触发 change；取消选择时不覆盖已选图片。
+  input.value = ''
+  if (!file) return
+
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  image.value = file
+  imageMeta.value = { name: file.name, type: file.type, size: file.size }
+  previewUrl.value = URL.createObjectURL(file)
+  cacheDraftImage(DRAFT_KEY, file)
 }
 
 async function submit() {
@@ -43,6 +114,8 @@ async function submit() {
   try {
     if (image.value) form.imageUrl = await uploadImage(image.value)
     const updated = await updateMyFood(props.food.id, form)
+    clearDraft(DRAFT_KEY)
+    forgetDraftImage(DRAFT_KEY)
     emit('saved', updated)
   } catch (requestError) {
     error.value = axios.isAxiosError(requestError)
@@ -109,11 +182,24 @@ async function submit() {
           {{ t('upload.remark') }}
           <textarea v-model.trim="form.remark" maxlength="1000" rows="3" :placeholder="t('upload.remarkPlaceholder')"></textarea>
         </label>
-        <label>
-          {{ t('profile.replaceCover') }}
-          <input type="file" accept="image/jpeg,image/png,image/webp" @change="selectImage">
+        <div class="cover-field">
+          <span>{{ t('profile.replaceCover') }}</span>
+          <div class="cover-row">
+            <input
+              ref="coverInput"
+              class="hidden-file-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              @change="selectImage"
+            >
+            <button type="button" class="cover-pick" @click="coverInput?.click()">
+              {{ image ? t('upload.changeCover') : t('upload.pickCover') }}
+            </button>
+          </div>
+          <img v-if="previewUrl" class="cover-preview" :src="previewUrl" :alt="t('profile.replaceCover')">
+          <small v-if="imageMeta && !image" class="cover-warning">{{ t('upload.imageNeedsReselect') }}</small>
           <small>{{ food.imageUrl ? t('profile.keepCover') : t('upload.imageTip') }}</small>
-        </label>
+        </div>
 
         <p v-if="error" class="form-error">{{ error }}</p>
         <div class="modal-actions">

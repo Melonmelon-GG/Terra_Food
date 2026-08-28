@@ -38,7 +38,8 @@ public class AppUserServiceImpl implements AppUserService {
     @Override
     @Transactional(readOnly = true)
     public List<AuthUserVO> listUsers(int page, int pageSize) {
-        int normalizedPage = Math.max(1, page);
+        // 页号设上限，避免极端页码导致 (page-1)*pageSize 整数溢出。
+        int normalizedPage = Math.min(Math.max(page, 1), 20_000);
         int normalizedPageSize = normalizedPageSize(pageSize);
         int offset = (normalizedPage - 1) * normalizedPageSize;
 

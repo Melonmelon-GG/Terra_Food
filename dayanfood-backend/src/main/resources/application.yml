@@ -71,6 +71,20 @@ server:
         same-site: lax
   error:
     include-message: never
+
+---
+# 生产环境默认启用 Secure Cookie（站点应部署在 HTTPS 上）；
+# 本地开发仍通过 SESSION_COOKIE_SECURE=false（默认）在 http 下调试。
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   configuration:

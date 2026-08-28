@@ -46,7 +46,10 @@ public record FoodCreateDTO(
         String ingredients,
 
         @Size(max = 500)
-        @Pattern(regexp = "^(?:$|https?://.*|/uploads/.*)$", message = "图片地址必须为空、HTTP(S) 地址或站内上传地址")
+        @Pattern(
+                regexp = "^(?:$|https?://(?!.*\\.\\.)[^\\s\\\\]+|/uploads/(?!.*\\.\\.)[0-9A-Za-z._-]+\\.(?:jpg|jpeg|png|webp))$",
+                message = "图片地址必须为空、HTTP(S) 地址或站内 /uploads 上传地址（禁止路径穿越与查询串）"
+        )
         String imageUrl,
 
         @Size(max = 1000)

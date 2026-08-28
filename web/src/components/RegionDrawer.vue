@@ -20,17 +20,40 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const activeProvince = ref('')
+const searchKeyword = ref('')
 
+const normalizedKeyword = computed(() => searchKeyword.value.trim().toLowerCase())
 const selectedRegion = computed(() => props.regions.find((region) => region.id === props.modelValue))
 const provinces = computed(() => {
+  const keyword = normalizedKeyword.value
   return [...new Set(props.regions.map((region) => region.province))]
+    .filter((province) => (
+      !keyword
+      || province.toLowerCase().includes(keyword)
+      || props.regions.some((region) => region.province === province && region.name.toLowerCase().includes(keyword))
+    ))
     .sort((left, right) => left.localeCompare(right, 'zh-CN'))
 })
 const visibleCities = computed(() => {
+  const keyword = normalizedKeyword.value
   if (!activeProvince.value) return []
   return props.regions
-    .filter((region) => region.province === activeProvince.value)
+    .filter((region) => (
+      region.province === activeProvince.value
+      && (!keyword || region.name.toLowerCase().includes(keyword))
+    ))
     .sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
+})
+// 搜索时左侧未选省份，直接平铺所有命中地区，避免两级面板挡住搜索结果。
+const searchResults = computed(() => {
+  const keyword = normalizedKeyword.value
+  if (!keyword) return []
+  return props.regions
+    .filter((region) => (
+      region.name.toLowerCase().includes(keyword)
+      || region.province.toLowerCase().includes(keyword)
+    ))
+    .sort((left, right) => `${left.province}${left.name}`.localeCompare(`${right.province}${right.name}`, 'zh-CN'))
 })
 
 watch(
@@ -38,6 +61,7 @@ watch(
   (open) => {
     if (open) {
       activeProvince.value = selectedRegion.value?.province || ''
+      searchKeyword.value = ''
     }
   },
   { immediate: true },
@@ -91,12 +115,24 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           </template>
         </nav>
 
+        <div class="region-search">
+          <input
+            v-model="searchKeyword"
+            type="search"
+            :placeholder="t('regionPicker.searchPlaceholder')"
+            :aria-label="t('regionPicker.searchPlaceholder')"
+          >
+        </div>
+
         <div class="region-drawer-body">
           <section class="province-panel">
             <div class="region-panel-heading">
               <span>{{ t('regionPicker.province') }}</span>
               <small>{{ t('regionPicker.provinceCount', { count: provinces.length }) }}</small>
             </div>
+            <p v-if="searchKeyword && !provinces.length" class="region-search-empty">
+              {{ t('regionPicker.searchEmpty') }}
+            </p>
             <button
               v-for="province in provinces"
               :key="province"
@@ -124,6 +160,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
                 @click="chooseRegion(region)"
               >
                 <span>{{ region.name }}</span>
+                <small>{{ t('regionPicker.choose') }}</small>
+              </button>
+            </div>
+            <div v-else-if="searchKeyword" class="city-grid search-result-grid">
+              <button
+                v-for="region in searchResults"
+                :key="region.id"
+                type="button"
+                :class="{ active: modelValue === region.id }"
+                @click="chooseRegion(region)"
+              >
+                <span>{{ region.province }} · {{ region.name }}</span>
                 <small>{{ t('regionPicker.choose') }}</small>
               </button>
             </div>

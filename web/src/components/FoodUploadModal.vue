@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { createFood, uploadImage } from '../api'
+import {
+  cacheDraftImage,
+  clearDraft,
+  forgetDraftImage,
+  getCachedDraftImage,
+  readDraft,
+  saveDraft,
+  type DraftImageMeta,
+} from '../drafts'
 import RegionDrawer from './RegionDrawer.vue'
 import type { Food, FoodCreatePayload, Region } from '../types'
 
@@ -39,6 +48,9 @@ const form = reactive<UploadForm>({
 })
 
 const image = ref<File>()
+const imageMeta = ref<DraftImageMeta>()
+const previewUrl = ref('')
+const coverInput = ref<HTMLInputElement>()
 const saving = ref(false)
 const error = ref('')
 const regionDrawerOpen = ref(false)
@@ -89,6 +101,55 @@ watch(
   { immediate: true },
 )
 
+// 草稿缓存：文本字段在误关弹窗后保留；坐标/地区/地址永远跟随地图选点（props），不参与草稿。
+const DRAFT_KEY = 'foodUpload'
+
+interface UploadDraft {
+  name: string
+  summary: string
+  ingredients: string
+  story: string
+  remark: string
+  image?: DraftImageMeta
+}
+
+const draft = readDraft<UploadDraft>(DRAFT_KEY)
+if (draft) {
+  form.name = draft.name
+  form.summary = draft.summary
+  form.ingredients = draft.ingredients
+  form.story = draft.story
+  form.remark = draft.remark
+  if (draft.image) {
+    imageMeta.value = draft.image
+    const cachedImage = getCachedDraftImage(DRAFT_KEY)
+    if (cachedImage) {
+      image.value = cachedImage
+      previewUrl.value = URL.createObjectURL(cachedImage)
+    }
+  }
+}
+
+function persistDraft() {
+  saveDraft(DRAFT_KEY, {
+    name: form.name,
+    summary: form.summary,
+    ingredients: form.ingredients,
+    story: form.story,
+    remark: form.remark,
+    image: imageMeta.value,
+  })
+}
+
+watch(
+  () => [form.name, form.summary, form.ingredients, form.story, form.remark, imageMeta.value],
+  persistDraft,
+)
+
+onBeforeUnmount(() => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+})
+
 function selectRegion(regionId?: number) {
   if (regionId != null) {
     form.regionId = regionId
@@ -98,7 +159,16 @@ function selectRegion(regionId?: number) {
 
 function selectImage(event: Event) {
   const input = event.target as HTMLInputElement
-  image.value = input.files?.[0]
+  const file = input.files?.[0]
+  // 重置 input 使同一文件可再次触发 change；取消选择时不覆盖已选图片。
+  input.value = ''
+  if (!file) return
+
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  image.value = file
+  imageMeta.value = { name: file.name, type: file.type, size: file.size }
+  previewUrl.value = URL.createObjectURL(file)
+  cacheDraftImage(DRAFT_KEY, file)
 }
 
 async function submit() {
@@ -136,6 +206,8 @@ async function submit() {
     if (food.reviewStatus === 'PENDING') {
       window.alert(t('upload.pendingSuccess'))
     }
+    clearDraft(DRAFT_KEY)
+    forgetDraftImage(DRAFT_KEY)
     emit('saved', food)
   } catch {
     error.value = t('upload.saveError')
@@ -208,11 +280,24 @@ async function submit() {
           {{ t('upload.remark') }}
           <textarea v-model="form.remark" maxlength="1000" rows="3" :placeholder="t('upload.remarkPlaceholder')"></textarea>
         </label>
-        <label>
-          {{ t('upload.cover') }}
-          <input type="file" accept="image/jpeg,image/png,image/webp" @change="selectImage">
+        <div class="cover-field">
+          <span>{{ t('upload.cover') }}</span>
+          <div class="cover-row">
+            <input
+              ref="coverInput"
+              class="hidden-file-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              @change="selectImage"
+            >
+            <button type="button" class="cover-pick" @click="coverInput?.click()">
+              {{ image ? t('upload.changeCover') : t('upload.pickCover') }}
+            </button>
+          </div>
+          <img v-if="previewUrl" class="cover-preview" :src="previewUrl" :alt="t('upload.cover')">
+          <small v-if="imageMeta && !image" class="cover-warning">{{ t('upload.imageNeedsReselect') }}</small>
           <small>{{ t('upload.imageTip') }}</small>
-        </label>
+        </div>
 
         <p v-if="error" class="form-error">{{ error }}</p>
 

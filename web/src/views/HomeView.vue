@@ -74,13 +74,21 @@ async function loadFoods() {
 let boundsLoadTimer: ReturnType<typeof setTimeout> | undefined
 
 function updateMapBounds(bounds: MapBounds) {
+  // 关键词搜索是全局结果，不随地图视口过滤，拖动地图时跳过防抖刷新。
+  if (keyword.value.trim()) return
   mapBounds.value = bounds
   if (boundsLoadTimer) clearTimeout(boundsLoadTimer)
   boundsLoadTimer = setTimeout(() => void loadFoods(), 250)
 }
 
+function submitSearch() {
+  mapBounds.value = undefined
+  void loadFoods()
+}
+
 onBeforeUnmount(() => {
   if (boundsLoadTimer) clearTimeout(boundsLoadTimer)
+  locationLookupController?.abort()
 })
 
 async function chooseRegion(regionId?: number) {
@@ -131,6 +139,11 @@ async function pickLocation(latitude: number, longitude: number) {
     if (lookupSequence === locationLookupSequence) {
       pickedRegionId.value = resolvedLocation.region.id
       pickedAddress.value = resolvedLocation.address
+      // 地图↔地域寻味联动：选点成功后，上方的地区选择器同步到该地区并刷新目录。
+      if (selectedRegionId.value !== resolvedLocation.region.id) {
+        selectedRegionId.value = resolvedLocation.region.id
+        await loadFoods()
+      }
     }
   } catch (requestError) {
     if (lookupSequence === locationLookupSequence) {
@@ -195,7 +208,7 @@ onMounted(async () => {
     <p>
       {{ t('home.heroDescription') }}
     </p>
-    <form @submit.prevent="loadFoods">
+    <form @submit.prevent="submitSearch">
       <input v-model="keyword" :placeholder="t('home.searchPlaceholder')">
       <button>{{ t('home.search') }}</button>
     </form>

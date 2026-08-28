@@ -64,14 +64,19 @@ const usersPageEnd = computed(() => Math.min(usersPage.value * usersPageSize.val
 
 const canManageRoles = computed(() => auth.currentUser.value?.role === 'ADMIN')
 
+// 行级操作进行中的菜品/用户集合：防止重复提交与切换数据时的串扰。
+const pendingFoodIds = ref<Set<number>>(new Set())
+const pendingUserIds = ref<Set<number>>(new Set())
+
 const foodsPageStart = computed(() => foods.value.length ? (foodsPage.value - 1) * foodsPageSize.value + 1 : 0)
 const foodsPageEnd = computed(() => Math.min(foodsPage.value * foodsPageSize.value, foodsTotal.value))
 
 function switchTab(tab: AdminTab) {
   activeTab.value = tab
-  if (tab === 'users' && !users.value.length && !usersLoading.value && !loading.value) {
+  // 每次进入用户标签都重新拉取，避免长时间停留在后台时显示挂载时的陈旧数据。
+  if (tab === 'users') {
     void loadUsersPage(1, usersPageSize.value)
-  } else if (tab !== 'users') {
+  } else {
     void loadFoodsPage(1, foodsPageSize.value)
   }
 }
@@ -128,30 +133,43 @@ function applyFoodsPage(response: Awaited<ReturnType<typeof getAdminFoods>>) {
   pendingFoodTotal.value = response.pendingTotal
 }
 
+let foodsRequestSequence = 0
+
 async function loadFoodsPage(page = foodsPage.value, pageSize = foodsPageSize.value) {
+  const requestSequence = ++foodsRequestSequence
   loading.value = true
   error.value = ''
   try {
     const status = activeTab.value === 'reviews' ? 'PENDING' : undefined
-    applyFoodsPage(await getAdminFoods(page, pageSize, status))
+    const response = await getAdminFoods(page, pageSize, status)
+    if (requestSequence !== foodsRequestSequence) return
+    applyFoodsPage(response)
   } catch {
-    error.value = t('admin.loadError')
+    if (requestSequence === foodsRequestSequence) {
+      error.value = t('admin.loadError')
+    }
   } finally {
-    loading.value = false
+    if (requestSequence === foodsRequestSequence) {
+      loading.value = false
+    }
   }
 }
 
 async function reviewSubmission(food: Food, status: Extract<FoodReviewStatus, 'APPROVED' | 'REJECTED'>) {
+  if (pendingFoodIds.value.has(food.id)) return
   const action = status === 'APPROVED' ? t('admin.approve') : t('admin.reject')
   if (!window.confirm(t('admin.reviewConfirm', { action, name: food.name }))) {
     return
   }
 
+  pendingFoodIds.value.add(food.id)
   try {
     await reviewFood(food.id, { status })
     await loadFoodsPage(foodsPage.value, foodsPageSize.value)
   } catch {
     error.value = t('admin.reviewError')
+  } finally {
+    pendingFoodIds.value.delete(food.id)
   }
 }
 
@@ -161,37 +179,50 @@ function reviewStatusLabel(status: FoodReviewStatus) {
   return t('admin.rejected')
 }
 
+let usersRequestSequence = 0
+
 async function loadUsersPage(page = usersPage.value, pageSize = usersPageSize.value) {
+  const requestSequence = ++usersRequestSequence
   usersLoading.value = true
   usersError.value = ''
 
   try {
     const response = await getUsers(page, pageSize)
+    if (requestSequence !== usersRequestSequence) return
     users.value = response.items
     usersTotal.value = response.total
     usersPage.value = response.page
     usersPageSize.value = clampPageSize(response.pageSize)
   } catch {
-    usersError.value = t('admin.userLoadError')
+    if (requestSequence === usersRequestSequence) {
+      usersError.value = t('admin.userLoadError')
+    }
   } finally {
-    usersLoading.value = false
+    if (requestSequence === usersRequestSequence) {
+      usersLoading.value = false
+    }
   }
 }
 
 async function removeFood(food: Food) {
+  if (pendingFoodIds.value.has(food.id)) return
   if (!window.confirm(t('admin.deleteConfirm', { name: food.name }))) {
     return
   }
 
+  pendingFoodIds.value.add(food.id)
   try {
     await deleteFood(food.id)
     await loadFoodsPage(foodsPage.value, foodsPageSize.value)
   } catch {
     error.value = t('admin.deleteError')
+  } finally {
+    pendingFoodIds.value.delete(food.id)
   }
 }
 
 async function toggleUserActive(user: AuthUser) {
+  if (pendingUserIds.value.has(user.id)) return
   const targetState = !user.active
   const action = targetState ? t('admin.enable') : t('admin.disable')
 
@@ -199,6 +230,7 @@ async function toggleUserActive(user: AuthUser) {
     return
   }
 
+  pendingUserIds.value.add(user.id)
   usersLoading.value = true
   usersError.value = ''
 
@@ -208,17 +240,20 @@ async function toggleUserActive(user: AuthUser) {
   } catch {
     usersError.value = t('admin.userActionError')
   } finally {
+    pendingUserIds.value.delete(user.id)
     usersLoading.value = false
   }
 }
 
 async function toggleSubAdmin(user: AuthUser) {
+  if (pendingUserIds.value.has(user.id)) return
   const role = user.role === 'SUB_ADMIN' ? 'USER' : 'SUB_ADMIN'
   const action = role === 'SUB_ADMIN' ? t('admin.promoteSubAdmin') : t('admin.revokeSubAdmin')
   if (!window.confirm(t('admin.roleChangeConfirm', { action, name: user.displayName || user.username }))) {
     return
   }
 
+  pendingUserIds.value.add(user.id)
   usersLoading.value = true
   usersError.value = ''
   try {
@@ -227,16 +262,19 @@ async function toggleSubAdmin(user: AuthUser) {
   } catch {
     usersError.value = t('admin.roleActionError')
   } finally {
+    pendingUserIds.value.delete(user.id)
     usersLoading.value = false
   }
 }
 
 async function reviewSignatureSubmission(user: AuthUser, status: Extract<SignatureStatus, 'APPROVED' | 'REJECTED'>) {
+  if (pendingUserIds.value.has(user.id)) return
   const action = status === 'APPROVED' ? t('admin.approve') : t('admin.reject')
   if (!window.confirm(t('admin.signatureReviewConfirm', { action, name: user.displayName || user.username }))) {
     return
   }
 
+  pendingUserIds.value.add(user.id)
   usersLoading.value = true
   usersError.value = ''
   try {
@@ -245,15 +283,18 @@ async function reviewSignatureSubmission(user: AuthUser, status: Extract<Signatu
   } catch {
     usersError.value = t('admin.signatureReviewError')
   } finally {
+    pendingUserIds.value.delete(user.id)
     usersLoading.value = false
   }
 }
 
 async function removeUser(user: AuthUser) {
+  if (pendingUserIds.value.has(user.id)) return
   if (!window.confirm(t('admin.deleteUserConfirm', { name: user.displayName || user.username }))) {
     return
   }
 
+  pendingUserIds.value.add(user.id)
   usersLoading.value = true
   usersError.value = ''
 
@@ -267,6 +308,7 @@ async function removeUser(user: AuthUser) {
   } catch {
     usersError.value = t('admin.userActionError')
   } finally {
+    pendingUserIds.value.delete(user.id)
     usersLoading.value = false
   }
 }
@@ -395,6 +437,8 @@ onMounted(loadFoodsAndMeta)
           <span>{{ t('admin.skipped', { count: importResult.skippedCount }) }}</span>
           <span>{{ t('admin.duplicates', { count: importResult.duplicateCount }) }}</span>
           <span>{{ t('admin.anonymous', { count: importResult.anonymousCount }) }}</span>
+          <span v-if="importResult.invalidCount">{{ t('admin.invalid', { count: importResult.invalidCount }) }}</span>
+          <span v-if="importResult.truncatedCount">{{ t('admin.truncated', { count: importResult.truncatedCount }) }}</span>
           <details v-if="importResult.issues.length">
             <summary>{{ t('admin.issueCount', { count: importResult.issues.length }) }}</summary>
             <ul>
@@ -436,10 +480,10 @@ onMounted(loadFoodsAndMeta)
                     <div class="admin-user-actions">
                       <button class="admin-user-action" type="button" @click="viewingFood = food">{{ t('admin.view') }}</button>
                       <template v-if="food.reviewStatus === 'PENDING'">
-                        <button class="admin-user-action" type="button" @click="reviewSubmission(food, 'APPROVED')">{{ t('admin.approve') }}</button>
-                        <button class="danger-button" type="button" @click="reviewSubmission(food, 'REJECTED')">{{ t('admin.reject') }}</button>
+                        <button class="admin-user-action" type="button" :disabled="pendingFoodIds.has(food.id)" @click="reviewSubmission(food, 'APPROVED')">{{ t('admin.approve') }}</button>
+                        <button class="danger-button" type="button" :disabled="pendingFoodIds.has(food.id)" @click="reviewSubmission(food, 'REJECTED')">{{ t('admin.reject') }}</button>
                       </template>
-                      <button class="danger-button" @click="removeFood(food)">{{ t('admin.delete') }}</button>
+                      <button class="danger-button" :disabled="pendingFoodIds.has(food.id)" @click="removeFood(food)">{{ t('admin.delete') }}</button>
                     </div>
                   </td>
                 </tr>
@@ -520,11 +564,13 @@ onMounted(loadFoodsAndMeta)
                         <button
                           class="admin-user-action"
                           type="button"
+                          :disabled="pendingUserIds.has(user.id)"
                           @click="reviewSignatureSubmission(user, 'APPROVED')"
                         >{{ t('admin.approve') }}</button>
                         <button
                           class="danger-button"
                           type="button"
+                          :disabled="pendingUserIds.has(user.id)"
                           @click="reviewSignatureSubmission(user, 'REJECTED')"
                         >{{ t('admin.reject') }}</button>
                       </template>
@@ -532,14 +578,15 @@ onMounted(loadFoodsAndMeta)
                         v-if="canManageRoles && user.role !== 'ADMIN'"
                         class="admin-user-action"
                         type="button"
+                        :disabled="pendingUserIds.has(user.id)"
                         @click="toggleSubAdmin(user)"
                       >
                         {{ user.role === 'SUB_ADMIN' ? t('admin.revokeSubAdmin') : t('admin.promoteSubAdmin') }}
                       </button>
-                      <button class="admin-user-action" type="button" @click="toggleUserActive(user)">
+                      <button class="admin-user-action" type="button" :disabled="pendingUserIds.has(user.id)" @click="toggleUserActive(user)">
                         {{ user.active ? t('admin.disable') : t('admin.enable') }}
                       </button>
-                      <button class="danger-button" type="button" @click="removeUser(user)">{{ t('admin.delete') }}</button>
+                      <button class="danger-button" type="button" :disabled="pendingUserIds.has(user.id)" @click="removeUser(user)">{{ t('admin.delete') }}</button>
                     </div>
                   </td>
                 </tr>
@@ -593,10 +640,6 @@ onMounted(loadFoodsAndMeta)
           <div>
             <dt>{{ t('admin.creator') }}</dt>
             <dd>{{ viewingFood.creator.displayName || viewingFood.createdBy || t('admin.anonymousName') }}</dd>
-          </div>
-          <div>
-            <dt>{{ t('admin.coordinates') }}</dt>
-            <dd>{{ viewingFood.latitude }}, {{ viewingFood.longitude }}</dd>
           </div>
           <div>
             <dt>{{ t('upload.address') }}</dt>

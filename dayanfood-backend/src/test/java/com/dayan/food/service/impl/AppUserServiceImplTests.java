@@ -11,6 +11,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -110,6 +112,15 @@ class AppUserServiceImplTests {
         assertThrows(IllegalArgumentException.class, () -> service.deleteById(1L, "helper"));
 
         verify(appUserMapper, never()).deleteById(1L);
+    }
+
+    @Test
+    void listUsersClampsExtremePageToAvoidOffsetOverflow() {
+        when(appUserMapper.findPage(199_990, 10)).thenReturn(List.of());
+
+        service.listUsers(Integer.MAX_VALUE, 10);
+
+        verify(appUserMapper).findPage(199_990, 10);
     }
 
     private AppUser user(String username, UserRole role) {

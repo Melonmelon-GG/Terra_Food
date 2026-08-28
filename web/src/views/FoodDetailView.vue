@@ -229,6 +229,9 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </form>
+      <p v-else class="comment-login-hint">
+        <RouterLink to="/login" :query="{ redirect: route.fullPath }">{{ t('detail.loginToComment') }}</RouterLink>
+      </p>
 
       <p v-if="commentError" class="form-error comment-message">{{ commentError }}</p>
       <p v-if="commentsLoading" class="comment-state">{{ t('detail.commentsLoading') }}</p>
