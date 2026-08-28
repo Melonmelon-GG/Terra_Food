@@ -321,14 +321,18 @@ onMounted(async () => {
       <p v-else-if="!foods.length" class="explorer-state">{{ t('home.empty') }}</p>
 
       <div v-else class="explorer-cards">
-        <RouterLink
+        <article
           v-for="food in catalogFoods"
           :key="food.id"
-          :to="'/foods/' + food.id"
           class="explorer-card"
-          @mouseenter="focusFood(food)"
-          @focus="focusFood(food)"
+          :class="{ 'is-active': activeFoodId === food.id }"
         >
+          <button
+            class="explorer-card-focus"
+            type="button"
+            :aria-label="t('home.focusFood', { name: food.name })"
+            @click="focusFood(food)"
+          ></button>
           <div
             class="explorer-card-photo"
             :class="{ 'no-cover': !food.imageUrl }"
@@ -341,10 +345,16 @@ onMounted(async () => {
             <p>{{ food.summary }}</p>
             <div>
               <b>{{ t('home.heat', { value: food.heat }) }}</b>
-              <span>{{ t('home.readMore') }}</span>
+              <RouterLink
+                :to="'/foods/' + food.id"
+                class="explorer-card-link"
+                @click.stop
+              >
+                {{ t('home.readMore') }}
+              </RouterLink>
             </div>
           </div>
-        </RouterLink>
+        </article>
       </div>
     </section>
 

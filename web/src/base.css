@@ -22,6 +22,8 @@
   color: var(--color-ink);
   background: var(--color-bg);
   font-synthesis: none;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* ===== 重置与正文 ===== */
@@ -31,6 +33,8 @@
 }
 
 body {
+  min-width: 320px;
+  min-height: 100dvh;
   margin: 0;
   background-image: radial-gradient(#8e72591f 1px, transparent 1px);
   background-size: 20px 20px;
@@ -43,10 +47,10 @@ a {
 
 /* ===== 页头：品牌、印章、导航、语言切换、账号入口 ===== */
 
-header {
+#app > header {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 900;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -86,12 +90,16 @@ header {
   border-radius: 4px;
 }
 
-nav {
+#app > header > nav {
   display: flex;
   align-items: center;
   gap: 30px;
   color: #6c5547;
   font-size: 14px;
+}
+
+.mobile-nav-toggle {
+  display: none;
 }
 
 .language-switch {
@@ -125,7 +133,7 @@ nav {
 
 /* ===== 页脚 ===== */
 
-footer {
+#app > footer {
   padding: 30px;
   color: #cfbdaa;
   font-size: 12px;
@@ -190,4 +198,12 @@ article small {
   color: #6c5547;
   background: transparent;
   border: 1px solid #bdad97;
+}
+
+main {
+  min-width: 0;
+}
+
+img {
+  max-width: 100%;
 }

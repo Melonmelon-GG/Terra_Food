@@ -10,6 +10,8 @@ export default {
     logout: '退出',
     admin: '管理后台',
     cancel: '取消',
+    openMenu: '打开导航菜单',
+    closeMenu: '关闭导航菜单',
   },
   footer: '大炎珍馐志 · 记录地域风味，也记录食物背后的人与时光',
   notFound: {
@@ -56,6 +58,7 @@ export default {
     empty: '此卷尚无记录，静候新的风味。',
     heat: '热度 {value}',
     readMore: '阅其志 →',
+    focusFood: '在地图上定位{name}',
   },
   map: {
     detail: '查看珍馐志 →',

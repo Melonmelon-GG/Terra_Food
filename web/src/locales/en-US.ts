@@ -10,6 +10,8 @@ export default {
     logout: 'Sign out',
     admin: 'Admin',
     cancel: 'Cancel',
+    openMenu: 'Open navigation menu',
+    closeMenu: 'Close navigation menu',
   },
   footer: 'Flavors of Dayan · Preserving regional tastes and the stories behind them',
   notFound: {
@@ -56,6 +58,7 @@ export default {
     empty: 'No dishes have been recorded here yet.',
     heat: 'Popularity {value}',
     readMore: 'Read more →',
+    focusFood: 'Locate {name} on the map',
   },
   map: {
     detail: 'View details →',

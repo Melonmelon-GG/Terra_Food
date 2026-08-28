@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -13,16 +13,26 @@ const { locale, t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuth()
+const mobileNavOpen = ref(false)
 const nextLocaleLabel = computed(() => locale.value === 'zh-CN' ? 'EN' : '中')
 const isLoginPage = computed(() => route.path === '/login')
+const mobileNavLabel = computed(() => mobileNavOpen.value
+  ? t('common.closeMenu')
+  : t('common.openMenu'))
+
+watch(() => route.fullPath, () => {
+  mobileNavOpen.value = false
+})
 
 function toggleLocale() {
   const nextLocale: SupportedLocale = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
   locale.value = nextLocale
   saveLocale(nextLocale)
+  mobileNavOpen.value = false
 }
 
 async function logout() {
+  mobileNavOpen.value = false
   await auth.logout()
   await router.push('/login')
 }
@@ -38,7 +48,20 @@ async function logout() {
       </div>
     </RouterLink>
 
-    <nav>
+    <button
+      class="mobile-nav-toggle"
+      type="button"
+      :aria-label="mobileNavLabel"
+      :aria-expanded="mobileNavOpen"
+      aria-controls="primary-navigation"
+      @click="mobileNavOpen = !mobileNavOpen"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav id="primary-navigation" :class="{ 'is-open': mobileNavOpen }" @click="mobileNavOpen = false">
       <RouterLink v-if="!isLoginPage" to="/">{{ t('common.catalog') }}</RouterLink>
       <RouterLink v-if="auth.currentUser.value && !isLoginPage" to="/profile">
         {{ t('common.profile') }}

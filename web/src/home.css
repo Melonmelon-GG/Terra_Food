@@ -12,7 +12,7 @@ main:has(> .map-explorer) {
   min-width: 0;
 }
 
-body:has(main > .map-explorer) footer {
+body:has(main > .map-explorer) > #app > footer {
   display: none;
 }
 
@@ -341,6 +341,7 @@ body:has(main > .map-explorer) > #app > header {
 }
 
 .explorer-card {
+  position: relative;
   display: grid;
   grid-template-rows: 88px minmax(0, 1fr);
   min-width: 0;
@@ -348,6 +349,7 @@ body:has(main > .map-explorer) > #app > header {
   background: #fffdf8a6;
   border: 1px solid #ffffff9c;
   border-radius: 13px;
+  cursor: pointer;
   box-shadow:
     0 10px 24px #38251f20,
     inset 0 1px 0 #fff;
@@ -355,10 +357,34 @@ body:has(main > .map-explorer) > #app > header {
 }
 
 .explorer-card:hover,
-.explorer-card:focus-visible {
+.explorer-card:has(.explorer-card-focus:focus-visible),
+.explorer-card.is-active {
   border-color: #9d574d;
   box-shadow: 0 14px 30px #38251f36;
   transform: translateY(-3px);
+}
+
+.explorer-card-focus {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  outline: 0;
+}
+
+.explorer-card-link {
+  position: relative;
+  z-index: 2;
+}
+
+.explorer-card-link:hover,
+.explorer-card-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .explorer-card-photo,
@@ -431,8 +457,9 @@ body:has(main > .map-explorer) > #app > header {
 .explorer-preview {
   top: 18px;
   right: 18px;
-  bottom: 18px;
+  bottom: auto;
   width: 282px;
+  height: calc(50% - 18px);
   padding: 12px;
   overflow-y: auto;
   border-radius: 22px;
