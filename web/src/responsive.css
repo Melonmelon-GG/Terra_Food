@@ -477,16 +477,53 @@
   }
 
   .explorer-sidebar {
-    padding: 20px 16px;
+    padding: 14px;
+    border-radius: 18px;
   }
 
   .explorer-sidebar h1 {
-    margin: 10px 0 14px;
+    margin: 5px 0 8px;
+    font-size: clamp(28px, 8vw, 34px);
+    line-height: 1.2;
   }
 
   .explorer-intro {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
     font-size: 12px;
-    line-height: 1.75;
+    line-height: 1.65;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .explorer-search {
+    grid-template-columns: minmax(0, 1fr) minmax(86px, 28%);
+    gap: 6px;
+    margin: 12px 0 10px;
+    padding: 5px;
+  }
+
+  .explorer-search input {
+    padding: 9px 8px;
+  }
+
+  .explorer-search button {
+    min-height: 44px;
+  }
+
+  .explorer-sidebar-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .explorer-outline {
+    min-height: 54px;
+    padding: 8px 10px;
+  }
+
+  .explorer-sidebar-foot {
+    display: none;
   }
 
   .explorer-map-hint {
