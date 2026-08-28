@@ -253,6 +253,20 @@
   border: 1px dashed #cdbca5;
 }
 
+.comment-login-hint {
+  margin: 18px 0 0;
+  padding: 14px 18px;
+  font-size: 13px;
+  text-align: center;
+  background: #f6eee1;
+  border: 1px solid #dccbb1;
+}
+
+.comment-login-hint a {
+  color: #8c3029;
+  text-decoration: underline;
+}
+
 .comment-list {
   display: grid;
   gap: 14px;

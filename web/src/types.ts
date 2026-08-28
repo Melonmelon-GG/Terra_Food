@@ -180,6 +180,8 @@ export interface FoodImportResult {
   skippedCount: number
   duplicateCount: number
   anonymousCount: number
+  invalidCount: number
+  truncatedCount: number
   issues: FoodImportIssue[]
 }
 

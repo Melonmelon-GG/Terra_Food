@@ -15,7 +15,7 @@
 
 .region-drawer {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   width: min(760px, 92vw);
   height: 100%;
   color: #392820;
@@ -84,6 +84,72 @@
 .region-breadcrumb strong {
   color: #3b2920;
   font-weight: 600;
+}
+
+.region-search {
+  padding: 16px 36px 0;
+}
+
+.region-search input {
+  width: 100%;
+  padding: 10px 12px;
+  color: #382a22;
+  font: inherit;
+  background: #fff;
+  border: 1px solid var(--border-map);
+  outline: none;
+}
+
+.region-search input:focus {
+  border-color: #8b342b;
+  box-shadow: 0 0 0 2px #8b342b1a;
+}
+
+.region-search-empty {
+  margin: 18px 8px;
+  padding: 30px 12px;
+  color: #9a8572;
+  font-size: 13px;
+  text-align: center;
+  border: 1px dashed #cbbb9f;
+}
+
+.search-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.search-result-grid button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 12px 14px;
+  color: #5f4739;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: #fffaf1;
+  border: 1px solid #d8c8af;
+}
+
+.search-result-grid button small {
+  color: #a28a75;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.search-result-grid button:hover,
+.search-result-grid button.active {
+  color: #fff;
+  background: #8f3029;
+  border-color: #8f3029;
+}
+
+.search-result-grid button:hover small,
+.search-result-grid button.active small {
+  color: #f5d9ce;
 }
 
 .region-drawer-body {

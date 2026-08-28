@@ -30,12 +30,10 @@ const router = createRouter({
     {
       path: '/',
       component: HomeView,
-      meta: { requiresAuth: true },
     },
     {
       path: '/foods/:id',
       component: FoodDetailView,
-      meta: { requiresAuth: true },
     },
     {
       path: '/login',

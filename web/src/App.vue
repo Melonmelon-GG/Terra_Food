@@ -46,6 +46,9 @@ async function logout() {
         {{ t('common.admin') }}
       </RouterLink>
       <a href="#about">{{ t('common.about') }}</a>
+      <RouterLink v-if="!auth.currentUser.value && !isLoginPage" to="/login">
+        {{ t('common.login') }}
+      </RouterLink>
       <button v-if="auth.currentUser.value" class="account-link" @click="logout">
         {{ auth.currentUser.value.displayName }} · {{ t('common.logout') }}
       </button>
