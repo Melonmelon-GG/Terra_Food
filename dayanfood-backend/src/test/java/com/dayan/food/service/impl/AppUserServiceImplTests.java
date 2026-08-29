@@ -69,9 +69,6 @@ class AppUserServiceImplTests {
 
     @Test
     void reviewSignatureRejectsInvalidStatus() {
-        when(appUserMapper.findByUsername("admin")).thenReturn(user("admin", UserRole.ADMIN));
-        when(appUserMapper.findById(2L)).thenReturn(user("user", UserRole.USER));
-
         assertThrows(
                 IllegalArgumentException.class,
                 () -> service.reviewSignature(2L, SignatureStatus.PENDING, "admin")

@@ -21,7 +21,9 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,8 +53,9 @@ class FoodLikeServiceImplTests {
 
     @Test
     void likeInsertsIgnoreAndReturnsStatus() {
+        AppUser user = activeUser();
         when(foodMapper.findById(FOOD_ID)).thenReturn(approvedFood());
-        when(appUserMapper.findByUsername(USERNAME)).thenReturn(activeUser());
+        when(appUserMapper.findByUsername(USERNAME)).thenReturn(user);
         when(foodLikeMapper.insertIgnore(anyLike())).thenReturn(1);
         when(foodLikeMapper.countByFoodId(FOOD_ID)).thenReturn(2);
         when(foodLikeMapper.exists(FOOD_ID, USER_ID)).thenReturn(1);
@@ -70,8 +73,9 @@ class FoodLikeServiceImplTests {
 
     @Test
     void unlikeDeletesAndRefreshesStatus() {
+        AppUser user = activeUser();
         when(foodMapper.findById(FOOD_ID)).thenReturn(approvedFood());
-        when(appUserMapper.findByUsername(USERNAME)).thenReturn(activeUser());
+        when(appUserMapper.findByUsername(USERNAME)).thenReturn(user);
         when(foodLikeMapper.deleteIgnore(FOOD_ID, USER_ID)).thenReturn(1);
         when(foodLikeMapper.countByFoodId(FOOD_ID)).thenReturn(0);
         when(foodLikeMapper.exists(FOOD_ID, USER_ID)).thenReturn(0);
@@ -113,7 +117,7 @@ class FoodLikeServiceImplTests {
     }
 
     private static FoodLike anyLike() {
-        return org.mockito.ArgumentMatchers.any(FoodLike.class);
+        return any(FoodLike.class);
     }
 
     private static Food approvedFood() {
@@ -127,6 +131,9 @@ class FoodLikeServiceImplTests {
     }
 
     private static AppUser activeUser() {
-        return new AppUser(USERNAME, "encoded", "Tester", "tester@example.com", UserRole.USER);
+        AppUser user = mock(AppUser.class);
+        when(user.getId()).thenReturn(USER_ID);
+        when(user.isActive()).thenReturn(true);
+        return user;
     }
 }

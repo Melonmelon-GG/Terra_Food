@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -121,7 +122,7 @@ class FoodImportServiceImplTests {
 
     private void stubCityLookup() {
         when(cityCenterService.normalizeProvince("四川")).thenReturn("四川");
-        when(cityCenterService.resolve("四川", "成都", anyString(), anyString()))
+        when(cityCenterService.resolve(eq("四川"), eq("成都"), anyString(), anyString()))
                 .thenReturn(new CityCenterVO("成都", "四川", new BigDecimal("30.6599"), new BigDecimal("104.0633")));
     }
 
