@@ -1,16 +1,13 @@
-# Terra Food 本地依赖：MySQL + Redis
-# 用法：docker compose up -d
-# 密码可通过同目录 .env 覆盖，例如：
-#   MYSQL_ROOT_PASSWORD=your-password
+# Terra Food 本地依赖：MySQL + Redis；Agent profile 额外启动 Milvus、MCP 与 LangChain。
+# 基础服务：docker compose up -d
+# Agent 全栈：docker compose --profile agent up -d
 services:
   mysql:
     image: mysql:8.4
     container_name: dayan-food-mysql
     restart: unless-stopped
     environment:
-      # 后端默认以 root 连接，此密码必须与启动后端时的 DB_PASSWORD 一致
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-replace-me}
-      # 自动创建数据库，与 application.yml 的库名一致
       MYSQL_DATABASE: dayan_food
     command:
       - --character-set-server=utf8mb4
@@ -29,7 +26,6 @@ services:
     image: redis:7-alpine
     container_name: dayan-food-redis
     restart: unless-stopped
-    # 本地开发默认不设密码，与 application.yml 的 REDIS_PASSWORD 默认值一致
     ports:
       - "6379:6379"
     volumes:
@@ -40,6 +36,87 @@ services:
       timeout: 5s
       retries: 5
 
+  milvus-etcd:
+    profiles: ["agent"]
+    image: quay.io/coreos/etcd:v3.5.18
+    container_name: dayan-food-milvus-etcd
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: >-
+      etcd --advertise-client-urls=http://127.0.0.1:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    volumes:
+      - milvus-etcd-data:/etcd
+
+  milvus-minio:
+    profiles: ["agent"]
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: dayan-food-milvus-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    command: minio server /minio_data
+    volumes:
+      - milvus-minio-data:/minio_data
+
+  milvus:
+    profiles: ["agent"]
+    image: milvusdb/milvus:v3.0.0
+    container_name: dayan-food-milvus
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      - milvus-etcd
+      - milvus-minio
+
+  agent-mcp:
+    profiles: ["agent"]
+    build: ./agent-service
+    container_name: dayan-food-agent-mcp
+    command: ["python", "-m", "app.mcp_server"]
+    environment:
+      AGENT_INTERNAL_TOKEN: ${AGENT_INTERNAL_TOKEN:?set AGENT_INTERNAL_TOKEN}
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://host.docker.internal:8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  agent-api:
+    profiles: ["agent"]
+    build: ./agent-service
+    container_name: dayan-food-agent-api
+    environment:
+      AGENT_INTERNAL_TOKEN: ${AGENT_INTERNAL_TOKEN:?set AGENT_INTERNAL_TOKEN}
+      MCP_SERVER_URL: http://agent-mcp:8091/mcp
+      MILVUS_URI: http://milvus:19530
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      AGENT_MODEL: ${AGENT_MODEL:-deepseek-v4-flash}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-zh-v1.5}
+      AGENT_PERSONA: ${AGENT_PERSONA:-}
+    volumes:
+      - agent-model-cache:/root/.cache
+    ports:
+      - "127.0.0.1:8090:8090"
+    depends_on:
+      - agent-mcp
+      - milvus
+
 volumes:
   mysql-data:
   redis-data:
+  milvus-etcd-data:
+  milvus-minio-data:
+  milvus-data:
+  agent-model-cache:

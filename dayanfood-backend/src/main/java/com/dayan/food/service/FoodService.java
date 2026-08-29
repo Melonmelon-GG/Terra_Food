@@ -2,6 +2,7 @@ package com.dayan.food.service;
 
 import com.dayan.food.entity.dto.FoodUpdateDTO;
 import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.vo.FoodFootprintVO;
 import com.dayan.food.entity.vo.FoodPageVO;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 
@@ -22,6 +23,16 @@ public interface FoodService {
     FoodPageVO listForAdmin(int page, int pageSize, FoodReviewStatus status);
 
     List<FoodVO> listMine(String username);
+
+    List<FoodFootprintVO> listRecentVisits(String username, int limit);
+
+    List<FoodVO> recommend(
+            String username,
+            String province,
+            String city,
+            boolean personalized,
+            int limit
+    );
 
     FoodVO updateMine(Long id, FoodUpdateDTO request, String username);
 

@@ -5,6 +5,7 @@ import com.dayan.food.entity.po.Food;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.vo.FoodFootprintVO;
 import com.dayan.food.entity.vo.FoodPageVO;
 import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.mapper.FoodMapper;
@@ -109,6 +110,36 @@ public class FoodServiceImpl implements FoodService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<FoodFootprintVO> listRecentVisits(String username, int limit) {
+        int normalizedLimit = Math.min(Math.max(limit, 1), 50);
+        return foodMapper.findRecentVisits(username, normalizedLimit).stream()
+                .map(FoodFootprintVO::from)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FoodVO> recommend(
+            String username,
+            String province,
+            String city,
+            boolean personalized,
+            int limit
+    ) {
+        int normalizedLimit = Math.min(Math.max(limit, 1), 10);
+        return foodMapper.findAgentRecommendations(
+                        username,
+                        normalizeOptional(province),
+                        normalizeOptional(city),
+                        personalized,
+                        normalizedLimit
+                ).stream()
+                .map(FoodVO::from)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public FoodVO updateMine(Long id, FoodUpdateDTO request, String username) {
         var owner = appUserMapper.findByUsername(username);
@@ -166,6 +197,8 @@ public class FoodServiceImpl implements FoodService {
             return;
         }
         if (foodMapper.insertDailyVisit(id, username) == 0) {
+            // 同一天再次浏览不重复增加热度，但要刷新足迹的最近访问时间。
+            foodMapper.touchDailyVisit(id, username);
             return;
         }
         if (foodMapper.incrementHeat(id) != 1) {

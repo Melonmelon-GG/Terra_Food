@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import axios from 'axios'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-import { getFoods, getRegions, resolveMapRegion } from '../api'
+import { ensureMapRegion, getFoods, getRegions, reverseMapLocation } from '../api'
 import { useAuth } from '../auth'
 import FoodMap from '../components/FoodMap.vue'
 import FoodUploadModal from '../components/FoodUploadModal.vue'
@@ -23,11 +22,14 @@ const mapFocus = ref<MapFocus>()
 const pickedLatitude = ref<number>()
 const pickedLongitude = ref<number>()
 const pickedRegionId = ref<number>()
+const pickedProvince = ref('')
+const pickedCity = ref('')
 const pickedAddress = ref('')
 const locationError = ref('')
 const locationResolving = ref(false)
 const pickHint = ref('')
 const mapBounds = ref<MapBounds>()
+const activeFoodId = ref<number>()
 const { t } = useI18n()
 const router = useRouter()
 const auth = useAuth()
@@ -38,6 +40,11 @@ const regionToggleLabel = computed(() => {
     ? t('home.regionPath', { province: selectedRegion.province, city: selectedRegion.name })
     : t('home.allRegionsPath', { count: regions.value.length })
 })
+
+const catalogFoods = computed(() => foods.value)
+const activeFood = computed(() =>
+  foods.value.find((food) => food.id === activeFoodId.value) ?? catalogFoods.value[0],
+)
 
 let foodRequestSequence = 0
 
@@ -128,6 +135,9 @@ async function pickLocation(latitude: number, longitude: number) {
   pickedLongitude.value = longitude
   pickHint.value = ''
   pickedAddress.value = ''
+  pickedProvince.value = ''
+  pickedCity.value = ''
+  pickedRegionId.value = undefined
   locationError.value = ''
   locationResolving.value = true
   locationLookupController?.abort()
@@ -135,28 +145,29 @@ async function pickLocation(latitude: number, longitude: number) {
 
   const lookupSequence = ++locationLookupSequence
   try {
-    const resolvedLocation = await resolveMapRegion(latitude, longitude, locationLookupController.signal)
+    const resolvedLocation = await reverseMapLocation(
+      latitude,
+      longitude,
+      locationLookupController.signal,
+    )
     if (lookupSequence === locationLookupSequence) {
-      pickedRegionId.value = resolvedLocation.region.id
+      pickedProvince.value = resolvedLocation.province
+      pickedCity.value = resolvedLocation.city
       pickedAddress.value = resolvedLocation.address
-      // 地图↔地域寻味联动：选点成功后，上方的地区选择器同步到该地区并刷新目录。
-      if (selectedRegionId.value !== resolvedLocation.region.id) {
-        selectedRegionId.value = resolvedLocation.region.id
+      // 新城市也能精准显示；已经收录的城市继续联动现有目录。
+      const existingRegion = regions.value.find((region) =>
+        region.province === resolvedLocation.province && region.name === resolvedLocation.city,
+      )
+      pickedRegionId.value = existingRegion?.id
+      if (selectedRegionId.value !== existingRegion?.id) {
+        selectedRegionId.value = existingRegion?.id
         await loadFoods()
       }
     }
   } catch (requestError) {
     if (lookupSequence === locationLookupSequence) {
       pickedRegionId.value = undefined
-      // 地区数据只来自服务器白名单；点选未收录地区时给出明确提示，不再动态加入地区列表。
-      const message = axios.isAxiosError(requestError)
-        ? requestError.response?.data?.message
-        : undefined
-      if (message && message.includes('尚未收录')) {
-        pickHint.value = t('home.regionNotEnrolled')
-      } else {
-        locationError.value = t('home.mapRegionError')
-      }
+      locationError.value = t('home.mapRegionError')
     }
   } finally {
     if (lookupSequence === locationLookupSequence) {
@@ -172,6 +183,11 @@ function handleSaved(food: Food) {
   }
 }
 
+function focusFood(food: Food) {
+  activeFoodId.value = food.id
+  mapFocus.value = { latitude: food.latitude, longitude: food.longitude, zoom: 12 }
+}
+
 async function openUpload() {
   if (!auth.currentUser.value) {
     await router.push({ path: '/login', query: { redirect: '/' } })
@@ -182,6 +198,27 @@ async function openUpload() {
   if (pickedLatitude.value == null || pickedLongitude.value == null) {
     pickHint.value = t('home.pickCoordinateFirst')
     return
+  }
+
+  if (!pickedRegionId.value) {
+    if (!pickedProvince.value || !pickedCity.value) {
+      pickHint.value = t('home.mapRegionError')
+      return
+    }
+    locationResolving.value = true
+    try {
+      const region = await ensureMapRegion(pickedProvince.value, pickedCity.value)
+      if (!regions.value.some((item) => item.id === region.id)) {
+        regions.value = [...regions.value, region]
+      }
+      pickedRegionId.value = region.id
+      selectedRegionId.value = region.id
+    } catch {
+      pickHint.value = t('home.mapRegionError')
+      return
+    } finally {
+      locationResolving.value = false
+    }
   }
 
   pickHint.value = ''
@@ -202,112 +239,157 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="hero">
-    <p class="eyebrow">{{ t('home.eyebrow') }}</p>
-    <h1>{{ t('home.heroTitle') }}<em>{{ t('home.heroEmphasis') }}</em></h1>
-    <p>
-      {{ t('home.heroDescription') }}
-    </p>
-    <form @submit.prevent="submitSearch">
-      <input v-model="keyword" :placeholder="t('home.searchPlaceholder')">
-      <button>{{ t('home.search') }}</button>
-    </form>
-  </section>
+  <section class="map-explorer">
+    <div class="explorer-map" :aria-label="t('home.mapTitle')">
+      <FoodMap
+        :foods="foods"
+        :focus="mapFocus"
+        @pick="pickLocation"
+        @bounds-change="updateMapBounds"
+      />
+    </div>
+    <div class="explorer-map-wash"></div>
 
-  <section class="content">
-    <div class="section-title">
+    <aside class="explorer-sidebar explorer-panel">
       <div>
-        <small>{{ t('home.regionEyebrow') }}</small>
-        <h2>{{ t('home.regionTitle') }}</h2>
+        <p class="eyebrow">{{ t('home.eyebrow') }}</p>
+        <h1>{{ t('home.heroTitle') }}<em>{{ t('home.heroEmphasis') }}</em></h1>
+        <p class="explorer-intro">{{ t('home.heroDescription') }}</p>
       </div>
-      <div class="section-actions">
-        <p>{{ t('home.regionDescription') }}</p>
+
+      <form class="explorer-search" @submit.prevent="submitSearch">
+        <input v-model="keyword" :placeholder="t('home.searchPlaceholder')">
+        <button>{{ t('home.search') }}</button>
+      </form>
+
+      <div class="explorer-sidebar-actions">
         <button
-          class="outline-action region-toggle"
+          class="explorer-outline"
           type="button"
           :aria-expanded="regionDrawerOpen"
           @click="regionDrawerOpen = true"
         >
-          {{ regionToggleLabel }}
+          <span>{{ t('home.regionEyebrow') }}</span>
+          <b>{{ regionToggleLabel }}</b>
         </button>
-        <button class="outline-action" :disabled="locationResolving" @click="openUpload">
-          {{ t('home.addFood') }}
-        </button>
-        <p v-if="pickHint" class="pick-hint">{{ pickHint }}</p>
-      </div>
-    </div>
-
-     <section class="map-journal">
-      <div class="map-journal-title">
-        <div>
-          <small>{{ t('home.mapEyebrow') }}</small>
-          <h2>{{ t('home.mapTitle') }}</h2>
-        </div>
-        <p>{{ t('home.mapDescription') }}</p>
-      </div>
-
-      <div class="map-frame">
-        <FoodMap :foods="foods" :focus="mapFocus" @pick="pickLocation" @bounds-change="updateMapBounds" />
-        <div class="map-vignette"></div>
-        <div class="map-hint">
-          <span v-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>
-          <span v-else-if="locationError" class="error">{{ locationError }}</span>
-          <span v-else-if="pickedLatitude !== undefined">
-            {{ pickedAddress
-              ? t('home.mapPickedAddress', {
-                  address: pickedAddress,
-                  latitude: pickedLatitude.toFixed(3),
-                  longitude: pickedLongitude?.toFixed(3),
-                })
-              : t('home.mapPicked', {
-                  latitude: pickedLatitude.toFixed(3),
-                  longitude: pickedLongitude?.toFixed(3),
-                })
-            }}
-          </span>
-          <span v-else>{{ t('home.mapHint') }}</span>
-        </div>
-      </div>
-    </section>
-
-    <div class="catalog-heading">
-      <small>{{ t('home.catalogEyebrow') }}</small>
-      <span>{{ t('home.recordCount', { count: foods.length }) }}</span>
-    </div>
-
-    <!-- 目录常驻渲染：地图拖动刷新只更新容器内部，不影响页面整体布局与滚动位置 -->
-    <div class="catalog-scroll" :aria-busy="loading">
-      <p v-if="loading && foods.length" class="state catalog-refreshing">{{ t('home.refreshing') }}</p>
-      <p v-if="error" class="state error">{{ error }}</p>
-
-      <p v-if="!foods.length && loading" class="state">{{ t('home.loading') }}</p>
-      <p v-else-if="!foods.length" class="state">{{ t('home.empty') }}</p>
-
-      <div v-else class="grid">
-        <RouterLink
-          v-for="food in foods"
-          :key="food.id"
-          :to="`/foods/${food.id}`"
-          class="card"
+        <button
+          class="explorer-outline"
+          type="button"
+          :disabled="locationResolving"
+          @click="openUpload"
         >
+          <span>{{ t('home.mapEyebrow') }}</span>
+          <b>{{ t('home.addFood') }}</b>
+        </button>
+      </div>
+
+      <p v-if="pickHint" class="explorer-notice">{{ pickHint }}</p>
+      <div class="explorer-sidebar-foot">
+        <small>{{ t('home.catalogEyebrow') }}</small>
+        <strong>{{ t('home.recordCount', { count: foods.length }) }}</strong>
+      </div>
+    </aside>
+
+    <div class="explorer-map-hint" role="status">
+      <span v-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>
+      <span v-else-if="locationError" class="error">{{ locationError }}</span>
+      <span v-else-if="pickedLatitude !== undefined">
+        {{ pickedAddress
+          ? t('home.mapPickedAddress', {
+              address: pickedAddress,
+              latitude: pickedLatitude.toFixed(3),
+              longitude: pickedLongitude?.toFixed(3),
+            })
+          : t('home.mapPicked', {
+              latitude: pickedLatitude.toFixed(3),
+              longitude: pickedLongitude?.toFixed(3),
+            })
+        }}
+      </span>
+      <span v-else>{{ t('home.mapHint') }}</span>
+    </div>
+
+    <section class="explorer-catalog explorer-panel" :aria-busy="loading">
+      <header class="explorer-catalog-heading">
+        <small>{{ t('home.catalogEyebrow') }}</small>
+        <span>{{ t('home.recordCount', { count: foods.length }) }}</span>
+      </header>
+
+      <p v-if="loading && foods.length" class="explorer-state">{{ t('home.refreshing') }}</p>
+      <p v-if="error" class="explorer-state error">{{ error }}</p>
+      <p v-if="!foods.length && loading" class="explorer-state">{{ t('home.loading') }}</p>
+      <p v-else-if="!foods.length" class="explorer-state">{{ t('home.empty') }}</p>
+
+      <div v-else class="explorer-cards">
+        <article
+          v-for="food in catalogFoods"
+          :key="food.id"
+          class="explorer-card"
+          :class="{ 'is-active': activeFoodId === food.id }"
+        >
+          <button
+            class="explorer-card-focus"
+            type="button"
+            :aria-label="t('home.focusFood', { name: food.name })"
+            @click="focusFood(food)"
+          ></button>
           <div
-            class="photo"
+            class="explorer-card-photo"
             :class="{ 'no-cover': !food.imageUrl }"
-            :style="{ backgroundImage: food.imageUrl ? `url(${food.imageUrl})` : undefined }"
+            :style="{ backgroundImage: food.imageUrl ? 'url(' + food.imageUrl + ')' : undefined }"
           >
             <span>{{ food.region.province }} · {{ food.region.name }}</span>
           </div>
-          <div class="card-body">
+          <div class="explorer-card-body">
             <h3>{{ food.name }}</h3>
             <p>{{ food.summary }}</p>
             <div>
               <b>{{ t('home.heat', { value: food.heat }) }}</b>
-              <span>{{ t('home.readMore') }}</span>
+              <RouterLink
+                :to="'/foods/' + food.id"
+                class="explorer-card-link"
+                @click.stop
+              >
+                {{ t('home.readMore') }}
+              </RouterLink>
             </div>
           </div>
-        </RouterLink>
+        </article>
       </div>
-    </div>
+    </section>
+
+    <aside class="explorer-preview explorer-panel">
+      <template v-if="activeFood">
+        <div
+          class="explorer-preview-photo"
+          :class="{ 'no-cover': !activeFood.imageUrl }"
+          :style="{ backgroundImage: activeFood.imageUrl ? 'url(' + activeFood.imageUrl + ')' : undefined }"
+        ></div>
+        <div class="explorer-preview-content">
+          <small>{{ activeFood.region.province }} · {{ activeFood.region.name }}</small>
+          <h2>{{ activeFood.name }}</h2>
+          <b>{{ t('home.heat', { value: activeFood.heat }) }}</b>
+          <p>{{ activeFood.summary }}</p>
+          <dl>
+            <div>
+              <dt>{{ t('home.regionEyebrow') }}</dt>
+              <dd>{{ activeFood.region.name }}</dd>
+            </div>
+            <div>
+              <dt>{{ t('home.catalogEyebrow') }}</dt>
+              <dd>{{ activeFood.creator.displayName }}</dd>
+            </div>
+          </dl>
+          <RouterLink :to="'/foods/' + activeFood.id" class="explorer-preview-link">
+            {{ t('home.readMore') }}
+          </RouterLink>
+        </div>
+      </template>
+      <div v-else class="explorer-preview-empty">
+        <span class="seal">炎</span>
+        <p>{{ loading ? t('home.loading') : t('home.empty') }}</p>
+      </div>
+    </aside>
   </section>
 
   <FoodUploadModal

@@ -1,5 +1,7 @@
 import axios from 'axios'
 
+import type { AgentChatPayload, AgentChatResponse, FoodFootprint } from './types'
+
 import type {
   Achievement,
   AuthUser,
@@ -22,7 +24,6 @@ import type {
   Region,
   PagedAuthUsers,
   RegisterPayload,
-  ResolvedMapLocation,
   SendRegistrationCodePayload,
   SendPasswordResetCodePayload,
 } from './types'
@@ -130,7 +131,7 @@ interface NominatimResult {
   address?: NominatimAddress
 }
 
-interface MapLocation {
+export interface MapLocation {
   province: string
   city: string
   address: string
@@ -138,13 +139,12 @@ interface MapLocation {
 
 const mapRegionCache = new Map<string, MapLocation>()
 const tiandituKey = import.meta.env.VITE_TIANDITU_KEY?.trim()
-
-export async function resolveMapRegion(
+export async function reverseMapLocation(
   latitude: number,
   longitude: number,
   signal?: AbortSignal,
-): Promise<ResolvedMapLocation> {
-  const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`
+): Promise<MapLocation> {
+  const key = latitude.toFixed(4) + ',' + longitude.toFixed(4)
   let location = mapRegionCache.get(key)
   if (!location) {
     try {
@@ -155,19 +155,28 @@ export async function resolveMapRegion(
         location = await reverseWithPhoton(latitude, longitude, signal)
       } catch (fallbackError) {
         if (signal?.aborted) throw fallbackError
-        location = await reverseWithNominatim(latitude, longitude, signal)
+        try {
+          location = await reverseWithNominatim(latitude, longitude, signal)
+        } catch (lastError) {
+          if (signal?.aborted) throw lastError
+          throw lastError
+        }
       }
     }
     mapRegionCache.set(key, location)
   }
 
-  const response = await api.post<Region>('/regions/resolve', {
-    province: location.province,
-    city: location.city,
-  }, { signal })
-  return { region: response.data, address: location.address }
+  return location
 }
 
+export async function ensureMapRegion(
+  province: string,
+  city: string,
+  signal?: AbortSignal,
+): Promise<Region> {
+  const response = await api.post<Region>('/regions/resolve', { province, city }, { signal })
+  return response.data
+}
 async function reverseWithTianditu(
   latitude: number,
   longitude: number,
@@ -265,7 +274,7 @@ function extractMapLocation(value: {
   const municipality = ['北京', '上海', '天津', '重庆', '香港', '澳门'].includes(province)
   const city = normalizeCity(
     municipality
-      ? value.county || value.district || value.city || value.locality || value.name || ''
+      ? province
       : value.city || value.county || value.district || value.locality || value.name || '',
   )
   if (!province || !city) {
@@ -315,6 +324,16 @@ export async function getMyFoods(): Promise<Food[]> {
   return response.data
 }
 
+export async function getMyFootprints(limit = 20): Promise<FoodFootprint[]> {
+  const response = await api.get<FoodFootprint[]>('/profile/footprints', { params: { limit } })
+  return response.data
+}
+
+export async function chatWithAgent(payload: AgentChatPayload): Promise<AgentChatResponse> {
+  const response = await api.post<AgentChatResponse>('/agent/chat', payload, { timeout: 60_000 })
+  return response.data
+}
+
 export async function updateMyFood(id: number, payload: FoodUpdatePayload): Promise<Food> {
   const response = await api.patch<Food>(`/profile/foods/${id}`, payload)
   return response.data
@@ -352,11 +371,12 @@ export async function getCaptcha(): Promise<CaptchaChallenge> {
 }
 
 export async function sendRegistrationCode(payload: SendRegistrationCodePayload): Promise<void> {
-  await api.post('/auth/registration-code', payload)
+  // SMTP 投递可能超过全局 8 秒超时；邮件实际发出后再被前端误报失败会诱导用户重复发送。
+  await api.post('/auth/registration-code', payload, { timeout: 30_000 })
 }
 
 export async function sendPasswordResetCode(payload: SendPasswordResetCodePayload): Promise<void> {
-  await api.post('/auth/password-reset-code', payload)
+  await api.post('/auth/password-reset-code', payload, { timeout: 30_000 })
 }
 
 export async function resetPassword(payload: PasswordResetPayload): Promise<void> {

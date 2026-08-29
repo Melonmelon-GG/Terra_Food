@@ -43,13 +43,12 @@ public class SecurityConfig {
                                 "/api/auth/registration-code",
                                 "/api/auth/password-reset-code",
                                 "/api/auth/password-reset",
+                                "/api/internal/agent/**",
                                 "/uploads/**",
                                 "/error"
                         )
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/foods/**", "/api/regions/**").permitAll()
-                        // 游客地图选点同样依赖地区白名单解析（只读查询，无写副作用）。
-                        .requestMatchers(HttpMethod.POST, "/api/regions/resolve").permitAll()
                         // 角色授予只能由主管理员执行，必须放在后台通配规则之前。
                         .requestMatchers(HttpMethod.PATCH, "/api/admin/users/*/role").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/foods/**")

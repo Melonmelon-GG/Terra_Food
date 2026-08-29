@@ -38,7 +38,13 @@ async function submit() {
   error.value = ''
 
   try {
-    const user = await auth.login(form)
+    // Login passwords only contain letters and numbers. Normalize full-width input
+    // and trim invisible whitespace introduced by copy and paste.
+    const user = await auth.login({
+      ...form,
+      username: form.username.trim(),
+      password: form.password.normalize('NFKC').trim(),
+    })
     const requestedRedirect = typeof route.query.redirect === 'string' ? route.query.redirect : undefined
     await router.replace(isAdminRole(user.role) ? '/admin' : requestedRedirect || '/')
   } catch {

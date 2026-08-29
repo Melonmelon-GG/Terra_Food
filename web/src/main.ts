@@ -21,8 +21,10 @@ import './detail.css'
 import './map.css'
 import './modal.css'
 import './region-drawer.css'
-import './responsive.css'
 import './profile.css'
+import './agent.css'
+// 响应式规则必须最后加载，确保窄屏覆盖所有功能域样式。
+import './responsive.css'
 
 const router = createRouter({
   history: createWebHistory(),

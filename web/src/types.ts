@@ -46,6 +46,40 @@ export interface FoodCommentCreatePayload {
   content: string
 }
 
+export interface FoodFootprint {
+  food: Food
+  visitedAt: string
+}
+
+export interface AgentClientAction {
+  type: 'SWITCH_MUSIC' | 'COMMENT_PUBLISHED'
+  query: string
+}
+
+export interface AgentChatPayload {
+  message: string
+  availableTracks: string[]
+  currentFoodId?: number
+}
+
+export interface AgentChatResponse {
+  reply: string
+  clientAction?: AgentClientAction
+  recommendations?: AgentFoodRecommendation[]
+  commentDraft?: AgentCommentDraft
+}
+
+export interface AgentFoodRecommendation {
+  id: number
+  name: string
+}
+
+export interface AgentCommentDraft {
+  foodId: number
+  foodName: string
+  content: string
+}
+
 export interface MapBounds {
   minLatitude: number
   maxLatitude: number
@@ -57,11 +91,6 @@ export interface MapFocus {
   latitude: number
   longitude: number
   zoom: number
-}
-
-export interface ResolvedMapLocation {
-  region: Region
-  address: string
 }
 
 export interface PagedFoods {

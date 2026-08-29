@@ -5,7 +5,10 @@ node_modules/
 dist/
 *.tsbuildinfo
 .env.local
+.env
 application-local.yml
 uploads/
 .m2/
 *.log
+__pycache__/
+*.py[cod]

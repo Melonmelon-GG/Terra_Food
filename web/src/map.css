@@ -170,6 +170,7 @@
   width: 100%;
   height: 100%;
   font-family: 'Microsoft YaHei', sans-serif;
+  background: #e9dfcd;
 }
 
 .food-map-shell {
@@ -228,6 +229,52 @@
   color: #443129;
 }
 
+.food-map-marker {
+  display: grid;
+  background: transparent;
+  border: 0;
+  place-items: center;
+}
+
+.food-map-marker span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  color: #fff;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  background: var(--color-accent);
+  border: 2px solid var(--color-paper);
+  border-radius: 50%;
+  box-shadow: 0 5px 14px #38251f66;
+  place-items: center;
+}
+
+.food-map-cluster {
+  display: grid;
+  background: transparent;
+  border: 0;
+  place-items: center;
+}
+
+.food-map-cluster span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  color: #fff;
+  font-family: var(--font-serif);
+  font-size: 11px;
+  font-weight: 700;
+  background: #842d26d9;
+  border: 2px solid #fbf8f0e6;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 7px #842d2629,
+    0 8px 20px #38251f75;
+  backdrop-filter: blur(8px);
+  place-items: center;
+}
+
 .map-popup strong,
 .map-popup span {
   display: block;
@@ -247,4 +294,28 @@
 .map-popup p {
   margin: 8px 0;
   line-height: 1.5;
+}
+
+.map-cluster-popup {
+  min-width: 180px;
+}
+
+.map-cluster-popup ul {
+  display: grid;
+  gap: 5px;
+  max-height: 220px;
+  margin: 10px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.map-cluster-popup li {
+  border-top: 1px solid #e0d5c5;
+}
+
+.map-cluster-popup li a {
+  display: block;
+  padding: 7px 2px 2px;
+  font-size: 12px;
 }
