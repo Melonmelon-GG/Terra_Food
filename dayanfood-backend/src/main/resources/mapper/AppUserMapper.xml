@@ -67,6 +67,13 @@
         WHERE id = #{id}
     </select>
 
+    <!-- 公开页读侧：userColumns 之外的敏感列（如 password）不进入查询与内存。 -->
+    <select id="findPublicById" resultMap="appUserResultMap">
+        SELECT id, username, display_name, avatar_url, signature, active
+        FROM app_user
+        WHERE id = #{id}
+    </select>
+
     <select id="findPage" resultMap="appUserResultMap">
         SELECT <include refid="userColumns"/>
         FROM app_user
@@ -94,26 +101,14 @@
 
     <update id="updateSignature">
         UPDATE app_user
-        SET signature_pending = #{signature},
-            signature_status = 'PENDING'
-        WHERE username = #{username}
-          AND active = TRUE
+        SET signature = #{signature}
+        WHERE id = #{id}
     </update>
 
-    <update id="approveSignature">
+    <update id="updateDisplayName">
         UPDATE app_user
-        SET signature = signature_pending,
-            signature_pending = NULL,
-            signature_status = 'APPROVED'
+        SET display_name = #{displayName}
         WHERE id = #{id}
-          AND signature_status = 'PENDING'
-    </update>
-
-    <update id="rejectSignature">
-        UPDATE app_user
-        SET signature_status = 'REJECTED'
-        WHERE id = #{id}
-          AND signature_status = 'PENDING'
     </update>
 
     <update id="updateActive">

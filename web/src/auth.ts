@@ -7,6 +7,10 @@ import type { AuthUser, LoginPayload, UserRole } from './types'
 const currentUser = ref<AuthUser | null>(null)
 const achievementNotifications = useAchievementNotifications()
 let sessionChecked = false
+let lastRestoreAttemptAt = 0
+// 恢复失败后短时冷却，避免弱网下每次导航都重复打 /auth/me；
+// 冷却期过后仍会重试（不把“单次失败”升级成永久登出）。
+const RESTORE_COOLDOWN_MS = 30_000
 
 export function isAdminRole(role?: UserRole): boolean {
   return role === 'ADMIN' || role === 'SUB_ADMIN'
@@ -18,13 +22,19 @@ export function useAuth() {
       return
     }
 
+    const now = Date.now()
+    if (now - lastRestoreAttemptAt < RESTORE_COOLDOWN_MS) {
+      return
+    }
+    lastRestoreAttemptAt = now
+
     try {
       currentUser.value = await getCurrentUser()
+      sessionChecked = true
       await achievementNotifications.load()
     } catch {
-      currentUser.value = null
-    } finally {
-      sessionChecked = true
+      // 单次恢复失败（弱网/后端重启）不置位 sessionChecked：
+      // 会话 cookie 仍在，下一次导航继续尝试；真正的会话过期由 401 拦截器统一处理。
     }
   }
 
@@ -39,10 +49,14 @@ export function useAuth() {
     try {
       await requestLogout()
     } finally {
-      currentUser.value = null
-      achievementNotifications.clear()
-      sessionChecked = true
+      clearSession()
     }
+  }
+
+  function clearSession() {
+    currentUser.value = null
+    achievementNotifications.clear()
+    sessionChecked = true
   }
 
   function setCurrentUser(user: AuthUser) {
@@ -54,6 +68,7 @@ export function useAuth() {
     restoreSession,
     login,
     logout,
+    clearSession,
     setCurrentUser,
   }
 }

@@ -2,7 +2,9 @@ package com.dayan.food.controller;
 
 import com.dayan.food.entity.dto.FoodCreateDTO;
 import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.vo.FoodCatalogVO;
 import com.dayan.food.entity.vo.FoodImportResultVO;
+import com.dayan.food.entity.vo.FoodMarkerVO;
 import com.dayan.food.service.FoodImportService;
 import com.dayan.food.service.FoodService;
 import jakarta.validation.Valid;
@@ -51,6 +53,35 @@ public class FoodController {
                 minLongitude,
                 maxLongitude
         );
+    }
+
+    @GetMapping("/markers")
+    public List<FoodMarkerVO> markers(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long regionId,
+            @RequestParam(required = false) BigDecimal minLatitude,
+            @RequestParam(required = false) BigDecimal maxLatitude,
+            @RequestParam(required = false) BigDecimal minLongitude,
+            @RequestParam(required = false) BigDecimal maxLongitude
+    ) {
+        return foodService.markers(
+                keyword,
+                regionId,
+                minLatitude,
+                maxLatitude,
+                minLongitude,
+                maxLongitude
+        );
+    }
+
+    @GetMapping("/catalog")
+    public FoodCatalogVO catalog(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long regionId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "30") int pageSize
+    ) {
+        return foodService.catalog(keyword, regionId, page, pageSize);
     }
 
     @GetMapping("/{id}")

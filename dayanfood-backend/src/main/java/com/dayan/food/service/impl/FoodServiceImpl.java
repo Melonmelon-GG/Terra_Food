@@ -1,20 +1,22 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.cache.CacheInvalidator;
 import com.dayan.food.entity.dto.FoodUpdateDTO;
 import com.dayan.food.entity.po.Food;
+import com.dayan.food.entity.po.FoodMarker;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.vo.FoodCatalogVO;
 import com.dayan.food.entity.vo.FoodFootprintVO;
+import com.dayan.food.entity.vo.FoodMarkerVO;
 import com.dayan.food.entity.vo.FoodPageVO;
 import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.mapper.FoodMapper;
 import com.dayan.food.mapper.RegionMapper;
 import com.dayan.food.service.FoodService;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,22 +29,26 @@ import java.util.List;
 public class FoodServiceImpl implements FoodService {
 
     private static final int MAP_RESULT_LIMIT = 500;
+    private static final int CATALOG_MAX_PAGE_SIZE = 500;
 
     private final FoodMapper foodMapper;
     private final RegionMapper regionMapper;
     private final AppUserMapper appUserMapper;
     private final CacheManager cacheManager;
+    private final CacheInvalidator cacheInvalidator;
 
     public FoodServiceImpl(
             FoodMapper foodMapper,
             RegionMapper regionMapper,
             AppUserMapper appUserMapper,
-            CacheManager cacheManager
+            CacheManager cacheManager,
+            CacheInvalidator cacheInvalidator
     ) {
         this.foodMapper = foodMapper;
         this.regionMapper = regionMapper;
         this.appUserMapper = appUserMapper;
         this.cacheManager = cacheManager;
+        this.cacheInvalidator = cacheInvalidator;
     }
 
     @Override
@@ -78,6 +84,69 @@ public class FoodServiceImpl implements FoodService {
                 ).stream()
                 .map(FoodVO::from)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FoodMarkerVO> markers(
+            String keyword,
+            Long regionId,
+            BigDecimal minLatitude,
+            BigDecimal maxLatitude,
+            BigDecimal minLongitude,
+            BigDecimal maxLongitude
+    ) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        validateBounds(minLatitude, maxLatitude, minLongitude, maxLongitude);
+
+        // 地图高频拖动接口只回弹窗所需字段（名称/地区/坐标/摘要），且刻意不做缓存：
+        // 数据量小、命中率低，缓存命中收益抵不过双写一致性成本。
+        return foodMapper.findMarkers(
+                        normalizedKeyword,
+                        regionId,
+                        minLatitude,
+                        maxLatitude,
+                        minLongitude,
+                        maxLongitude,
+                        MAP_RESULT_LIMIT
+                ).stream()
+                .map(FoodMarkerVO::from)
+                .toList();
+    }
+
+    @Override
+    @Cacheable(
+            cacheNames = "foodCatalogs",
+            key = "(#keyword == null ? '' : #keyword.trim()) + ':' + (#regionId == null ? '' : #regionId) + ':' + #page + ':' + #pageSize"
+    )
+    @Transactional(readOnly = true)
+    public FoodCatalogVO catalog(String keyword, Long regionId, int page, int pageSize) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        int normalizedPageSize = Math.min(Math.max(pageSize, 1), CATALOG_MAX_PAGE_SIZE);
+        int total = foodMapper.countCatalog(
+                normalizedKeyword,
+                regionId,
+                null,
+                null,
+                null,
+                null
+        );
+        int totalPages = Math.max(1, (int) Math.ceil((double) total / normalizedPageSize));
+        int normalizedPage = Math.min(Math.max(page, 1), totalPages);
+        int offset = (normalizedPage - 1) * normalizedPageSize;
+        var items = foodMapper.findCatalogPage(
+                        normalizedKeyword,
+                        regionId,
+                        null,
+                        null,
+                        null,
+                        null,
+                        offset,
+                        normalizedPageSize
+                ).stream()
+                .map(FoodVO::from)
+                .toList();
+        return new FoodCatalogVO(items, total, normalizedPage, normalizedPageSize);
     }
 
     @Override
@@ -205,14 +274,10 @@ public class FoodServiceImpl implements FoodService {
             throw notFound("美食不存在");
         }
 
+        // S1：详情缓存整体失效（热度即时），但不再清空列表缓存——目录热值的短暂滞后
+        // 由 10 分钟 TTL 兜底，避免高频浏览把目录缓存打成永远 miss。
         var detailCache = cacheManager.getCache("foodDetails");
-        if (detailCache != null) {
-            detailCache.evict(id);
-        }
-        var listCache = cacheManager.getCache("foodLists");
-        if (listCache != null) {
-            listCache.clear();
-        }
+        cacheInvalidator.invalidate(detailCache, id);
     }
 
     @Override
@@ -228,7 +293,6 @@ public class FoodServiceImpl implements FoodService {
     }
 
     @Override
-    @CacheEvict(cacheNames = "foodLists", allEntries = true)
     @Transactional
     public FoodVO create(
             String name,
@@ -271,19 +335,19 @@ public class FoodServiceImpl implements FoodService {
                         : FoodReviewStatus.PENDING
         );
         foodMapper.insert(food);
+        // 集合类缓存（前台列表/目录分页）在事务提交后统一失效（BUG-03：回滚不清缓存）。
+        cacheInvalidator.clear(cacheManager.getCache("foodLists"));
+        cacheInvalidator.clear(cacheManager.getCache("foodCatalogs"));
         return FoodVO.from(food);
     }
 
     @Override
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "foodLists", allEntries = true),
-            @CacheEvict(cacheNames = "foodDetails", key = "#id")
-    })
     @Transactional
     public void delete(Long id) {
         if (foodMapper.deleteById(id) == 0) {
             throw notFound("美食不存在");
         }
+        clearFoodCaches(id);
     }
 
     private ResponseStatusException notFound(String message) {
@@ -330,13 +394,19 @@ public class FoodServiceImpl implements FoodService {
     }
 
     private void clearFoodCaches(Long id) {
-        var detailCache = cacheManager.getCache("foodDetails");
-        if (detailCache != null) {
-            detailCache.evict(id);
+        cacheInvalidator.invalidate(cacheManager.getCache("foodDetails"), id);
+        cacheInvalidator.clear(cacheManager.getCache("foodLists"));
+        cacheInvalidator.clear(cacheManager.getCache("foodCatalogs"));
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
         }
-        var listCache = cacheManager.getCache("foodLists");
-        if (listCache != null) {
-            listCache.clear();
+        String normalized = keyword.trim();
+        if (normalized.length() > 100) {
+            throw new IllegalArgumentException("搜索关键词不能超过 100 个字符");
         }
+        return normalized;
     }
 }

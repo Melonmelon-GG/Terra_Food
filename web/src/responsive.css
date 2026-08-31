@@ -441,6 +441,7 @@
   }
 
   .map-explorer {
+    min-height: calc(100vh - var(--mobile-header-height));
     min-height: calc(100dvh - var(--mobile-header-height));
   }
 }
@@ -474,6 +475,7 @@
   .map-explorer {
     grid-template-rows: auto minmax(0, 1fr) 166px;
     gap: 8px;
+    height: calc(100vh - var(--mobile-header-height));
     height: calc(100dvh - var(--mobile-header-height));
     min-height: 0;
     padding:
@@ -587,6 +589,11 @@
   }
 
   body:has(main > .map-explorer) #MusicControl {
+    bottom: max(180px, calc(172px + env(safe-area-inset-bottom)));
+  }
+
+  /* Agent 浮球与音乐按钮一样避让底部目录条，避免压住卡片操作区。 */
+  body:has(main > .map-explorer) .agent-shell {
     bottom: max(180px, calc(172px + env(safe-area-inset-bottom)));
   }
 

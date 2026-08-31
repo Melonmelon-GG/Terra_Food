@@ -13,19 +13,22 @@ import type {
   FoodLikeStatus,
   FoodUpdatePayload,
   FoodImportResult,
+  FoodMarker,
   FoodReviewPayload,
   MapBounds,
+  PagedCatalog,
   PagedFoods,
   LoginPayload,
   PasswordResetPayload,
   SetUserActivePayload,
   SetUserRolePayload,
-  SignatureStatus,
   Region,
   PagedAuthUsers,
   RegisterPayload,
   SendRegistrationCodePayload,
   SendPasswordResetCodePayload,
+  UserPublic,
+  ReviewItemPayload,
 } from './types'
 
 interface FoodQuery extends Partial<MapBounds> {
@@ -39,13 +42,58 @@ const api = axios.create({
   withCredentials: true,
 })
 
+// 由 main.ts 注册的会话失效回调：统一清空登录态并跳转登录页，
+// 保持 api.ts 与 auth/router 解耦，避免循环依赖。
+let onUnauthorized: (() => void) | undefined
+
+export function registerUnauthorizedHandler(handler: () => void): void {
+  onUnauthorized = handler
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      const requestUrl = error.config?.url ?? ''
+      // /auth/me 的 401 由 restoreSession 自行处理（静默）；登录失败 401 由登录表单展示，
+      // 其余业务请求的 401 才触发统一登出跳转。
+      if (!requestUrl.includes('/auth/me') && !requestUrl.includes('/auth/login')) {
+        onUnauthorized?.()
+      }
+    }
+    return Promise.reject(error)
+  },
+)
+
 export async function getFoods(params?: FoodQuery): Promise<Food[]> {
   const response = await api.get<Food[]>('/foods', { params })
   return response.data
 }
 
+/** 地图标记（轻量接口，只含弹窗所需字段），驱动 Leaflet 标记层。 */
+export async function getFoodMarkers(params?: FoodQuery): Promise<FoodMarker[]> {
+  const response = await api.get<FoodMarker[]>('/foods/markers', { params })
+  return response.data
+}
+
+/** 目录分页：keyword/regionId 过滤 + page/pageSize，与地图 bounds 解耦。 */
+export async function getFoodCatalog(params: {
+  keyword?: string
+  regionId?: number
+  page: number
+  pageSize: number
+}): Promise<PagedCatalog> {
+  const response = await api.get<PagedCatalog>('/foods/catalog', { params })
+  return response.data
+}
+
 export async function getFood(id: number): Promise<Food> {
   const response = await api.get<Food>(`/foods/${id}`)
+  return response.data
+}
+
+export async function getUserPublic(id: number): Promise<UserPublic> {
+  const response = await api.get<UserPublic>(`/users/${id}`)
   return response.data
 }
 
@@ -397,11 +445,16 @@ export async function updateMySignature(signature: string): Promise<AuthUser> {
   return response.data
 }
 
-export async function reviewUserSignature(
+export async function updateMyDisplayName(displayName: string): Promise<AuthUser> {
+  const response = await api.patch<AuthUser>('/profile/display-name', { displayName })
+  return response.data
+}
+
+export async function reviewUserItem(
   id: number,
-  status: Extract<SignatureStatus, 'APPROVED' | 'REJECTED'>,
+  payload: ReviewItemPayload,
 ): Promise<void> {
-  await api.patch(`/admin/users/${id}/signature`, { status })
+  await api.patch(`/admin/users/${id}/review`, payload)
 }
 
 export async function getAchievements(): Promise<Achievement[]> {

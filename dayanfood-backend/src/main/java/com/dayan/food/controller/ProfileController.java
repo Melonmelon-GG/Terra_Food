@@ -1,6 +1,7 @@
 package com.dayan.food.controller;
 
 import com.dayan.food.entity.dto.AvatarUpdateDTO;
+import com.dayan.food.entity.dto.DisplayNameUpdateDTO;
 import com.dayan.food.entity.dto.FoodUpdateDTO;
 import com.dayan.food.entity.dto.SignatureUpdateDTO;
 import com.dayan.food.entity.vo.AuthUserVO;
@@ -59,6 +60,14 @@ public class ProfileController {
             Authentication authentication
     ) {
         return appUserService.updateSignature(authentication.getName(), request.signature());
+    }
+
+    @PatchMapping("/display-name")
+    public AuthUserVO updateDisplayName(
+            @Valid @RequestBody DisplayNameUpdateDTO request,
+            Authentication authentication
+    ) {
+        return appUserService.submitDisplayName(authentication.getName(), request.displayName());
     }
 
     @PatchMapping("/foods/{id}")

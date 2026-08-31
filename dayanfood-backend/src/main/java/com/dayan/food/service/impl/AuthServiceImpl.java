@@ -11,7 +11,7 @@ import com.dayan.food.service.AchievementService;
 import com.dayan.food.service.AuthService;
 import com.dayan.food.service.PasswordResetCodeService;
 import com.dayan.food.service.RegistrationCodeService;
-import org.springframework.dao.DuplicateKeyException;
+import com.dayan.food.service.UserReviewPresenter;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,6 +29,7 @@ public class AuthServiceImpl implements AuthService {
     private final RegistrationCodeService registrationCodeService;
     private final PasswordResetCodeService passwordResetCodeService;
     private final AchievementService achievementService;
+    private final UserReviewPresenter reviewPresenter;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
@@ -36,7 +37,8 @@ public class AuthServiceImpl implements AuthService {
             PasswordEncoder passwordEncoder,
             RegistrationCodeService registrationCodeService,
             PasswordResetCodeService passwordResetCodeService,
-            AchievementService achievementService
+            AchievementService achievementService,
+            UserReviewPresenter reviewPresenter
     ) {
         this.authenticationManager = authenticationManager;
         this.appUserMapper = appUserMapper;
@@ -44,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
         this.registrationCodeService = registrationCodeService;
         this.passwordResetCodeService = passwordResetCodeService;
         this.achievementService = achievementService;
+        this.reviewPresenter = reviewPresenter;
     }
 
     @Override
@@ -91,11 +94,9 @@ public class AuthServiceImpl implements AuthService {
                 normalizedEmail,
                 UserRole.USER
         );
-        try {
-            appUserMapper.insert(user);
-        } catch (DuplicateKeyException exception) {
-            throw new IllegalArgumentException("用户名或邮箱已存在", exception);
-        }
+        // 前置 count 校验已给出友好提示；并发下的唯一键竞态直接向上抛出，
+        // 由全局 409 处理器转为 CONFLICT，不再吞成 400。
+        appUserMapper.insert(user);
         registrationCodeService.consume(normalizedEmail);
         return AuthUserVO.from(user);
     }
@@ -124,7 +125,7 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BadCredentialsException("用户不存在");
         }
-        return AuthUserVO.from(user);
+        return reviewPresenter.toVO(user);
     }
 
     private boolean hasAnyAuthority(Authentication authentication, String... expectedAuthorities) {

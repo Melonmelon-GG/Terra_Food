@@ -4,6 +4,7 @@ import com.dayan.food.entity.enums.SignatureStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.po.AppUser;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record AuthUserVO(
         Long id,
@@ -16,7 +17,8 @@ public record AuthUserVO(
         SignatureStatus signatureStatus,
         UserRole role,
         boolean active,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        List<PendingReviewVO> pendingReviews
 ) {
 
     public static AuthUserVO from(AppUser user) {
@@ -31,7 +33,25 @@ public record AuthUserVO(
                 user.getSignatureStatus(),
                 user.getRole(),
                 user.isActive(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                List.of()
+        );
+    }
+
+    public static AuthUserVO from(AppUser user, List<PendingReviewVO> pendingReviews) {
+        return new AuthUserVO(
+                user.getId(),
+                user.getUsername(),
+                user.getDisplayName(),
+                user.getEmail(),
+                user.getAvatarUrl(),
+                user.getSignature(),
+                user.getSignaturePending(),
+                user.getSignatureStatus(),
+                user.getRole(),
+                user.isActive(),
+                user.getCreatedAt(),
+                pendingReviews
         );
     }
 }

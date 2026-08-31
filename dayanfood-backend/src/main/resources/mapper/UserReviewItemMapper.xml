@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dayan.food.mapper.UserReviewItemMapper">
+
+    <resultMap id="reviewItemResultMap" type="com.dayan.food.entity.po.UserReviewItem">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="field" column="field" javaType="com.dayan.food.entity.enums.ReviewField"/>
+        <result property="currentValue" column="current_value"/>
+        <result property="pendingValue" column="pending_value"/>
+        <result property="status" column="status" javaType="com.dayan.food.entity.enums.ReviewStatus"/>
+        <result property="requestedAt" column="requested_at"/>
+        <result property="reviewedBy" column="reviewed_by"/>
+        <result property="reviewedAt" column="reviewed_at"/>
+    </resultMap>
+
+    <!-- 同一用户同一字段只保留一条待审记录：重复提交时刷新待审值并回到 PENDING。 -->
+    <insert id="upsertPending">
+        INSERT INTO user_review_item (user_id, field, current_value, pending_value, status, requested_at)
+        VALUES (#{userId}, #{field}, #{currentValue}, #{pendingValue}, 'PENDING', CURRENT_TIMESTAMP)
+        ON DUPLICATE KEY UPDATE
+            current_value = VALUES(current_value),
+            pending_value = VALUES(pending_value),
+            status = 'PENDING',
+            requested_at = CURRENT_TIMESTAMP,
+            reviewed_by = NULL,
+            reviewed_at = NULL
+    </insert>
+
+    <select id="findPendingByUserId" resultMap="reviewItemResultMap">
+        SELECT * FROM user_review_item
+        WHERE user_id = #{userId} AND status = 'PENDING'
+        ORDER BY requested_at DESC, id DESC
+    </select>
+
+    <select id="findPendingByUserAndField" resultMap="reviewItemResultMap">
+        SELECT * FROM user_review_item
+        WHERE user_id = #{userId} AND field = #{field} AND status = 'PENDING'
+    </select>
+
+    <select id="findPendingByIds" resultMap="reviewItemResultMap">
+        SELECT * FROM user_review_item
+        WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+          AND status = 'PENDING'
+        ORDER BY user_id, requested_at DESC
+    </select>
+
+    <select id="findPendingById" resultMap="reviewItemResultMap">
+        SELECT * FROM user_review_item
+        WHERE id = #{id} AND status = 'PENDING'
+    </select>
+
+    <update id="approveItem">
+        UPDATE user_review_item
+        SET status = 'APPROVED',
+            reviewed_by = #{reviewedBy},
+            reviewed_at = CURRENT_TIMESTAMP
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
+    <update id="rejectItem">
+        UPDATE user_review_item
+        SET status = 'REJECTED',
+            reviewed_by = #{reviewedBy},
+            reviewed_at = CURRENT_TIMESTAMP
+        WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
+    <select id="findPendingByField" resultMap="reviewItemResultMap">
+        SELECT * FROM user_review_item
+        WHERE field = #{field} AND status = 'PENDING'
+        ORDER BY requested_at DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

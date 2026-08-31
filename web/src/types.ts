@@ -8,9 +8,19 @@ export interface Region {
 }
 
 export interface UserSummary {
+  id: number | null
   username: string
   displayName: string
   avatarUrl: string | null
+}
+
+export interface UserPublic {
+  id: number
+  username: string
+  displayName: string
+  avatarUrl: string | null
+  signature: string | null
+  foods: Food[]
 }
 
 export interface Food {
@@ -87,6 +97,24 @@ export interface MapBounds {
   maxLongitude: number
 }
 
+/** 地图标记：后端 /foods/markers 的轻量载荷，只含弹窗所需字段。 */
+export interface FoodMarker {
+  id: number
+  name: string
+  region: Region
+  latitude: number
+  longitude: number
+  summary: string
+}
+
+/** 目录分页：后端 /foods/catalog 的返回结构。 */
+export interface PagedCatalog {
+  items: Food[]
+  total: number
+  page: number
+  pageSize: number
+}
+
 export interface MapFocus {
   latitude: number
   longitude: number
@@ -143,6 +171,23 @@ export interface AuthUser {
   role: UserRole
   active: boolean
   createdAt: string
+  pendingReviews?: PendingReview[]
+}
+
+export type ReviewField = 'DISPLAY_NAME' | 'SIGNATURE' | 'SEAL'
+export type ReviewItemStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface PendingReview {
+  id: number
+  field: ReviewField
+  currentValue: string
+  pendingValue: string
+  requestedAt: string
+}
+
+export interface ReviewItemPayload {
+  field: ReviewField
+  status: Extract<ReviewItemStatus, 'APPROVED' | 'REJECTED'>
 }
 
 export type SignatureStatus = 'PENDING' | 'APPROVED' | 'REJECTED'

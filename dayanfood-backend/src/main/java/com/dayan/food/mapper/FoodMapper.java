@@ -1,6 +1,7 @@
 package com.dayan.food.mapper;
 
 import com.dayan.food.entity.po.Food;
+import com.dayan.food.entity.po.FoodMarker;
 import com.dayan.food.entity.po.FoodFootprint;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 import org.apache.ibatis.annotations.Param;
@@ -25,7 +26,39 @@ public interface FoodMapper {
             @Param("pageSize") int pageSize
     );
 
+    List<FoodMarker> findMarkers(
+            @Param("keyword") String keyword,
+            @Param("regionId") Long regionId,
+            @Param("minLatitude") java.math.BigDecimal minLatitude,
+            @Param("maxLatitude") java.math.BigDecimal maxLatitude,
+            @Param("minLongitude") java.math.BigDecimal minLongitude,
+            @Param("maxLongitude") java.math.BigDecimal maxLongitude,
+            @Param("limit") int limit
+    );
+
+    List<Food> findCatalogPage(
+            @Param("keyword") String keyword,
+            @Param("regionId") Long regionId,
+            @Param("minLatitude") java.math.BigDecimal minLatitude,
+            @Param("maxLatitude") java.math.BigDecimal maxLatitude,
+            @Param("minLongitude") java.math.BigDecimal minLongitude,
+            @Param("maxLongitude") java.math.BigDecimal maxLongitude,
+            @Param("offset") int offset,
+            @Param("pageSize") int pageSize
+    );
+
+    int countCatalog(
+            @Param("keyword") String keyword,
+            @Param("regionId") Long regionId,
+            @Param("minLatitude") java.math.BigDecimal minLatitude,
+            @Param("maxLatitude") java.math.BigDecimal maxLatitude,
+            @Param("minLongitude") java.math.BigDecimal minLongitude,
+            @Param("maxLongitude") java.math.BigDecimal maxLongitude
+    );
+
     List<Food> findByCreatedBy(String username);
+
+    List<Food> findApprovedByCreatedBy(@Param("username") String username, @Param("limit") int limit);
 
     Food findOwnedById(@Param("id") Long id, @Param("username") String username);
 

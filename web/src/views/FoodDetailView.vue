@@ -169,18 +169,34 @@ onBeforeUnmount(() => {
     </div>
 
     <section class="food-creator">
-      <div class="user-avatar food-creator-avatar">
-        <img
-          v-if="food.creator.avatarUrl"
-          :src="food.creator.avatarUrl"
-          :alt="t('detail.userAvatar', { name: food.creator.displayName })"
-        >
-        <span v-else>{{ avatarInitial(food.creator.displayName) }}</span>
-      </div>
-      <div>
-        <small>{{ t('detail.uploadedBy') }}</small>
-        <strong>{{ food.creator.displayName }}</strong>
-        <span>@{{ food.creator.username }}</span>
+      <RouterLink
+        v-if="food.creator.id"
+        :to="`/users/${food.creator.id}`"
+        class="food-creator-profile"
+      >
+        <div class="user-avatar food-creator-avatar">
+          <img
+            v-if="food.creator.avatarUrl"
+            :src="food.creator.avatarUrl"
+            :alt="t('detail.userAvatar', { name: food.creator.displayName })"
+          >
+          <span v-else>{{ avatarInitial(food.creator.displayName) }}</span>
+        </div>
+        <div>
+          <small>{{ t('detail.uploadedBy') }}</small>
+          <strong>{{ food.creator.displayName }}</strong>
+          <span>@{{ food.creator.username }}</span>
+        </div>
+      </RouterLink>
+      <div v-else class="food-creator-profile">
+        <div class="user-avatar food-creator-avatar">
+          <span>{{ avatarInitial(food.creator.displayName) }}</span>
+        </div>
+        <div>
+          <small>{{ t('detail.uploadedBy') }}</small>
+          <strong>{{ food.creator.displayName }}</strong>
+          <span>@{{ food.creator.username }}</span>
+        </div>
       </div>
     </section>
 
@@ -247,7 +263,21 @@ onBeforeUnmount(() => {
 
       <div v-else class="comment-list">
         <div v-for="comment in comments" :key="comment.id" class="comment-card">
-          <div class="user-avatar comment-avatar">
+          <RouterLink
+            v-if="comment.author.id"
+            :to="`/users/${comment.author.id}`"
+            class="comment-profile-link"
+          >
+            <div class="user-avatar comment-avatar">
+              <img
+                v-if="comment.author.avatarUrl"
+                :src="comment.author.avatarUrl"
+                :alt="t('detail.userAvatar', { name: comment.author.displayName })"
+              >
+              <span v-else>{{ avatarInitial(comment.author.displayName) }}</span>
+            </div>
+          </RouterLink>
+          <div v-else class="user-avatar comment-avatar">
             <img
               v-if="comment.author.avatarUrl"
               :src="comment.author.avatarUrl"
@@ -258,7 +288,14 @@ onBeforeUnmount(() => {
           <div class="comment-body">
             <div class="comment-meta">
               <div>
-                <strong>{{ comment.author.displayName }}</strong>
+                <RouterLink
+                  v-if="comment.author.id"
+                  :to="`/users/${comment.author.id}`"
+                  class="comment-author-link"
+                >
+                  <strong>{{ comment.author.displayName }}</strong>
+                </RouterLink>
+                <strong v-else>{{ comment.author.displayName }}</strong>
                 <span>@{{ comment.author.username }}</span>
               </div>
               <time :datetime="comment.createdAt">{{ formatDate(comment.createdAt) }}</time>

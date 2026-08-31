@@ -267,6 +267,29 @@
   text-decoration: underline;
 }
 
+.comment-profile-link {
+  display: block;
+  text-decoration: none;
+}
+
+.comment-author-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.comment-author-link strong:hover,
+.comment-author-link:focus-visible strong {
+  color: #8c3029;
+}
+
+.food-creator-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
 .comment-list {
   display: grid;
   gap: 14px;

@@ -9,13 +9,21 @@ import {
   getRegions,
   getUsers,
   importFoodSpreadsheet,
-  reviewUserSignature,
+  reviewUserItem,
   setUserActive,
   setUserRole,
   reviewFood,
 } from '../api'
 import { useAuth } from '../auth'
-import type { AuthUser, Food, FoodImportResult, FoodReviewStatus, Region, SignatureStatus } from '../types'
+import type {
+  AuthUser,
+  Food,
+  FoodImportResult,
+  FoodReviewStatus,
+  PendingReview,
+  Region,
+  ReviewItemStatus,
+} from '../types'
 
 type AdminTab = 'foods' | 'reviews' | 'users'
 type PageSize = 10 | 20 | 50
@@ -51,6 +59,7 @@ const foodsPageTotal = computed(() => {
 })
 
 const viewingFood = ref<Food | null>(null)
+const reviewingUser = ref<AuthUser | null>(null)
 
 const usersPageTotal = computed(() => Math.max(1, Math.ceil(usersTotal.value / usersPageSize.value)))
 
@@ -267,23 +276,29 @@ async function toggleSubAdmin(user: AuthUser) {
   }
 }
 
-async function reviewSignatureSubmission(user: AuthUser, status: Extract<SignatureStatus, 'APPROVED' | 'REJECTED'>) {
-  if (pendingUserIds.value.has(user.id)) return
+async function reviewItemSubmission(item: PendingReview, status: Extract<ReviewItemStatus, 'APPROVED' | 'REJECTED'>) {
+  const targetUser = reviewingUser.value
+  if (!targetUser || pendingUserIds.value.has(targetUser.id)) return
   const action = status === 'APPROVED' ? t('admin.approve') : t('admin.reject')
-  if (!window.confirm(t('admin.signatureReviewConfirm', { action, name: user.displayName || user.username }))) {
+  if (!window.confirm(t('admin.reviewItemConfirm', {
+    action,
+    field: t(`admin.reviewField_${item.field}`),
+    name: targetUser.displayName || targetUser.username,
+  }))) {
     return
   }
 
-  pendingUserIds.value.add(user.id)
+  pendingUserIds.value.add(targetUser.id)
   usersLoading.value = true
   usersError.value = ''
   try {
-    await reviewUserSignature(user.id, status)
+    await reviewUserItem(targetUser.id, { field: item.field, status })
+    reviewingUser.value = null
     await loadUsersPage(usersPage.value, usersPageSize.value)
   } catch {
     usersError.value = t('admin.signatureReviewError')
   } finally {
-    pendingUserIds.value.delete(user.id)
+    pendingUserIds.value.delete(targetUser.id)
     usersLoading.value = false
   }
 }
@@ -544,10 +559,18 @@ onMounted(loadFoodsAndMeta)
                 <tr v-for="user in users" :key="user.id">
                   <td>{{ user.id }}</td>
                   <td>{{ user.username }}</td>
-                  <td>{{ user.displayName }}</td>
+                  <td>
+                    {{ user.pendingReviews?.find((item) => item.field === 'DISPLAY_NAME')?.pendingValue || user.displayName }}
+                    <span
+                      v-if="user.pendingReviews?.some((item) => item.field === 'DISPLAY_NAME')"
+                      class="admin-pending-mark"
+                    >{{ t('admin.signaturePendingMark') }}</span>
+                  </td>
                   <td>{{ user.email || '—' }}</td>
                   <td>
-                    <span v-if="user.signaturePending" class="admin-signature pending">{{ user.signaturePending }}</span>
+                    <span v-if="user.pendingReviews?.some((item) => item.field === 'SIGNATURE')" class="admin-signature pending">
+                      {{ user.pendingReviews.find((item) => item.field === 'SIGNATURE')?.pendingValue }}
+                    </span>
                     <span v-else-if="user.signature">{{ user.signature }}</span>
                     <span v-else>—</span>
                   </td>
@@ -560,20 +583,13 @@ onMounted(loadFoodsAndMeta)
                   <td>{{ formatDateTime(user.createdAt) }}</td>
                   <td>
                     <div class="admin-user-actions">
-                      <template v-if="user.signatureStatus === 'PENDING'">
-                        <button
-                          class="admin-user-action"
-                          type="button"
-                          :disabled="pendingUserIds.has(user.id)"
-                          @click="reviewSignatureSubmission(user, 'APPROVED')"
-                        >{{ t('admin.approve') }}</button>
-                        <button
-                          class="danger-button"
-                          type="button"
-                          :disabled="pendingUserIds.has(user.id)"
-                          @click="reviewSignatureSubmission(user, 'REJECTED')"
-                        >{{ t('admin.reject') }}</button>
-                      </template>
+                      <button
+                        v-if="user.pendingReviews?.length"
+                        class="admin-user-action"
+                        type="button"
+                        :disabled="pendingUserIds.has(user.id)"
+                        @click="reviewingUser = user"
+                      >{{ t('admin.reviewPendingCount', { count: user.pendingReviews.length }) }}</button>
                       <button
                         v-if="canManageRoles && user.role !== 'ADMIN'"
                         class="admin-user-action"
@@ -689,6 +705,48 @@ onMounted(loadFoodsAndMeta)
             {{ t('admin.reject') }}
           </button>
         </div>
+      </section>
+    </div>
+
+    <div v-if="reviewingUser" class="modal-mask" @click.self="reviewingUser = null">
+      <section class="admin-detail-modal">
+        <div class="modal-title">
+          <div>
+            <small>{{ t('admin.eyebrow') }}</small>
+            <h2>{{ t('admin.reviewItems', { name: reviewingUser.displayName || reviewingUser.username }) }}</h2>
+          </div>
+          <button class="icon-button" type="button" @click="reviewingUser = null">×</button>
+        </div>
+
+        <p v-if="!reviewingUser.pendingReviews?.length" class="admin-detail-empty">{{ t('admin.noPending') }}</p>
+        <template v-else>
+          <dl class="admin-detail-grid">
+            <template v-for="item in reviewingUser.pendingReviews" :key="item.id">
+              <div>
+                <dt>{{ t('admin.reviewField_' + item.field) }}</dt>
+                <dd>{{ item.currentValue || '—' }}</dd>
+              </div>
+              <div>
+                <dt>{{ t('admin.reviewPendingLabel') }}</dt>
+                <dd class="review-pending-value">{{ item.pendingValue }}</dd>
+              </div>
+              <div class="review-inline-actions">
+                <button
+                  class="admin-user-action"
+                  type="button"
+                  :disabled="pendingUserIds.has(reviewingUser.id)"
+                  @click="reviewItemSubmission(item, 'APPROVED')"
+                >{{ t('admin.approve') }}</button>
+                <button
+                  class="danger-button"
+                  type="button"
+                  :disabled="pendingUserIds.has(reviewingUser.id)"
+                  @click="reviewItemSubmission(item, 'REJECTED')"
+                >{{ t('admin.reject') }}</button>
+              </div>
+            </template>
+          </dl>
+        </template>
       </section>
     </div>
   </section>

@@ -1,5 +1,6 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.cache.CacheInvalidator;
 import com.dayan.food.entity.dto.FoodImportRowDTO;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 import com.dayan.food.entity.po.AppUser;
@@ -20,7 +21,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -59,21 +60,26 @@ public class FoodImportServiceImpl implements FoodImportService {
     private final RegionMapper regionMapper;
     private final AppUserMapper appUserMapper;
     private final CityCenterService cityCenterService;
+    private final CacheManager cacheManager;
+    private final CacheInvalidator cacheInvalidator;
 
     public FoodImportServiceImpl(
             FoodMapper foodMapper,
             RegionMapper regionMapper,
             AppUserMapper appUserMapper,
-            CityCenterService cityCenterService
+            CityCenterService cityCenterService,
+            CacheManager cacheManager,
+            CacheInvalidator cacheInvalidator
     ) {
         this.foodMapper = foodMapper;
         this.regionMapper = regionMapper;
         this.appUserMapper = appUserMapper;
         this.cityCenterService = cityCenterService;
+        this.cacheManager = cacheManager;
+        this.cacheInvalidator = cacheInvalidator;
     }
 
     @Override
-    @CacheEvict(cacheNames = {"foodLists", "regions"}, allEntries = true)
     @Transactional
     public FoodImportResultVO importSpreadsheet(MultipartFile file) {
         validateFile(file);
@@ -134,6 +140,10 @@ public class FoodImportServiceImpl implements FoodImportService {
         }
 
         int skipped = totalRows - parsedRows.size();
+        // 批量入库后统一在事务提交时失效集合类缓存，避免回滚时误清。
+        cacheInvalidator.clear(cacheManager.getCache("foodLists"));
+        cacheInvalidator.clear(cacheManager.getCache("foodCatalogs"));
+        cacheInvalidator.clear(cacheManager.getCache("regions"));
         return new FoodImportResultVO(
                 totalRows,
                 imported,

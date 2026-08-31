@@ -19,6 +19,11 @@ public interface AppUserMapper {
 
     AppUser findById(Long id);
 
+    /**
+     * 公开页专用摘要查询：只取公开字段，password 等敏感列不进内存。
+     */
+    AppUser findPublicById(@Param("id") Long id);
+
     List<AppUser> findPage(@Param("offset") int offset, @Param("pageSize") int pageSize);
 
     int count();
@@ -27,11 +32,9 @@ public interface AppUserMapper {
 
     int updateAvatar(@Param("username") String username, @Param("avatarUrl") String avatarUrl);
 
-    int updateSignature(@Param("username") String username, @Param("signature") String signature);
+    int updateSignature(@Param("id") Long id, @Param("signature") String signature);
 
-    int approveSignature(@Param("id") Long id);
-
-    int rejectSignature(@Param("id") Long id);
+    int updateDisplayName(@Param("id") Long id, @Param("displayName") String displayName);
 
     int updateActive(@Param("id") Long id, @Param("active") boolean active);
 

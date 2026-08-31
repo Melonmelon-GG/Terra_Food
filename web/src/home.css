@@ -282,7 +282,10 @@ body:has(main > .map-explorer) > #app > header {
   position: static;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
+  row-gap: 4px;
+  column-gap: 10px;
   width: auto;
   height: auto;
   min-height: 24px;
@@ -293,6 +296,68 @@ body:has(main > .map-explorer) > #app > header {
   background: transparent;
   border: 0;
   backdrop-filter: none;
+}
+
+.explorer-catalog-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.explorer-catalog-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.explorer-catalog-pager button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: #715f52;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid #cfb99c;
+  border-radius: 999px;
+}
+
+.explorer-catalog-pager button:not(:disabled):hover {
+  color: #8b3028;
+  border-color: #8b3028;
+}
+
+.explorer-catalog-pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.explorer-catalog-pager b {
+  min-width: 34px;
+  color: #715f52;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.explorer-map-view {
+  padding: 3px 12px;
+  color: #8c3029;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  background: #fffaf1;
+  border: 1px solid #cfb99c;
+  border-radius: 999px;
+}
+
+.explorer-map-view:hover,
+.explorer-map-view:focus-visible {
+  border-color: #8b342b;
+  box-shadow: 0 0 0 2px #8b342b1a;
+  outline: none;
 }
 
 .explorer-state {

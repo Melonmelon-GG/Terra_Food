@@ -3,7 +3,7 @@ import axios from 'axios'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { getAchievements, getMyFoods, getMyFootprints, getRegions, selectAchievement, updateAvatar, updateMySignature, uploadImage } from '../api'
+import { getAchievements, getMyFoods, getMyFootprints, getRegions, selectAchievement, updateAvatar, updateMyDisplayName, updateMySignature, uploadImage } from '../api'
 import { useAuth } from '../auth'
 import FoodEditModal from '../components/FoodEditModal.vue'
 import type { Achievement, Food, FoodFootprint, FoodReviewStatus, Region, SignatureStatus } from '../types'
@@ -26,8 +26,14 @@ const signatureEditing = ref(false)
 const signatureDraft = ref('')
 const signatureSaving = ref(false)
 const signatureError = ref('')
+const displayNameEditing = ref(false)
+const displayNameDraft = ref('')
+const displayNameSaving = ref(false)
+const displayNameError = ref('')
 
 const user = computed(() => auth.currentUser.value)
+const pendingSignature = computed(() => user.value?.pendingReviews?.find((item) => item.field === 'SIGNATURE'))
+const pendingDisplayName = computed(() => user.value?.pendingReviews?.find((item) => item.field === 'DISPLAY_NAME'))
 const selectedAchievement = computed(() => achievements.value.find((achievement) => achievement.selected))
 const avatarText = computed(() => (user.value?.displayName || user.value?.username || '食').trim().slice(0, 1).toUpperCase())
 const statusCounts = computed(() => ({
@@ -62,7 +68,9 @@ function handleSaved(updated: Food) {
 }
 
 function startSignatureEdit() {
-  signatureDraft.value = user.value?.signaturePending || user.value?.signature || ''
+  signatureDraft.value = pendingSignature.value?.pendingValue
+    || user.value?.signature
+    || ''
   signatureError.value = ''
   signatureEditing.value = true
 }
@@ -86,6 +94,34 @@ async function saveSignature() {
       : t('profile.signatureError')
   } finally {
     signatureSaving.value = false
+  }
+}
+
+function startDisplayNameEdit() {
+  displayNameDraft.value = pendingDisplayName.value?.pendingValue || user.value?.displayName || ''
+  displayNameError.value = ''
+  displayNameEditing.value = true
+}
+
+async function saveDisplayName() {
+  const draft = displayNameDraft.value.trim()
+  if (!draft) {
+    displayNameError.value = t('profile.displayNameRequired')
+    return
+  }
+
+  displayNameSaving.value = true
+  displayNameError.value = ''
+  try {
+    const updatedUser = await updateMyDisplayName(draft)
+    auth.setCurrentUser(updatedUser)
+    displayNameEditing.value = false
+  } catch (requestError) {
+    displayNameError.value = axios.isAxiosError(requestError)
+      ? requestError.response?.data?.message || t('profile.displayNameError')
+      : t('profile.displayNameError')
+  } finally {
+    displayNameSaving.value = false
   }
 }
 
@@ -168,7 +204,37 @@ onMounted(async () => {
         </div>
         <div>
           <small>{{ t('profile.eyebrow') }}</small>
-          <h1>{{ user?.displayName }}</h1>
+
+          <template v-if="displayNameEditing">
+            <div class="profile-display-name">
+              <input
+                v-model="displayNameDraft"
+                maxlength="50"
+                :placeholder="user?.username"
+              >
+              <button type="button" :disabled="displayNameSaving" @click="saveDisplayName">
+                {{ displayNameSaving ? t('profile.savingName') : t('profile.saveName') }}
+              </button>
+              <button type="button" :disabled="displayNameSaving" @click="displayNameEditing = false">
+                {{ t('common.cancel') }}
+              </button>
+            </div>
+            <p v-if="displayNameError" class="signature-error">{{ displayNameError }}</p>
+          </template>
+          <template v-else>
+            <h1>
+              {{ pendingDisplayName?.pendingValue || user?.displayName }}
+              <button
+                v-if="pendingDisplayName"
+                type="button"
+                disabled
+                class="signature-status"
+              >{{ t('profile.signaturePending') }}</button>
+            </h1>
+            <button type="button" class="display-name-edit" @click="startDisplayNameEdit">
+              {{ t('profile.editDisplayName') }}
+            </button>
+          </template>
           <p>@{{ user?.username }}<template v-if="user?.email"> · {{ user.email }}</template></p>
 
           <div class="profile-signature">
@@ -192,12 +258,9 @@ onMounted(async () => {
 
             <template v-else>
               <p>
-                {{ user?.signature || t('profile.signatureEmpty') }}
-                <button v-if="user?.signatureStatus === 'PENDING'" type="button" disabled class="signature-status">
+                {{ pendingSignature?.pendingValue || user?.signature || t('profile.signatureEmpty') }}
+                <button v-if="pendingSignature" type="button" disabled class="signature-status">
                   {{ t('profile.signaturePending') }}
-                </button>
-                <button v-else-if="user?.signatureStatus === 'REJECTED'" type="button" disabled class="signature-status rejected">
-                  {{ t('profile.signatureRejected') }}
                 </button>
               </p>
               <button type="button" class="signature-edit" @click="startSignatureEdit">

@@ -1,6 +1,7 @@
 package com.dayan.food.service;
 
-import com.dayan.food.entity.enums.SignatureStatus;
+import com.dayan.food.entity.enums.ReviewField;
+import com.dayan.food.entity.enums.ReviewStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.vo.AuthUserVO;
 
@@ -18,7 +19,9 @@ public interface AppUserService {
 
     AuthUserVO updateSignature(String username, String signature);
 
-    void reviewSignature(Long id, SignatureStatus status, String operatorUsername);
+    AuthUserVO submitDisplayName(String username, String displayName);
+
+    void reviewItem(Long userId, ReviewField field, ReviewStatus status, String operatorUsername);
 
     void setActive(Long id, boolean active, String operatorUsername);
 
