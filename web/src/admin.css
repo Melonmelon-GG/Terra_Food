@@ -308,6 +308,38 @@
   border-color: #8b3028;
   background: #f5efe5;
 }
+
+.admin-pending-mark {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  color: #9a352e;
+  font-size: 10px;
+  vertical-align: middle;
+  background: #fae9dd;
+  border: 1px solid #d9b39b;
+  border-radius: 999px;
+}
+
+.review-pending-value {
+  color: #8c3029;
+  font-weight: 600;
+}
+
+.admin-detail-empty {
+  padding: 34px 16px;
+  color: #8a7668;
+  font-size: 13px;
+  text-align: center;
+}
+
+.review-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
 /* ===== 审批详情弹窗 ===== */
 
 .admin-detail-modal {
