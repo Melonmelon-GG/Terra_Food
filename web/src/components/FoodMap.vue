@@ -3,7 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
 
-import type { Food, MapBounds, MapFocus } from '../types'
+import type { FoodMarker, MapBounds, MapFocus } from '../types'
 import 'leaflet/dist/leaflet.css'
 
 // 使用项目自身的朱砂标记，避免 Leaflet 默认图片路径在开发/生产环境中退化成破图。
@@ -16,13 +16,13 @@ const foodMarkerIcon = L.divIcon({
 })
 
 const props = defineProps<{
-  foods: Food[]
+  foods: FoodMarker[]
   focus?: MapFocus
 }>()
 
 const emit = defineEmits<{
   pick: [latitude: number, longitude: number]
-  boundsChange: [bounds: MapBounds]
+  boundsChange: [bounds: MapBounds, zoom: number]
 }>()
 
 const { locale, t } = useI18n()
@@ -54,7 +54,7 @@ function tiandituTileUrl(layer: 'vec_w' | 'cva_w') {
   return `https://t{s}.tianditu.gov.cn/DataServer?T=${layer}&x={x}&y={y}&l={z}&tk=${encodeURIComponent(tiandituKey || '')}`
 }
 
-function createFoodPopup(food: Food) {
+function createFoodPopup(food: FoodMarker) {
   const popup = document.createElement('div')
   popup.className = 'map-popup'
 
@@ -84,7 +84,7 @@ function createClusterIcon(count: number) {
   })
 }
 
-function createClusterPopup(foods: Food[]) {
+function createClusterPopup(foods: FoodMarker[]) {
   const popup = document.createElement('div')
   popup.className = 'map-popup map-cluster-popup'
 
@@ -114,7 +114,7 @@ function renderMarkers() {
   layer.clearLayers()
   const zoom = map.getZoom()
   const cellSize = zoom <= 5 ? 58 : zoom <= 7 ? 48 : zoom <= 10 ? 40 : 30
-  const groups = new Map<string, { foods: Food[], latitude: number, longitude: number }>()
+  const groups = new Map<string, { foods: FoodMarker[], latitude: number, longitude: number }>()
 
   for (const food of props.foods) {
     if (food.latitude == null || food.longitude == null) continue
@@ -178,7 +178,7 @@ function emitCurrentBounds() {
     maxLatitude: Math.min(bounds.getNorth(), chinaDataBounds.getNorth()),
     minLongitude: Math.max(bounds.getWest(), chinaDataBounds.getWest()),
     maxLongitude: Math.min(bounds.getEast(), chinaDataBounds.getEast()),
-  })
+  }, map.getZoom())
 }
 
 function invalidateMapSize() {

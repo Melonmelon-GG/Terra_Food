@@ -2,7 +2,9 @@ package com.dayan.food.service;
 
 import com.dayan.food.entity.dto.FoodUpdateDTO;
 import com.dayan.food.entity.vo.FoodVO;
+import com.dayan.food.entity.vo.FoodCatalogVO;
 import com.dayan.food.entity.vo.FoodFootprintVO;
+import com.dayan.food.entity.vo.FoodMarkerVO;
 import com.dayan.food.entity.vo.FoodPageVO;
 import com.dayan.food.entity.enums.FoodReviewStatus;
 
@@ -19,6 +21,17 @@ public interface FoodService {
             BigDecimal minLongitude,
             BigDecimal maxLongitude
     );
+
+    List<FoodMarkerVO> markers(
+            String keyword,
+            Long regionId,
+            BigDecimal minLatitude,
+            BigDecimal maxLatitude,
+            BigDecimal minLongitude,
+            BigDecimal maxLongitude
+    );
+
+    FoodCatalogVO catalog(String keyword, Long regionId, int page, int pageSize);
 
     FoodPageVO listForAdmin(int page, int pageSize, FoodReviewStatus status);
 

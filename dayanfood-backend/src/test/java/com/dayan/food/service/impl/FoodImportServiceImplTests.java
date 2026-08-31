@@ -1,5 +1,6 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.cache.CacheInvalidator;
 import com.dayan.food.entity.po.Region;
 import com.dayan.food.entity.vo.CityCenterVO;
 import com.dayan.food.entity.vo.FoodImportResultVO;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayOutputStream;
@@ -47,11 +49,21 @@ class FoodImportServiceImplTests {
     @Mock
     private CityCenterService cityCenterService;
 
+    @Mock
+    private CacheManager cacheManager;
+
     private FoodImportServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new FoodImportServiceImpl(foodMapper, regionMapper, appUserMapper, cityCenterService);
+        service = new FoodImportServiceImpl(
+                foodMapper,
+                regionMapper,
+                appUserMapper,
+                cityCenterService,
+                cacheManager,
+                new CacheInvalidator()
+        );
     }
 
     @Test
@@ -82,6 +94,10 @@ class FoodImportServiceImplTests {
         assertEquals(1, result.anonymousCount());
         assertEquals(0, result.invalidCount());
         verify(foodMapper).insert(org.mockito.ArgumentMatchers.any());
+        // 批量入库后列表/目录/地区缓存应被接洽失效（单测无事务 → 立即执行路径）。
+        verify(cacheManager).getCache("foodLists");
+        verify(cacheManager).getCache("foodCatalogs");
+        verify(cacheManager).getCache("regions");
     }
 
     @Test
