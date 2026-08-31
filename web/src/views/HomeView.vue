@@ -231,16 +231,12 @@ async function pickLocation(latitude: number, longitude: number) {
       pickedProvince.value = resolvedLocation.province
       pickedCity.value = resolvedLocation.city
       pickedAddress.value = resolvedLocation.address
-      // 新城市也能精准显示；已经收录的城市继续联动现有目录。
+      // 地图点击只准备上传所需的地区信息，不改变当前目录筛选。
+      // 浏览地区只能通过地区抽屉显式切换，避免点击无菜区域把目录筛空。
       const existingRegion = regions.value.find((region) =>
         region.province === resolvedLocation.province && region.name === resolvedLocation.city,
       )
       pickedRegionId.value = existingRegion?.id
-      if (selectedRegionId.value !== existingRegion?.id) {
-        selectedRegionId.value = existingRegion?.id
-        catalogPage.value = 1
-        await loadCatalog()
-      }
     }
   } catch (requestError) {
     if (lookupSequence === locationLookupSequence) {
@@ -320,7 +316,6 @@ async function openUpload() {
         regions.value = [...regions.value, region]
       }
       pickedRegionId.value = region.id
-      selectedRegionId.value = region.id
     } catch {
       pickHint.value = t('home.mapRegionError')
       return
