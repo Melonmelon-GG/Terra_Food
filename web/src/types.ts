@@ -20,6 +20,8 @@ export interface UserPublic {
   displayName: string
   avatarUrl: string | null
   signature: string | null
+  selectedAchievement: Achievement | null
+  selectedEtching: EtchingDesign | null
   foods: Food[]
 }
 
@@ -200,6 +202,20 @@ export interface Achievement {
   imageUrl: string
   unlockedAt: string
   selected: boolean
+}
+
+export interface EtchingDesign {
+  id: number
+  name: string
+  layerOne: string[]
+  selected: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EtchingDesignPayload {
+  name: string
+  layerOne: string[]
 }
 export interface LoginPayload {
   username: string

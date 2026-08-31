@@ -4,9 +4,12 @@ import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.entity.po.Food;
 import com.dayan.food.entity.vo.FoodVO;
 import com.dayan.food.entity.vo.UserPublicVO;
+import com.dayan.food.entity.vo.AchievementVO;
+import com.dayan.food.mapper.AchievementMapper;
 import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.mapper.FoodMapper;
 import com.dayan.food.service.UserPublicService;
+import com.dayan.food.service.EtchingDesignService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +24,15 @@ public class UserPublicServiceImpl implements UserPublicService {
 
     private final AppUserMapper appUserMapper;
     private final FoodMapper foodMapper;
+    private final AchievementMapper achievementMapper;
+    private final EtchingDesignService etchingDesignService;
 
-    public UserPublicServiceImpl(AppUserMapper appUserMapper, FoodMapper foodMapper) {
+    public UserPublicServiceImpl(AppUserMapper appUserMapper, FoodMapper foodMapper,
+                                 AchievementMapper achievementMapper, EtchingDesignService etchingDesignService) {
         this.appUserMapper = appUserMapper;
         this.foodMapper = foodMapper;
+        this.achievementMapper = achievementMapper;
+        this.etchingDesignService = etchingDesignService;
     }
 
     @Override
@@ -44,12 +52,17 @@ public class UserPublicServiceImpl implements UserPublicService {
         String signature = user.getSignature() == null || user.getSignature().isBlank()
                 ? null
                 : user.getSignature().trim();
+        AchievementVO selectedAchievement = achievementMapper.findUnlockedByUsername(user.getUsername()).stream()
+                .filter(achievement -> achievement.isSelected())
+                .findFirst().map(AchievementVO::from).orElse(null);
         return new UserPublicVO(
                 user.getId(),
                 user.getUsername(),
                 user.getDisplayName(),
                 user.getAvatarUrl(),
                 signature,
+                selectedAchievement,
+                etchingDesignService.getSelected(user.getId()),
                 foods
         );
     }

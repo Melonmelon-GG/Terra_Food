@@ -3,10 +3,12 @@ import axios from 'axios'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { getAchievements, getMyFoods, getMyFootprints, getRegions, selectAchievement, updateAvatar, updateMyDisplayName, updateMySignature, uploadImage } from '../api'
+import { deleteEtching, getAchievements, getMyEtchings, getMyFoods, getMyFootprints, getRegions, selectAchievement, selectEtching, updateAvatar, updateMyDisplayName, updateMySignature, uploadImage } from '../api'
 import { useAuth } from '../auth'
 import FoodEditModal from '../components/FoodEditModal.vue'
-import type { Achievement, Food, FoodFootprint, FoodReviewStatus, Region, SignatureStatus } from '../types'
+import EtchingStudio from '../components/EtchingStudio.vue'
+import HexEtching from '../components/HexEtching.vue'
+import type { Achievement, EtchingDesign, Food, FoodFootprint, FoodReviewStatus, Region, SignatureStatus } from '../types'
 
 const { locale, t } = useI18n()
 const auth = useAuth()
@@ -14,6 +16,9 @@ const foods = ref<Food[]>([])
 const footprints = ref<FoodFootprint[]>([])
 const regions = ref<Region[]>([])
 const achievements = ref<Achievement[]>([])
+const etchings = ref<EtchingDesign[]>([])
+const studioOpen = ref(false)
+const editingEtching = ref<EtchingDesign>()
 const selectedFood = ref<Food>()
 const loading = ref(true)
 const error = ref('')
@@ -35,6 +40,7 @@ const user = computed(() => auth.currentUser.value)
 const pendingSignature = computed(() => user.value?.pendingReviews?.find((item) => item.field === 'SIGNATURE'))
 const pendingDisplayName = computed(() => user.value?.pendingReviews?.find((item) => item.field === 'DISPLAY_NAME'))
 const selectedAchievement = computed(() => achievements.value.find((achievement) => achievement.selected))
+const selectedEtching = computed(() => etchings.value.find((etching) => etching.selected))
 const avatarText = computed(() => (user.value?.displayName || user.value?.username || '食').trim().slice(0, 1).toUpperCase())
 const statusCounts = computed(() => ({
   total: foods.value.length,
@@ -136,11 +142,36 @@ async function chooseAchievement(achievementId: number) {
       ...achievement,
       selected: achievement.id === selected.id,
     }))
+    etchings.value = etchings.value.map((etching) => ({ ...etching, selected: false }))
   } catch {
     achievementError.value = t('profile.sealSelectionError')
   } finally {
     achievementSaving.value = undefined
   }
+}
+
+async function chooseEtching(etchingId: number) {
+  achievementSaving.value = etchingId
+  achievementError.value = ''
+  try {
+    const selected = await selectEtching(etchingId)
+    etchings.value = etchings.value.map((etching) => ({ ...etching, selected: etching.id === selected.id }))
+    achievements.value = achievements.value.map((achievement) => ({ ...achievement, selected: false }))
+  } catch { achievementError.value = t('profile.sealSelectionError') }
+  finally { achievementSaving.value = undefined }
+}
+
+function openStudio(design?: EtchingDesign) { editingEtching.value = design; studioOpen.value = true }
+function handleEtchingSaved(saved: EtchingDesign) {
+  const index = etchings.value.findIndex((etching) => etching.id === saved.id)
+  if (index >= 0) etchings.value.splice(index, 1, saved)
+  else etchings.value.unshift(saved)
+  studioOpen.value = false
+}
+async function removeEtching(design: EtchingDesign) {
+  if (!window.confirm(t('etching.deleteConfirm', { name: design.name }))) return
+  await deleteEtching(design.id)
+  etchings.value = etchings.value.filter((etching) => etching.id !== design.id)
 }
 
 async function changeAvatar(event: Event) {
@@ -163,11 +194,12 @@ async function changeAvatar(event: Event) {
 
 onMounted(async () => {
   try {
-    ;[foods.value, footprints.value, regions.value, achievements.value] = await Promise.all([
+    ;[foods.value, footprints.value, regions.value, achievements.value, etchings.value] = await Promise.all([
       getMyFoods(),
       getMyFootprints(),
       getRegions(),
       getAchievements(),
+      getMyEtchings(),
     ])
   } catch {
     error.value = t('profile.loadError')
@@ -340,7 +372,12 @@ onMounted(async () => {
         <small>{{ t('profile.sealEyebrow') }}</small>
         <h2>{{ t('profile.sealTitle') }}</h2>
 
-        <div v-if="selectedAchievement" class="selected-etching">
+        <div v-if="selectedEtching" class="selected-etching">
+          <div class="selected-etching-image"><HexEtching :layer-one="selectedEtching.layerOne" /></div>
+          <strong>{{ selectedEtching.name }}</strong>
+          <p>{{ t('etching.userMade') }}</p>
+        </div>
+        <div v-else-if="selectedAchievement" class="selected-etching">
           <div class="selected-etching-image">
             <img :src="selectedAchievement.imageUrl" :alt="selectedAchievement.name">
           </div>
@@ -354,8 +391,20 @@ onMounted(async () => {
               <small>LOCKED</small>
             </div>
           </div>
-          <p>{{ achievements.length ? t('profile.sealChooseHint') : t('profile.sealEmpty') }}</p>
+          <p>{{ achievements.length || etchings.length ? t('profile.sealChooseHint') : t('profile.sealEmpty') }}</p>
         </template>
+
+        <button type="button" class="etching-create-button" @click="openStudio()">{{ t('etching.openStudio') }}</button>
+        <div v-if="etchings.length" class="etching-picker custom-etching-picker">
+          <small>{{ t('etching.myEtchings') }}</small>
+          <div v-for="etching in etchings" :key="etching.id" class="custom-etching-item" :class="{ active: etching.selected }">
+            <button type="button" :disabled="achievementSaving !== undefined" @click="chooseEtching(etching.id)">
+              <HexEtching :layer-one="etching.layerOne" />
+              <span><strong>{{ etching.name }}</strong><small>{{ etching.selected ? t('profile.sealSelected') : t('profile.sealSelect') }}</small></span>
+            </button>
+            <div><button type="button" @click="openStudio(etching)">{{ t('etching.edit') }}</button><button type="button" @click="removeEtching(etching)">{{ t('etching.delete') }}</button></div>
+          </div>
+        </div>
 
         <div v-if="achievements.length" class="etching-picker">
           <small>{{ t('profile.sealChoose') }}</small>
@@ -424,5 +473,6 @@ onMounted(async () => {
       @close="selectedFood = undefined"
       @saved="handleSaved"
     />
+    <EtchingStudio v-if="studioOpen" :design="editingEtching" @close="studioOpen = false" @saved="handleEtchingSaved" />
   </div>
 </template>

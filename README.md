@@ -85,4 +85,4 @@ INITIAL_ADMIN_PASSWORD=自定义管理员密码
 | --- | --- |
 | 管理员 | `admin` |
 
-管理员创建成功后应关闭 `INITIAL_ADMIN_ENABLED` 并从运行环境移除 `INITIAL_ADMIN_PASSWORD`。普通用户只能通过前台注册。MySQL 和 Redis 连接可以通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT` 和 `REDIS_PASSWORD` 配置；跨域前端地址通过 `CORS_ALLOWED_ORIGINS` 配置，多个地址使用英文逗号分隔。HTTPS 部署时还应设置 `SESSION_COOKIE_SECURE=true`。
+管理员创建成功后应关闭 `INITIAL_ADMIN_ENABLED` 并从运行环境移除 `INITIAL_ADMIN_PASSWORD`。普通用户只能通过前台注册。MySQL 和 Redis 连接可以通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT` 和 `REDIS_PASSWORD` 配置；跨域前端地址通过 `CORS_ALLOWED_ORIGINS` 配置，多个地址使用英文逗号分隔。生产环境默认使用 Secure Cookie；HTTPS 部署保持 `SESSION_COOKIE_SECURE=true`，仅当前这类 HTTP 部署显式设置 `SESSION_COOKIE_SECURE=false`。

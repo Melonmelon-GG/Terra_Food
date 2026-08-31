@@ -6,6 +6,8 @@ import com.dayan.food.entity.po.Food;
 import com.dayan.food.entity.vo.UserPublicVO;
 import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.mapper.FoodMapper;
+import com.dayan.food.mapper.AchievementMapper;
+import com.dayan.food.service.EtchingDesignService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,12 +32,16 @@ class UserPublicServiceImplTests {
 
     @Mock
     private FoodMapper foodMapper;
+    @Mock
+    private AchievementMapper achievementMapper;
+    @Mock
+    private EtchingDesignService etchingDesignService;
 
     private UserPublicServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new UserPublicServiceImpl(appUserMapper, foodMapper);
+        service = new UserPublicServiceImpl(appUserMapper, foodMapper, achievementMapper, etchingDesignService);
     }
 
     @Test

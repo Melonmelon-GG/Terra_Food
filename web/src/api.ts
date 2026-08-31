@@ -7,6 +7,8 @@ import type {
   AuthUser,
   CaptchaChallenge,
   Food,
+  EtchingDesign,
+  EtchingDesignPayload,
   FoodComment,
   FoodCommentCreatePayload,
   FoodCreatePayload,
@@ -473,6 +475,24 @@ export async function markAchievementNotificationRead(achievementId: number): Pr
 
 export async function selectAchievement(achievementId: number): Promise<Achievement> {
   const response = await api.put<Achievement>('/achievements/selection', { achievementId })
+  return response.data
+}
+
+export async function getMyEtchings(): Promise<EtchingDesign[]> {
+  const response = await api.get<EtchingDesign[]>('/etchings/me')
+  return response.data
+}
+export async function createEtching(payload: EtchingDesignPayload): Promise<EtchingDesign> {
+  const response = await api.post<EtchingDesign>('/etchings', payload)
+  return response.data
+}
+export async function updateEtching(id: number, payload: EtchingDesignPayload): Promise<EtchingDesign> {
+  const response = await api.put<EtchingDesign>(`/etchings/${id}`, payload)
+  return response.data
+}
+export async function deleteEtching(id: number): Promise<void> { await api.delete(`/etchings/${id}`) }
+export async function selectEtching(id: number): Promise<EtchingDesign> {
+  const response = await api.put<EtchingDesign>(`/etchings/${id}/selection`)
   return response.data
 }
 export async function logout(): Promise<void> {

@@ -13,6 +13,8 @@ public record UserPublicVO(
         String displayName,
         String avatarUrl,
         String signature,
+        AchievementVO selectedAchievement,
+        EtchingDesignVO selectedEtching,
         List<FoodVO> foods
 ) implements Serializable {
 }

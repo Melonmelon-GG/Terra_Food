@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 
 import { getUserPublic } from '../api'
 import type { UserPublic } from '../types'
+import HexEtching from '../components/HexEtching.vue'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -70,6 +71,13 @@ watch(
           <p v-if="profile.signature" class="user-signature">{{ profile.signature }}</p>
         </div>
       </header>
+
+      <section v-if="profile.selectedEtching || profile.selectedAchievement" class="user-seal-showcase">
+        <small>{{ t('user.sealEyebrow') }}</small>
+        <HexEtching v-if="profile.selectedEtching" :layer-one="profile.selectedEtching.layerOne" />
+        <img v-else-if="profile.selectedAchievement" :src="profile.selectedAchievement.imageUrl" :alt="profile.selectedAchievement.name">
+        <strong>{{ profile.selectedEtching?.name || profile.selectedAchievement?.name }}</strong>
+      </section>
 
       <section class="user-foods">
         <div class="user-foods-heading">
@@ -184,6 +192,7 @@ watch(
 .user-foods {
   margin-top: 30px;
 }
+.user-seal-showcase{display:grid;width:min(320px,100%);margin:24px auto 0;padding:18px;place-items:center;background:#fffaf0;border:1px solid #d4c5ae}.user-seal-showcase small{color:#9a352e;letter-spacing:3px}.user-seal-showcase img{width:230px;height:210px;object-fit:contain}.user-seal-showcase strong{color:#4b3027;font-size:18px}
 
 .user-foods-heading {
   display: flex;

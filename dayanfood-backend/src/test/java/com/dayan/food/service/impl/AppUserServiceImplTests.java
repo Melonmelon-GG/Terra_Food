@@ -204,7 +204,6 @@ class AppUserServiceImplTests {
     @Test
     void listUsersClampsExtremePageToAvoidOffsetOverflow() {
         when(appUserMapper.findPage(199_990, 10)).thenReturn(List.of());
-        when(userReviewItemMapper.findPendingByIds(List.of())).thenReturn(List.of());
 
         service.listUsers(Integer.MAX_VALUE, 10);
 

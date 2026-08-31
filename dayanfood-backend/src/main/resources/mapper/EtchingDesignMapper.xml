@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dayan.food.mapper.EtchingDesignMapper">
+    <resultMap id="etchingResultMap" type="com.dayan.food.entity.po.EtchingDesign">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="name" column="name"/>
+        <result property="layerOneJson" column="layer_one_json"/>
+        <result property="layerTwoJson" column="layer_two_json"/>
+        <result property="selected" column="selected"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+    <sql id="columns">d.id, d.user_id, d.name, d.layer_one_json, d.layer_two_json, d.selected, d.created_at, d.updated_at</sql>
+    <select id="findByUsername" resultMap="etchingResultMap">
+        SELECT <include refid="columns"/> FROM user_etching_design d
+        INNER JOIN app_user u ON u.id = d.user_id
+        WHERE u.username = #{username}
+        ORDER BY d.selected DESC, d.updated_at DESC, d.id DESC
+    </select>
+    <select id="findSelectedByUserId" resultMap="etchingResultMap">
+        SELECT <include refid="columns"/> FROM user_etching_design d
+        WHERE d.user_id = #{userId} AND d.selected = TRUE LIMIT 1
+    </select>
+    <select id="findOwnedById" resultMap="etchingResultMap">
+        SELECT <include refid="columns"/> FROM user_etching_design d
+        INNER JOIN app_user u ON u.id = d.user_id
+        WHERE d.id = #{id} AND u.username = #{username}
+    </select>
+    <select id="countByUsername" resultType="int">
+        SELECT COUNT(*) FROM user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
+        WHERE u.username = #{username}
+    </select>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_etching_design (user_id, name, layer_one_json, layer_two_json, selected, created_at, updated_at)
+        VALUES (#{userId}, #{name}, #{layerOneJson}, #{layerTwoJson}, FALSE, #{createdAt}, #{updatedAt})
+    </insert>
+    <update id="updateOwned">
+        UPDATE user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
+        SET d.name = #{name}, d.layer_one_json = #{layerOneJson}
+        WHERE d.id = #{id} AND u.username = #{username}
+    </update>
+    <delete id="deleteOwned">
+        DELETE d FROM user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
+        WHERE d.id = #{id} AND u.username = #{username}
+    </delete>
+    <update id="clearSelection">
+        UPDATE user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
+        SET d.selected = FALSE WHERE u.username = #{username} AND d.selected = TRUE
+    </update>
+    <update id="selectOwned">
+        UPDATE user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
+        SET d.selected = TRUE WHERE d.id = #{id} AND u.username = #{username}
+    </update>
+</mapper>

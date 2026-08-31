@@ -37,7 +37,7 @@ class ApiExceptionHandlerTests {
 
         assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, status.value());
 
-        ApiErrorVO body = handler.handlePayloadTooLarge(new MaxUploadSizeExceededException("file too large"));
+        ApiErrorVO body = handler.handlePayloadTooLarge(new MaxUploadSizeExceededException(1024L));
         assertNotNull(body.message());
     }
 }

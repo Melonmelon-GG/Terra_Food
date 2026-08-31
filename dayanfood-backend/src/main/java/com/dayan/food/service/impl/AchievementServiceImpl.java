@@ -4,6 +4,7 @@ import com.dayan.food.entity.po.Achievement;
 import com.dayan.food.entity.vo.AchievementVO;
 import com.dayan.food.mapper.AchievementMapper;
 import com.dayan.food.mapper.AppUserMapper;
+import com.dayan.food.mapper.EtchingDesignMapper;
 import com.dayan.food.service.AchievementService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,10 +18,13 @@ public class AchievementServiceImpl implements AchievementService {
 
     private final AchievementMapper achievementMapper;
     private final AppUserMapper appUserMapper;
+    private final EtchingDesignMapper etchingDesignMapper;
 
-    public AchievementServiceImpl(AchievementMapper achievementMapper, AppUserMapper appUserMapper) {
+    public AchievementServiceImpl(AchievementMapper achievementMapper, AppUserMapper appUserMapper,
+                                  EtchingDesignMapper etchingDesignMapper) {
         this.achievementMapper = achievementMapper;
         this.appUserMapper = appUserMapper;
+        this.etchingDesignMapper = etchingDesignMapper;
     }
 
     @Override
@@ -60,6 +64,7 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     @Transactional
     public AchievementVO select(String username, Long achievementId) {
+        etchingDesignMapper.clearSelection(username);
         achievementMapper.clearSelection(username);
         if (achievementMapper.select(username, achievementId) != 1) {
             throw new IllegalArgumentException("只能选择已经获得的蚀刻章");

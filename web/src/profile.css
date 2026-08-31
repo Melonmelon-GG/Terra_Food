@@ -377,6 +377,7 @@
   color: #a3312a !important;
   font-size: 12px;
 }
+.etching-create-button{width:100%;margin-top:18px;padding:10px;color:#fff;background:#8f3029;border:1px solid #8f3029;cursor:pointer}.custom-etching-item{padding:7px;background:#f8f0e4;border:1px solid #d8c6ad}.custom-etching-item.active{border-color:#9a483b;box-shadow:inset 3px 0 #8f3029}.custom-etching-item>button{grid-template-columns:64px minmax(0,1fr);padding:0;border:0;background:transparent;box-shadow:none!important}.custom-etching-item .hex-etching{width:64px}.custom-etching-item>div{display:flex;justify-content:flex-end;gap:6px;margin-top:5px}.custom-etching-item>div button{padding:3px 7px;color:#7e493e;background:transparent;border:1px solid #c8aa91;cursor:pointer}
 .profile-empty { padding: 70px 20px; text-align: center; color: #806b59; }
 .profile-empty > span {
   display: grid;
