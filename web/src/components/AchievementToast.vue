@@ -156,7 +156,7 @@ onUnmounted(() => window.clearTimeout(dismissTimer))
 
 @media (max-width: 700px) {
   .achievement-toast {
-    top: 78px;
+    top: calc(64px + env(safe-area-inset-top) + 8px);
     right: 12px;
     width: calc(100vw - 24px);
     min-height: 136px;
