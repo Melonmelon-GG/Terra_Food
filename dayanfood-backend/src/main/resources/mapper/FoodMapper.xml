@@ -34,6 +34,19 @@
         <association property="food" resultMap="foodResultMap"/>
     </resultMap>
 
+    <resultMap id="markerResultMap" type="com.dayan.food.entity.po.FoodMarker">
+        <id property="id" column="food_id"/>
+        <result property="name" column="food_name"/>
+        <result property="latitude" column="latitude"/>
+        <result property="longitude" column="longitude"/>
+        <result property="summary" column="summary"/>
+        <association property="region" javaType="com.dayan.food.entity.po.Region">
+            <id property="id" column="region_id"/>
+            <result property="name" column="region_name"/>
+            <result property="province" column="region_province"/>
+        </association>
+    </resultMap>
+
     <sql id="foodColumns">
         f.id AS food_id,
         f.name AS food_name,
@@ -57,33 +70,76 @@
         r.description AS region_description
     </sql>
 
+    <!-- 前台列表/地图标记/目录分页共用的已审核过滤条件（仅引用 food 表列，count 可免 join 复用）。 -->
+    <sql id="listConditions">
+        f.review_status = 'APPROVED'
+        <if test="keyword != null and keyword != ''">
+            AND LOWER(f.name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+        </if>
+        <if test="regionId != null">
+            AND f.region_id = #{regionId}
+        </if>
+        <!-- 关键词搜索是全局结果：命中即返回，不随地图可视范围过滤；浏览模式才按视口收窄。 -->
+        <if test="(keyword == null or keyword == '') and minLatitude != null and maxLatitude != null and minLongitude != null and maxLongitude != null">
+            AND f.latitude BETWEEN #{minLatitude} AND #{maxLatitude}
+            <choose>
+                <when test="minLongitude &lt;= maxLongitude">
+                    AND f.longitude BETWEEN #{minLongitude} AND #{maxLongitude}
+                </when>
+                <otherwise>
+                    AND (f.longitude &gt;= #{minLongitude} OR f.longitude &lt;= #{maxLongitude})
+                </otherwise>
+            </choose>
+        </if>
+    </sql>
+
     <select id="findList" resultMap="foodResultMap">
         SELECT <include refid="foodColumns"/>
         FROM food f
         INNER JOIN region r ON r.id = f.region_id
         <where>
-            f.review_status = 'APPROVED'
-            <if test="keyword != null and keyword != ''">
-                AND LOWER(f.name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
-            </if>
-            <if test="regionId != null">
-                AND f.region_id = #{regionId}
-            </if>
-            <!-- 关键词搜索是全局结果：命中即返回，不随地图可视范围过滤；浏览模式才按视口收窄。 -->
-            <if test="(keyword == null or keyword == '') and minLatitude != null and maxLatitude != null and minLongitude != null and maxLongitude != null">
-                AND f.latitude BETWEEN #{minLatitude} AND #{maxLatitude}
-                <choose>
-                    <when test="minLongitude &lt;= maxLongitude">
-                        AND f.longitude BETWEEN #{minLongitude} AND #{maxLongitude}
-                    </when>
-                    <otherwise>
-                        AND (f.longitude &gt;= #{minLongitude} OR f.longitude &lt;= #{maxLongitude})
-                    </otherwise>
-                </choose>
-            </if>
+            <include refid="listConditions"/>
         </where>
         ORDER BY f.heat DESC, f.id DESC
         LIMIT #{limit}
+    </select>
+
+    <select id="findMarkers" resultMap="markerResultMap">
+        SELECT
+            f.id AS food_id,
+            f.name AS food_name,
+            f.latitude,
+            f.longitude,
+            f.summary,
+            r.id AS region_id,
+            r.name AS region_name,
+            r.province AS region_province
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        <where>
+            <include refid="listConditions"/>
+        </where>
+        ORDER BY f.heat DESC, f.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findCatalogPage" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/>
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        <where>
+            <include refid="listConditions"/>
+        </where>
+        ORDER BY f.heat DESC, f.id DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countCatalog" resultType="int">
+        SELECT COUNT(*)
+        FROM food f
+        <where>
+            <include refid="listConditions"/>
+        </where>
     </select>
 
     <select id="findAdminPage" resultMap="foodResultMap">
@@ -103,6 +159,16 @@
         INNER JOIN region r ON r.id = f.region_id
         WHERE f.created_by = #{username}
         ORDER BY f.created_at DESC, f.id DESC
+    </select>
+
+    <select id="findApprovedByCreatedBy" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/>
+        FROM food f
+        INNER JOIN region r ON r.id = f.region_id
+        WHERE f.review_status = 'APPROVED'
+          AND f.created_by = #{username}
+        ORDER BY f.heat DESC, f.id DESC
+        LIMIT #{limit}
     </select>
 
     <select id="findOwnedById" resultMap="foodResultMap">
