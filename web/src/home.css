@@ -266,6 +266,24 @@ body:has(main > .map-explorer) > #app > header {
   color: #ffd8cf;
 }
 
+.explorer-map-hint button {
+  margin-left: 7px;
+  padding: 3px 8px;
+  color: #fff4e8;
+  font: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid #f5e2cf8f;
+  border-radius: 999px;
+  pointer-events: auto;
+}
+
+.explorer-map-hint button:hover,
+.explorer-map-hint button:focus-visible {
+  background: #ffffff1f;
+  outline: none;
+}
+
 /* 底部悬浮目录 */
 
 .explorer-catalog {

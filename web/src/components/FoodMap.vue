@@ -3,7 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
 
-import type { FoodMarker, MapBounds, MapFocus } from '../types'
+import type { FoodMarker, MapBounds, MapCoordinate, MapFocus } from '../types'
 import 'leaflet/dist/leaflet.css'
 
 // 使用项目自身的朱砂标记，避免 Leaflet 默认图片路径在开发/生产环境中退化成破图。
@@ -15,9 +15,17 @@ const foodMarkerIcon = L.divIcon({
   popupAnchor: [0, -18],
 })
 
+const pickedLocationIcon = L.divIcon({
+  className: 'food-map-picked-marker',
+  html: '<span aria-hidden="true"></span>',
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+})
+
 const props = defineProps<{
   foods: FoodMarker[]
   focus?: MapFocus
+  pickedLocation?: MapCoordinate
 }>()
 
 const emit = defineEmits<{
@@ -32,6 +40,7 @@ const mapReady = ref(false)
 const mapLoadError = ref(false)
 let map: L.Map | undefined
 let markerLayer: L.LayerGroup | undefined
+let pickedLocationMarker: L.Marker | undefined
 let tileLayer: L.TileLayer | undefined
 let annotationLayer: L.TileLayer | undefined
 let resizeObserver: ResizeObserver | undefined
@@ -169,6 +178,27 @@ function renderMarkers() {
     clusterMarker.addTo(layer)
   })
 }
+
+function renderPickedLocation() {
+  pickedLocationMarker?.remove()
+  pickedLocationMarker = undefined
+
+  if (!map || !props.pickedLocation) return
+
+  const position: L.LatLngExpression = [
+    props.pickedLocation.latitude,
+    props.pickedLocation.longitude,
+  ]
+  if (!chinaDataBounds.contains(position)) return
+
+  pickedLocationMarker = L.marker(position, {
+    icon: pickedLocationIcon,
+    interactive: false,
+    keyboard: false,
+    zIndexOffset: 1000,
+  }).addTo(map)
+}
+
 function emitCurrentBounds() {
   if (!map) return
   renderMarkers()
@@ -302,6 +332,7 @@ function initializeMap() {
   createTileLayer()
 
   markerLayer = L.layerGroup().addTo(map)
+  renderPickedLocation()
   map.on('click', (event: L.LeafletMouseEvent) => {
     if (chinaDataBounds.contains(event.latlng)) {
       emit('pick', event.latlng.lat, event.latlng.lng)
@@ -333,6 +364,7 @@ onMounted(async () => {
 })
 
 watch([() => props.foods, locale], renderMarkers, { deep: true })
+watch(() => props.pickedLocation, renderPickedLocation, { deep: true })
 watch(
   () => props.focus,
   (focus) => {
@@ -356,6 +388,7 @@ onBeforeUnmount(() => {
   if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame)
   if (mountFrame !== undefined) cancelAnimationFrame(mountFrame)
   if (primaryLoadTimer) clearTimeout(primaryLoadTimer)
+  pickedLocationMarker?.remove()
   map?.remove()
 })
 </script>
