@@ -473,7 +473,7 @@
   }
 
   .map-explorer {
-    grid-template-rows: auto minmax(0, 1fr) 166px;
+    grid-template-rows: auto minmax(0, 1fr) 148px;
     gap: 8px;
     height: calc(100vh - var(--mobile-header-height));
     height: calc(100dvh - var(--mobile-header-height));
@@ -489,6 +489,72 @@
     grid-row: 1;
     padding: 10px 12px;
     border-radius: 16px;
+  }
+
+  .explorer-sidebar-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .explorer-sidebar-head > div {
+    min-width: 0;
+  }
+
+  .explorer-panel-toggle,
+  .explorer-catalog-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 40px;
+    padding: 7px 9px;
+    color: #7d3029;
+    font: inherit;
+    font-size: 11px;
+    white-space: nowrap;
+    cursor: pointer;
+    background: #fffdf89e;
+    border: 1px solid #cfbda5;
+    border-radius: 10px;
+    flex: 0 0 auto;
+  }
+
+  .explorer-panel-toggle b,
+  .explorer-catalog-toggle b {
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .explorer-sidebar.is-collapsed {
+    padding: 7px 9px;
+  }
+
+  .explorer-sidebar.is-collapsed .explorer-sidebar-head {
+    align-items: center;
+  }
+
+  .explorer-sidebar.is-collapsed .eyebrow,
+  .explorer-sidebar.is-collapsed .explorer-intro,
+  .explorer-sidebar.is-collapsed .explorer-search,
+  .explorer-sidebar.is-collapsed .explorer-sidebar-actions,
+  .explorer-sidebar.is-collapsed .explorer-notice {
+    display: none;
+  }
+
+  .explorer-sidebar.is-collapsed h1 {
+    margin: 0;
+    overflow: hidden;
+    font-size: clamp(17px, 4.8vw, 20px);
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .explorer-sidebar.is-collapsed h1 em {
+    display: inline;
+    margin-left: 4px;
   }
 
   .explorer-sidebar .eyebrow {
@@ -538,7 +604,7 @@
   .explorer-map-hint {
     position: absolute;
     right: 66px;
-    bottom: max(180px, calc(172px + env(safe-area-inset-bottom)));
+    bottom: max(162px, calc(154px + env(safe-area-inset-bottom)));
     left: max(8px, env(safe-area-inset-left));
     width: auto;
     margin: 0;
@@ -549,26 +615,63 @@
 
   .explorer-catalog {
     grid-row: 3;
-    height: 166px;
+    height: 148px;
     min-height: 0;
     padding: 8px;
     border-radius: 16px;
+    transition: height .2s ease, padding .2s ease;
   }
 
   .explorer-catalog-heading {
+    flex-wrap: nowrap;
+    gap: 6px;
     min-height: 18px;
     padding: 0 2px 6px;
+    overflow: hidden;
+  }
+
+  .explorer-catalog-heading > small {
+    display: none;
+  }
+
+  .explorer-catalog-meta {
+    flex: 1;
+    justify-content: space-between;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .explorer-catalog-meta > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .explorer-map-view,
+  .explorer-catalog-toggle {
+    min-height: 30px;
+    padding: 3px 8px;
   }
 
   .explorer-cards {
     height: calc(100% - 18px);
     scroll-padding-inline: 2px;
+    scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
 
+  .explorer-cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .explorer-map .leaflet-control-zoom {
+    display: none;
+  }
+
   .explorer-card {
-    flex-basis: min(70vw, 250px);
-    grid-template-rows: 74px minmax(0, 1fr);
+    flex-basis: min(58vw, 215px);
+    grid-template-rows: 62px minmax(0, 1fr);
   }
 
   .explorer-card-body {
@@ -588,13 +691,41 @@
     padding-top: 4px;
   }
 
+  .map-explorer.catalog-is-collapsed {
+    grid-template-rows: auto minmax(0, 1fr) 46px;
+  }
+
+  .map-explorer.catalog-is-collapsed .explorer-catalog {
+    height: 46px;
+    padding-block: 7px;
+  }
+
+  .map-explorer.catalog-is-collapsed .explorer-catalog-heading {
+    height: 100%;
+    padding-bottom: 0;
+  }
+
+  .map-explorer.catalog-is-collapsed .explorer-cards,
+  .map-explorer.catalog-is-collapsed .explorer-state {
+    display: none;
+  }
+
+  .map-explorer.catalog-is-collapsed .explorer-map-hint {
+    bottom: max(60px, calc(52px + env(safe-area-inset-bottom)));
+  }
+
   body:has(main > .map-explorer) #MusicControl {
-    bottom: max(180px, calc(172px + env(safe-area-inset-bottom)));
+    bottom: max(162px, calc(154px + env(safe-area-inset-bottom)));
   }
 
   /* Agent 浮球与音乐按钮一样避让底部目录条，避免压住卡片操作区。 */
   body:has(main > .map-explorer) .agent-shell {
-    bottom: max(180px, calc(172px + env(safe-area-inset-bottom)));
+    bottom: max(162px, calc(154px + env(safe-area-inset-bottom)));
+  }
+
+  body:has(main > .map-explorer.catalog-is-collapsed) #MusicControl,
+  body:has(main > .map-explorer.catalog-is-collapsed) .agent-shell {
+    bottom: max(60px, calc(52px + env(safe-area-inset-bottom)));
   }
 
   .login-page,

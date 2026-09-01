@@ -38,6 +38,8 @@ const geolocationCoordinate = ref<MapCoordinate>()
 const pickHint = ref('')
 const mapBounds = ref<MapBounds>()
 const activeFoodId = ref<number>()
+const sidebarCollapsed = ref(window.matchMedia('(max-width: 700px)').matches)
+const catalogCollapsed = ref(false)
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
@@ -423,7 +425,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="map-explorer">
+  <section
+    class="map-explorer"
+    :class="{
+      'sidebar-is-collapsed': sidebarCollapsed,
+      'catalog-is-collapsed': catalogCollapsed,
+    }"
+  >
     <div class="explorer-map" :aria-label="t('home.mapTitle')">
       <FoodMap
         :foods="markerFoods"
@@ -435,11 +443,25 @@ onMounted(async () => {
     </div>
     <div class="explorer-map-wash"></div>
 
-    <aside class="explorer-sidebar explorer-panel">
-      <div>
-        <p class="eyebrow">{{ t('home.eyebrow') }}</p>
-        <h1>{{ t('home.heroTitle') }}<em>{{ t('home.heroEmphasis') }}</em></h1>
-        <p class="explorer-intro">{{ t('home.heroDescription') }}</p>
+    <aside
+      class="explorer-sidebar explorer-panel"
+      :class="{ 'is-collapsed': sidebarCollapsed }"
+    >
+      <div class="explorer-sidebar-head">
+        <div>
+          <p class="eyebrow">{{ t('home.eyebrow') }}</p>
+          <h1>{{ t('home.heroTitle') }}<em>{{ t('home.heroEmphasis') }}</em></h1>
+          <p class="explorer-intro">{{ t('home.heroDescription') }}</p>
+        </div>
+        <button
+          class="explorer-panel-toggle"
+          type="button"
+          :aria-expanded="!sidebarCollapsed"
+          @click="sidebarCollapsed = !sidebarCollapsed"
+        >
+          <span>{{ t(sidebarCollapsed ? 'home.expandExplorer' : 'home.collapseExplorer') }}</span>
+          <b aria-hidden="true">{{ sidebarCollapsed ? '⌄' : '⌃' }}</b>
+        </button>
       </div>
 
       <form class="explorer-search" @submit.prevent="submitSearch">
@@ -522,6 +544,15 @@ onMounted(async () => {
           </span>
           <button class="explorer-map-view" type="button" @click="resetMapView">
             {{ t('home.mapView') }}
+          </button>
+          <button
+            class="explorer-catalog-toggle"
+            type="button"
+            :aria-expanded="!catalogCollapsed"
+            @click="catalogCollapsed = !catalogCollapsed"
+          >
+            <span>{{ t(catalogCollapsed ? 'home.expandCatalog' : 'home.collapseCatalog') }}</span>
+            <b aria-hidden="true">{{ catalogCollapsed ? '⌃' : '⌄' }}</b>
           </button>
         </div>
       </header>

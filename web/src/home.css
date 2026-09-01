@@ -113,6 +113,11 @@ body:has(main > .map-explorer) > #app > header {
   font-style: normal;
 }
 
+.explorer-panel-toggle,
+.explorer-catalog-toggle {
+  display: none;
+}
+
 .explorer-intro {
   margin: 0;
   color: #665347;
