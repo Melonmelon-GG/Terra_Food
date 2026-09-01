@@ -718,13 +718,17 @@
     bottom: max(162px, calc(154px + env(safe-area-inset-bottom)));
   }
 
-  /* Agent 浮球与音乐按钮一样避让底部目录条，避免压住卡片操作区。 */
-  body:has(main > .map-explorer) .agent-shell {
+  /* 助手球放在音乐按钮左侧；仅限制关闭状态，展开面板仍使用全屏定位。 */
+  body:has(main > .map-explorer) .agent-shell:not(.open) {
+    right: max(70px, calc(62px + env(safe-area-inset-right)));
     bottom: max(162px, calc(154px + env(safe-area-inset-bottom)));
   }
 
-  body:has(main > .map-explorer.catalog-is-collapsed) #MusicControl,
-  body:has(main > .map-explorer.catalog-is-collapsed) .agent-shell {
+  body:has(main > .map-explorer.catalog-is-collapsed) #MusicControl {
+    bottom: max(60px, calc(52px + env(safe-area-inset-bottom)));
+  }
+
+  body:has(main > .map-explorer.catalog-is-collapsed) .agent-shell:not(.open) {
     bottom: max(60px, calc(52px + env(safe-area-inset-bottom)));
   }
 
