@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Java 21)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: dayanfood-backend/pom.xml
+
+      - name: Compile and test backend
+        working-directory: dayanfood-backend
+        run: mvn --batch-mode --no-transfer-progress verify
+
+  frontend:
+    name: Frontend (Vue)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Type-check and build
+        working-directory: web
+        run: npm run build
+
+  agent:
+    name: Agent (Python)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: agent-service/requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install --requirement agent-service/requirements.txt
+
+      - name: Check Python syntax
+        run: python -m compileall -q agent-service/app
+
+      - name: Verify service imports
+        working-directory: agent-service
+        run: python -c "import app.main; import app.mcp_server"
+
+  compose:
+    name: Docker Compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    env:
+      MYSQL_ROOT_PASSWORD: ci-dummy-mysql-password
+      AGENT_INTERNAL_TOKEN: ci-dummy-agent-token-at-least-32-characters
+      MINIO_ROOT_USER: ci-dummy-minio-user
+      MINIO_ROOT_PASSWORD: ci-dummy-minio-password
+      OPENAI_API_KEY: ci-dummy-model-key
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Validate Docker Compose
+        run: docker compose --profile agent config --quiet
