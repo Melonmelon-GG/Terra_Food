@@ -39,9 +39,22 @@ Terra Food 是面向《明日方舟》玩家与地方美食爱好者的地图式
 
 ## 一眼入卷 · 网站实景
 
-[![Terra Food 线上首页：地域地图、菜品图鉴与背景音乐](docs/assets/website-home.png)](https://162.251.94.27/)
+<table>
+  <tr>
+    <th width="81%">桌面端 · 九州风味图卷</th>
+    <th width="19%">手机端 · 随手寻味</th>
+  </tr>
+  <tr>
+    <td width="81%" valign="top">
+      <a href="docs/assets/website-home.png"><img src="docs/assets/website-home.png" alt="Terra Food 桌面端首页：地域地图、菜品图鉴与收起的音乐播放器" width="100%"></a>
+    </td>
+    <td width="19%" valign="top">
+      <a href="docs/assets/website-mobile.png"><img src="docs/assets/website-mobile.png" alt="Terra Food 手机端首页：地图、折叠操作区与底部图鉴入口" width="100%"></a>
+    </td>
+  </tr>
+</table>
 
-<p align="center"><sub>线上首页实拍 · 2026-09-03 · 地图选点、地域筛选与珍馐图鉴同屏呈现；内容随社区更新。</sub></p>
+<p align="center"><sub>桌面端与手机端实景 · 中文界面 · 点击图片查看原图；内容随社区更新。</sub></p>
 
 <a id="features"></a>
 

@@ -39,9 +39,22 @@ Terra Food is a map-based food community for Arknights fans and anyone curious a
 
 ## A glimpse of the food chronicle
 
-[![Terra Food live homepage: regional map, food catalog, and background music](docs/assets/website-home.png)](https://162.251.94.27/)
+<table>
+  <tr>
+    <th width="81%">Desktop · Explore the food map</th>
+    <th width="19%">Mobile · Explore on the go</th>
+  </tr>
+  <tr>
+    <td width="81%" valign="top">
+      <a href="docs/assets/website-home.png"><img src="docs/assets/website-home.png" alt="Terra Food desktop homepage: regional map, food catalog, and collapsed music player" width="100%"></a>
+    </td>
+    <td width="19%" valign="top">
+      <a href="docs/assets/website-mobile.png"><img src="docs/assets/website-mobile.png" alt="Terra Food mobile homepage: map, collapsible controls, and bottom catalog entry" width="100%"></a>
+    </td>
+  </tr>
+</table>
 
-<p align="center"><sub>Live homepage captured on 2026-09-03, using the Chinese interface. Map selection, region filters, and the food catalog share one view. Community content changes over time.</sub></p>
+<p align="center"><sub>Desktop and mobile screenshots using the Chinese interface. Click either image to view the original. Community content changes over time.</sub></p>
 
 <a id="features"></a>
 
