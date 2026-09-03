@@ -143,6 +143,7 @@ public class FoodImportServiceImpl implements FoodImportService {
         // 批量入库后统一在事务提交时失效集合类缓存，避免回滚时误清。
         cacheInvalidator.clear(cacheManager.getCache("foodLists"));
         cacheInvalidator.clear(cacheManager.getCache("foodCatalogs"));
+        cacheInvalidator.clear(cacheManager.getCache("foodMarkers"));
         cacheInvalidator.clear(cacheManager.getCache("regions"));
         return new FoodImportResultVO(
                 totalRows,

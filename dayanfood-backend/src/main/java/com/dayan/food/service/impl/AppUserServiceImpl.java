@@ -12,6 +12,7 @@ import com.dayan.food.service.AppUserService;
 import com.dayan.food.service.UserReviewPresenter;
 import com.dayan.food.entity.vo.AuthUserVO;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +80,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "authUsers", key = "#username")
     @Transactional
     public AuthUserVO updateAvatar(String username, String avatarUrl) {
         String normalizedAvatarUrl = avatarUrl.trim();
@@ -89,6 +91,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "authUsers", key = "#username")
     @Transactional
     public AuthUserVO updateSignature(String username, String signature) {
         AppUser user = findRequiredByUsername(username);
@@ -99,6 +102,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "authUsers", key = "#username")
     @Transactional
     public AuthUserVO submitDisplayName(String username, String displayName) {
         AppUser user = findRequiredByUsername(username);
@@ -108,6 +112,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "authUsers", allEntries = true)
     @Transactional
     public void reviewItem(Long userId, ReviewField field, ReviewStatus status, String operatorUsername) {
         if (status != ReviewStatus.APPROVED && status != ReviewStatus.REJECTED) {
@@ -159,6 +164,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "authUsers", allEntries = true)
     @Transactional
     public void setActive(Long id, boolean active, String operatorUsername) {
         var operator = findRequiredOperator(operatorUsername);
@@ -176,6 +182,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "authUsers", allEntries = true)
     @Transactional
     public void setRole(Long id, UserRole role, String operatorUsername) {
         if (role != UserRole.USER && role != UserRole.SUB_ADMIN) {
@@ -199,6 +206,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "authUsers", allEntries = true)
     @Transactional
     public void deleteById(Long id, String operatorUsername) {
         var operator = findRequiredOperator(operatorUsername);

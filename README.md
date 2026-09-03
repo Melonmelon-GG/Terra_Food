@@ -76,13 +76,15 @@ npm run dev
 ```bash
 DB_PASSWORD=你的数据库密码
 INITIAL_ADMIN_ENABLED=true
+INITIAL_ADMIN_USERNAME=自定义管理员用户名
 INITIAL_ADMIN_PASSWORD=自定义管理员密码
+INITIAL_ADMIN_DISPLAY_NAME=自定义管理员显示名
 ```
 
 启用后会创建以下账号（已存在时不会重复创建）：
 
 | 角色 | 用户名 |
 | --- | --- |
-| 管理员 | `admin` |
+| 管理员 | `INITIAL_ADMIN_USERNAME`，未配置时为 `admin` |
 
 管理员创建成功后应关闭 `INITIAL_ADMIN_ENABLED` 并从运行环境移除 `INITIAL_ADMIN_PASSWORD`。普通用户只能通过前台注册。MySQL 和 Redis 连接可以通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT` 和 `REDIS_PASSWORD` 配置；跨域前端地址通过 `CORS_ALLOWED_ORIGINS` 配置，多个地址使用英文逗号分隔。生产环境默认使用 Secure Cookie；HTTPS 部署保持 `SESSION_COOKIE_SECURE=true`，仅当前这类 HTTP 部署显式设置 `SESSION_COOKIE_SECURE=false`。

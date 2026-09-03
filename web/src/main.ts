@@ -91,7 +91,9 @@ router.beforeEach(async (to) => {
     return '/'
   }
 
-  if ((to.path === '/login' || to.path === '/register') && auth.currentUser.value) {
+  // 登录页兼作“唤醒终端”：保留页面以展示浏览器持久会话对应的账号，
+  // 用户点击开始唤醒后再进入；注册页仍避免已登录用户重复进入。
+  if (to.path === '/register' && auth.currentUser.value) {
     return isAdminRole(auth.currentUser.value.role) ? '/admin' : '/'
   }
 })

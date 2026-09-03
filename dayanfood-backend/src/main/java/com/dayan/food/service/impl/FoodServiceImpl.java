@@ -87,6 +87,12 @@ public class FoodServiceImpl implements FoodService {
     }
 
     @Override
+    @Cacheable(
+            cacheNames = "foodMarkers",
+            key = "'all'",
+            condition = "#keyword == null && #regionId == null && #minLatitude == null && #maxLatitude == null "
+                    + "&& #minLongitude == null && #maxLongitude == null"
+    )
     @Transactional(readOnly = true)
     public List<FoodMarkerVO> markers(
             String keyword,
@@ -99,8 +105,8 @@ public class FoodServiceImpl implements FoodService {
         String normalizedKeyword = normalizeKeyword(keyword);
         validateBounds(minLatitude, maxLatitude, minLongitude, maxLongitude);
 
-        // 地图高频拖动接口只回弹窗所需字段（名称/地区/坐标/摘要），且刻意不做缓存：
-        // 数据量小、命中率低，缓存命中收益抵不过双写一致性成本。
+        // 地图高频拖动接口只回弹窗所需字段（名称/地区/坐标/摘要）。仅全国无筛选结果
+        // 进入缓存并在登录时预热；带视口或筛选条件的低命中请求仍直接查询数据库。
         return foodMapper.findMarkers(
                         normalizedKeyword,
                         regionId,
@@ -338,6 +344,7 @@ public class FoodServiceImpl implements FoodService {
         // 集合类缓存（前台列表/目录分页）在事务提交后统一失效（BUG-03：回滚不清缓存）。
         cacheInvalidator.clear(cacheManager.getCache("foodLists"));
         cacheInvalidator.clear(cacheManager.getCache("foodCatalogs"));
+        cacheInvalidator.clear(cacheManager.getCache("foodMarkers"));
         return FoodVO.from(food);
     }
 
@@ -397,6 +404,7 @@ public class FoodServiceImpl implements FoodService {
         cacheInvalidator.invalidate(cacheManager.getCache("foodDetails"), id);
         cacheInvalidator.clear(cacheManager.getCache("foodLists"));
         cacheInvalidator.clear(cacheManager.getCache("foodCatalogs"));
+        cacheInvalidator.clear(cacheManager.getCache("foodMarkers"));
     }
 
     private String normalizeKeyword(String keyword) {

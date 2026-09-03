@@ -55,7 +55,9 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   initial-admin:
     enabled: ${INITIAL_ADMIN_ENABLED:false}
+    username: ${INITIAL_ADMIN_USERNAME:admin}
     password: ${INITIAL_ADMIN_PASSWORD:}
+    display-name: ${INITIAL_ADMIN_DISPLAY_NAME:珍馐志管理员}
   agent:
     service-url: ${AGENT_SERVICE_URL:http://localhost:8090}
     internal-token: ${AGENT_INTERNAL_TOKEN:}
@@ -72,6 +74,8 @@ server:
         http-only: true
         secure: ${SESSION_COOKIE_SECURE:false}
         same-site: lax
+        # 默认仍为浏览器会话 Cookie；仅显式配置时才持久保存登录记录。
+        max-age: ${SESSION_COOKIE_MAX_AGE:-1s}
   error:
     include-message: never
 mybatis:
