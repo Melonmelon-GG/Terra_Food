@@ -321,6 +321,7 @@ export default {
     awakenHint: '进入身份连接终端',
     resumeHint: '继续上次的寻味记录',
     accountLabel: '食客',
+    switchAccount: '切换账号',
     accountUnbound: '尚未绑定寻味身份',
     createAccount: '创建账号',
     guestBrowse: '游客浏览',

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
-import { isAdminRole, useAuth } from '../auth'
+import { AUTH_SESSION_CHANGE_KEY, isAdminRole, useAuth } from '../auth'
 import PasswordResetForm from '../components/PasswordResetForm.vue'
 import LoginLoadingScene from '../components/LoginLoadingScene.vue'
 import type { LoginPayload, LoginRole, UserRole } from '../types'
@@ -19,6 +19,7 @@ const form = reactive<LoginPayload>({
   role: route.query.role === 'ADMIN' ? 'ADMIN' : 'USER',
 })
 const loading = ref(false)
+const checkingSession = ref(false)
 const preloadProgress = ref(0)
 const error = ref('')
 const registrationSucceeded = route.query.registered === '1'
@@ -32,6 +33,21 @@ let progressTimer: ReturnType<typeof setInterval> | undefined
 let sceneWaitTimer: ReturnType<typeof setTimeout> | undefined
 let resolveSceneWait: ((active: boolean) => void) | undefined
 let disposed = false
+
+function refreshSession() {
+  if (!loading.value && document.visibilityState === 'visible') void auth.restoreSession(true)
+}
+
+function handleSessionChange(event: StorageEvent) {
+  if (event.key === AUTH_SESSION_CHANGE_KEY) refreshSession()
+}
+
+onMounted(() => {
+  refreshSession()
+  window.addEventListener('focus', refreshSession)
+  document.addEventListener('visibilitychange', refreshSession)
+  window.addEventListener('storage', handleSessionChange)
+})
 
 function startPreloadProgress() {
   stopPreloadProgress()
@@ -62,6 +78,9 @@ function waitForScene(milliseconds: number): Promise<boolean> {
 
 onBeforeUnmount(() => {
   disposed = true
+  window.removeEventListener('focus', refreshSession)
+  document.removeEventListener('visibilitychange', refreshSession)
+  window.removeEventListener('storage', handleSessionChange)
   stopPreloadProgress()
   if (sceneWaitTimer) clearTimeout(sceneWaitTimer)
   resolveSceneWait?.(false)
@@ -80,7 +99,14 @@ async function enterFor(user: { role: UserRole }) {
 }
 
 async function awaken() {
-  if (loading.value) return
+  if (loading.value || checkingSession.value) return
+  checkingSession.value = true
+  try {
+    await auth.restoreSession(true)
+  } finally {
+    checkingSession.value = false
+  }
+  if (disposed) return
   const user = rememberedUser.value
   if (!user) {
     accessOpen.value = true
@@ -96,6 +122,22 @@ async function awaken() {
     stopPreloadProgress()
     loading.value = false
   }
+}
+
+function switchAccount() {
+  if (loading.value || checkingSession.value) return
+  form.username = ''
+  form.password = ''
+  form.role = isAdminRole(rememberedUser.value?.role) ? 'ADMIN' : 'USER'
+  error.value = ''
+  resetSucceeded.value = false
+  accessOpen.value = true
+}
+
+function closeAccess() {
+  form.password = ''
+  error.value = ''
+  accessOpen.value = false
 }
 
 function selectRole(role: LoginRole) {
@@ -125,6 +167,7 @@ async function submit() {
       username: form.username.trim(),
       password: form.password.normalize('NFKC').trim(),
     })
+    form.password = ''
     await enterFor(user)
   } catch {
     error.value = t('login.error')
@@ -146,13 +189,20 @@ async function submit() {
       <h1>{{ t('common.appName') }}</h1>
       <blockquote>{{ t('login.quote') }}</blockquote>
 
-      <button class="login-awaken-button" type="button" @click="awaken">
+      <button class="login-awaken-button" type="button" :disabled="checkingSession" @click="awaken">
         <span>{{ t('login.awaken') }}</span>
       </button>
 
       <div class="login-launch-account">
-        <b>{{ t('login.accountLabel') }}</b>
-        <span>{{ rememberedUser?.displayName || t('login.accountUnbound') }}</span>
+        <button
+          class="login-account-switch"
+          type="button"
+          :title="t('login.switchAccount')"
+          :aria-label="t('login.switchAccount')"
+          :disabled="checkingSession"
+          @click="switchAccount"
+        >{{ t('login.accountLabel') }}</button>
+        <span aria-live="polite">{{ rememberedUser?.displayName || rememberedUser?.username || t('login.accountUnbound') }}</span>
       </div>
     </div>
 
@@ -171,14 +221,15 @@ async function submit() {
       <span class="login-launch-version">DAYAN TERMINAL · #1</span>
     </footer>
 
+    <Teleport to="body">
     <Transition name="login-access">
-      <div v-if="accessOpen && !loading" class="login-access-backdrop" @click.self="accessOpen = false">
-        <div class="login-access-panel">
+      <div v-if="accessOpen && !loading" class="login-access-backdrop" @click.self="closeAccess">
+        <div class="login-access-panel" role="dialog" aria-modal="true" :aria-label="t('login.title')" @keydown.esc="closeAccess">
           <button
             class="login-access-close"
             type="button"
             :aria-label="t('login.closeAccess')"
-            @click="accessOpen = false"
+            @click="closeAccess"
           >×</button>
 
           <div class="login-heading">
@@ -229,5 +280,6 @@ async function submit() {
         </div>
       </div>
     </Transition>
+    </Teleport>
   </section>
 </template>

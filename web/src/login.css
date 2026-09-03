@@ -295,11 +295,25 @@
   font-size: 12px;
 }
 
-.login-launch-account b {
+.login-account-switch {
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
   padding: 4px 12px;
   color: #fff8ed;
   background: #3d302b;
   clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+}
+
+.login-account-switch:hover,
+.login-account-switch:focus-visible {
+  background: #8e3026;
+}
+
+.login-account-switch:focus-visible {
+  outline: 2px solid #d5ab62;
+  outline-offset: -3px;
 }
 
 .login-launch-account span {

@@ -19,7 +19,7 @@ spring:
       use-key-prefix: true
   session:
     store-type: redis
-    timeout: ${SESSION_TIMEOUT:30m}
+    timeout: ${SESSION_TIMEOUT:7d}
     redis:
       namespace: dayan-food:session
   mail:
@@ -74,8 +74,8 @@ server:
         http-only: true
         secure: ${SESSION_COOKIE_SECURE:false}
         same-site: lax
-        # 默认仍为浏览器会话 Cookie；仅显式配置时才持久保存登录记录。
-        max-age: ${SESSION_COOKIE_MAX_AGE:-1s}
+        # 默认保存登录 7 天，与 Redis 会话的默认空闲超时保持一致。
+        max-age: ${SESSION_COOKIE_MAX_AGE:7d}
   error:
     include-message: never
 mybatis:

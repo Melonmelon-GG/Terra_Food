@@ -321,6 +321,7 @@ export default {
     awakenHint: 'Open the identity access terminal',
     resumeHint: 'Continue your previous journey',
     accountLabel: 'DINER',
+    switchAccount: 'Switch account',
     accountUnbound: 'No flavor identity connected',
     createAccount: 'Create Account',
     guestBrowse: 'Browse as Guest',
