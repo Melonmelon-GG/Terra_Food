@@ -1,4 +1,8 @@
 <p align="center">
+  <strong>简体中文</strong> | <a href="README.en.md" lang="en">English</a>
+</p>
+
+<p align="center">
   <a href="https://162.251.94.27/">
     <img src="docs/assets/readme-cover.svg" alt="Terra Food 大炎珍馐志：山河有味，烟火成诗" width="100%">
   </a>
@@ -393,6 +397,7 @@ python -c "import app.main; import app.mcp_server"
 - PR 说明改动目的、验证方式；页面调整附上桌面与移动端截图，配置调整说明新增变量。
 - 数据库结构通过新的 Flyway 迁移变更，不改写已在共享环境执行的迁移文件。
 - 前端新增界面文案同步维护中英文语言文件。
+- README 更新时同步维护 `README.md`（中文）与 `README.en.md`（英文），保持功能、配置和启动命令一致。
 - 不提交 `.env`、`.env.local`、模型密钥、邮箱授权码、数据库密码或真实用户数据。
 
 </details>
@@ -403,3 +408,5 @@ python -c "import app.main; import app.mcp_server"
   <strong>记录地域风味，也记录食物背后的人与时光。</strong><br>
   <sub>Terra Food · 大炎珍馐志</sub>
 </p>
+
+<p align="center"><strong>简体中文</strong> | <a href="README.en.md" lang="en">English</a></p>

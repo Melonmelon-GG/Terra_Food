@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Terra Food · Local flavors, shared stories</title>
+  <desc id="desc">A warm paper background, vermilion seal, layered mountains, and a setting sun frame the Terra Food food chronicle.</desc>
+  <defs>
+    <linearGradient id="paper" x2="1" y2="1">
+      <stop stop-color="#fbf8f0"/>
+      <stop offset="1" stop-color="#eee4d2"/>
+    </linearGradient>
+    <pattern id="grain" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r=".6" fill="#9c8260" opacity=".15"/>
+    </pattern>
+    <clipPath id="frame"><rect width="1200" height="400" rx="16"/></clipPath>
+  </defs>
+  <g clip-path="url(#frame)">
+    <rect width="1200" height="400" fill="url(#paper)"/>
+    <rect width="1200" height="400" fill="url(#grain)"/>
+    <circle cx="989" cy="122" r="66" fill="#b5513a" opacity=".86"/>
+    <circle cx="989" cy="122" r="80" fill="none" stroke="#b5513a" stroke-opacity=".16"/>
+    <path d="M620 342 701 228 739 252 835 136 887 214 921 190 1000 273 1074 195 1140 260 1200 225V400H620Z" fill="#d6c9b3"/>
+    <path d="M652 359 735 273 774 300 843 225 881 269 934 236 1024 317 1104 252 1200 316V400H652Z" fill="#b8b39d"/>
+    <path d="M674 400 769 330 816 352 895 292 967 340 1041 312 1125 358 1200 332V400Z" fill="#838d7c"/>
+    <path d="M871 228 849 184 812 228M1020 281 1074 219 1112 264" fill="none" stroke="#fbf8f0" stroke-width="2" opacity=".65"/>
+    <path d="M984 355C885 370 1007 389 900 410" fill="none" stroke="#f4ebda" stroke-width="9" opacity=".8"/>
+    <path d="M745 88q10-8 20 0q10-8 20 0M798 70q7-6 14 0q7-6 14 0" fill="none" stroke="#837661" stroke-width="1.5"/>
+    <rect x="28" y="28" width="1144" height="344" rx="4" fill="none" stroke="#ac9270" stroke-opacity=".42"/>
+    <path d="M52 70V52h18M1130 52h18v18M52 330v18h18" fill="none" stroke="#842d26" stroke-width="2"/>
+    <g font-family="Georgia,'Times New Roman',serif">
+      <rect x="72" y="69" width="48" height="48" rx="4" fill="#842d26"/>
+      <rect x="77" y="74" width="38" height="38" rx="2" fill="none" stroke="#f6ecda" stroke-opacity=".6"/>
+      <text x="96" y="103" text-anchor="middle" font-family="'Noto Serif SC','SimSun',serif" font-size="29" fill="#fff6e5">炎</text>
+      <text x="139" y="98" font-size="28" font-weight="700" letter-spacing="3" fill="#30231c">TERRA FOOD</text>
+      <text x="72" y="205" font-size="61" font-weight="700" fill="#30231c">Local flavors.</text>
+      <text x="72" y="281" font-size="61" font-weight="700" fill="#842d26">Shared stories.</text>
+      <text x="75" y="329" font-size="18" letter-spacing="1" fill="#77634f">A food chronicle, written together.</text>
+    </g>
+    <text x="140" y="117" font-family="Georgia,serif" font-size="10" letter-spacing="3" fill="#947754">A TASTE OF PLACE</text>
+    <text x="1108" y="91" font-family="Georgia,serif" font-size="11" letter-spacing="2" fill="#7c4e37" transform="rotate(90 1108 91)">DISCOVER · RECORD · SHARE</text>
+  </g>
+</svg>
