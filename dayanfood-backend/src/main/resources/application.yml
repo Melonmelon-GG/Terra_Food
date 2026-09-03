@@ -19,7 +19,7 @@ spring:
       use-key-prefix: true
   session:
     store-type: redis
-    timeout: ${SESSION_TIMEOUT:30m}
+    timeout: ${SESSION_TIMEOUT:7d}
     redis:
       namespace: dayan-food:session
   mail:
@@ -55,7 +55,9 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   initial-admin:
     enabled: ${INITIAL_ADMIN_ENABLED:false}
+    username: ${INITIAL_ADMIN_USERNAME:admin}
     password: ${INITIAL_ADMIN_PASSWORD:}
+    display-name: ${INITIAL_ADMIN_DISPLAY_NAME:珍馐志管理员}
   agent:
     service-url: ${AGENT_SERVICE_URL:http://localhost:8090}
     internal-token: ${AGENT_INTERNAL_TOKEN:}
@@ -72,6 +74,8 @@ server:
         http-only: true
         secure: ${SESSION_COOKIE_SECURE:false}
         same-site: lax
+        # 默认保存登录 7 天，与 Redis 会话的默认空闲超时保持一致。
+        max-age: ${SESSION_COOKIE_MAX_AGE:7d}
   error:
     include-message: never
 mybatis:

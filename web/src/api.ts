@@ -406,7 +406,8 @@ export async function importFoodSpreadsheet(file: File): Promise<FoodImportResul
 }
 
 export async function login(payload: LoginPayload): Promise<AuthUser> {
-  const response = await api.post<AuthUser>('/auth/login', payload)
+  // 登录响应会等待用户信息与地图菜品完成 Redis 预热；首次冷缓存可能超过全局 8 秒。
+  const response = await api.post<AuthUser>('/auth/login', payload, { timeout: 60_000 })
   return response.data
 }
 

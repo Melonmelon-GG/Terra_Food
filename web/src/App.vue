@@ -15,7 +15,7 @@ const router = useRouter()
 const auth = useAuth()
 const mobileNavOpen = ref(false)
 const nextLocaleLabel = computed(() => locale.value === 'zh-CN' ? 'EN' : '中')
-// 不参与常规导航展示的页面：登录/注册/关于。珍馐图鉴与关于在这些页面仍保持可见。
+// 不参与常规导航展示的页面：登录/注册/关于。
 const isAuthFlowPage = computed(() => ['/login', '/register', '/about'].includes(route.path))
 const mobileNavLabel = computed(() => mobileNavOpen.value
   ? t('common.closeMenu')
@@ -100,7 +100,9 @@ async function logout() {
     </button>
 
     <nav id="primary-navigation" :class="{ 'is-open': mobileNavOpen }" @click="mobileNavOpen = false">
-      <RouterLink to="/" @click.prevent="navigateHome">{{ t('common.catalog') }}</RouterLink>
+      <RouterLink v-if="route.path !== '/login'" to="/" @click.prevent="navigateHome">
+        {{ t('common.catalog') }}
+      </RouterLink>
       <RouterLink v-if="auth.currentUser.value && !isAuthFlowPage" to="/profile">
         {{ t('common.profile') }}
       </RouterLink>

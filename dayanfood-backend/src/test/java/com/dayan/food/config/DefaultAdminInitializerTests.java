@@ -14,14 +14,19 @@ class DefaultAdminInitializerTests {
     @Test
     void createsOnlyTheAdminAccount() {
         AppUserService appUserService = mock(AppUserService.class);
-        DefaultAdminInitializer initializer = new DefaultAdminInitializer(appUserService, "secure-password");
+        DefaultAdminInitializer initializer = new DefaultAdminInitializer(
+                appUserService,
+                "dayan_admin",
+                "secure-password",
+                "大炎管理员"
+        );
 
         initializer.run(null);
 
         verify(appUserService).createIfMissing(
-                "admin",
+                "dayan_admin",
                 "secure-password",
-                "珍馐志管理员",
+                "大炎管理员",
                 UserRole.ADMIN
         );
         verifyNoMoreInteractions(appUserService);
@@ -30,7 +35,12 @@ class DefaultAdminInitializerTests {
     @Test
     void rejectsAnEmptyAdminPassword() {
         AppUserService appUserService = mock(AppUserService.class);
-        DefaultAdminInitializer initializer = new DefaultAdminInitializer(appUserService, "");
+        DefaultAdminInitializer initializer = new DefaultAdminInitializer(
+                appUserService,
+                "dayan_admin",
+                "",
+                "大炎管理员"
+        );
 
         assertThrows(IllegalStateException.class, () -> initializer.run(null));
         verifyNoMoreInteractions(appUserService);

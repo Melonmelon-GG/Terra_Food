@@ -3,6 +3,7 @@ package com.dayan.food.entity.vo;
 import com.dayan.food.entity.enums.SignatureStatus;
 import com.dayan.food.entity.enums.UserRole;
 import com.dayan.food.entity.po.AppUser;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,7 +20,7 @@ public record AuthUserVO(
         boolean active,
         LocalDateTime createdAt,
         List<PendingReviewVO> pendingReviews
-) {
+) implements Serializable {
 
     public static AuthUserVO from(AppUser user) {
         return new AuthUserVO(

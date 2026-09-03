@@ -69,6 +69,12 @@ npm run dev
 
 前端默认访问地址为 `http://localhost:5173`。
 
+## 登录保持
+
+普通用户和管理员默认保持登录 7 天，无需额外开启。浏览器使用有效期为 7 天的 HttpOnly Cookie；Redis 会话的空闲超时同样为 7 天。退出登录、清除 Cookie 或会话失效后需要重新登录。不同浏览器的登录状态互不共享，游客浏览不受影响。
+
+可以在启动后端前通过 `SESSION_TIMEOUT`（服务端空闲超时）和 `SESSION_COOKIE_MAX_AGE`（浏览器 Cookie 有效期）覆盖默认值，例如均设置为 `1d`。如需关闭持久登录，可将 `SESSION_COOKIE_MAX_AGE` 设置为 `-1s`，并按需缩短 `SESSION_TIMEOUT`。配置更新需重启后端；已有 Cookie 的有效期不会自动变更，需要重新登录。
+
 ## 初始管理员
 
 管理员默认不会自动创建。首次部署需要初始化管理员时，请在启动后端前配置：
@@ -76,13 +82,15 @@ npm run dev
 ```bash
 DB_PASSWORD=你的数据库密码
 INITIAL_ADMIN_ENABLED=true
+INITIAL_ADMIN_USERNAME=自定义管理员用户名
 INITIAL_ADMIN_PASSWORD=自定义管理员密码
+INITIAL_ADMIN_DISPLAY_NAME=自定义管理员显示名
 ```
 
 启用后会创建以下账号（已存在时不会重复创建）：
 
 | 角色 | 用户名 |
 | --- | --- |
-| 管理员 | `admin` |
+| 管理员 | `INITIAL_ADMIN_USERNAME`，未配置时为 `admin` |
 
 管理员创建成功后应关闭 `INITIAL_ADMIN_ENABLED` 并从运行环境移除 `INITIAL_ADMIN_PASSWORD`。普通用户只能通过前台注册。MySQL 和 Redis 连接可以通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`REDIS_PORT` 和 `REDIS_PASSWORD` 配置；跨域前端地址通过 `CORS_ALLOWED_ORIGINS` 配置，多个地址使用英文逗号分隔。生产环境默认使用 Secure Cookie；HTTPS 部署保持 `SESSION_COOKIE_SECURE=true`，仅当前这类 HTTP 部署显式设置 `SESSION_COOKIE_SECURE=false`。
