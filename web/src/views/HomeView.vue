@@ -8,7 +8,7 @@ import { useAuth } from '../auth'
 import FoodMap from '../components/FoodMap.vue'
 import FoodUploadModal from '../components/FoodUploadModal.vue'
 import RegionDrawer from '../components/RegionDrawer.vue'
-import type { Food, FoodMarker, MapBounds, MapFocus, Region } from '../types'
+import type { Food, FoodMarker, MapBounds, MapCoordinate, MapFocus, Region } from '../types'
 
 const foods = ref<Food[]>([])
 const markerFoods = ref<FoodMarker[]>([])
@@ -31,6 +31,10 @@ const pickedCity = ref('')
 const pickedAddress = ref('')
 const locationError = ref('')
 const locationResolving = ref(false)
+const geolocationLoading = ref(false)
+const geolocationLocated = ref(false)
+const geolocationErrorKey = ref('')
+const geolocationCoordinate = ref<MapCoordinate>()
 const pickHint = ref('')
 const mapBounds = ref<MapBounds>()
 const activeFoodId = ref<number>()
@@ -53,6 +57,12 @@ const canNextCatalog = computed(() => catalogPage.value < catalogPages.value)
 const activeFood = computed(() =>
   foods.value.find((food) => food.id === activeFoodId.value) ?? catalogFoods.value[0],
 )
+const displayedLocation = computed<MapCoordinate | undefined>(() => {
+  if (pickedLatitude.value != null && pickedLongitude.value != null) {
+    return { latitude: pickedLatitude.value, longitude: pickedLongitude.value }
+  }
+  return geolocationCoordinate.value
+})
 
 let catalogRequestSequence = 0
 let markerRequestSequence = 0
@@ -165,6 +175,7 @@ function submitSearch() {
 
 onBeforeUnmount(() => {
   if (boundsLoadTimer) clearTimeout(boundsLoadTimer)
+  geolocationSequence += 1
   locationLookupController?.abort()
 })
 
@@ -206,6 +217,69 @@ async function chooseRegion(regionId?: number) {
 
 let locationLookupSequence = 0
 let locationLookupController: AbortController | undefined
+let geolocationSequence = 0
+
+function geolocationErrorMessage(error: GeolocationPositionError) {
+  if (error.code === error.PERMISSION_DENIED) return 'home.geolocationDenied'
+  if (error.code === error.TIMEOUT) return 'home.geolocationTimeout'
+  return 'home.geolocationUnavailable'
+}
+
+function locateUser() {
+  const sequence = ++geolocationSequence
+  geolocationLocated.value = false
+  geolocationErrorKey.value = ''
+  geolocationCoordinate.value = undefined
+
+  if (!window.isSecureContext) {
+    geolocationErrorKey.value = 'home.geolocationInsecure'
+    return
+  }
+  if (!navigator.geolocation) {
+    geolocationErrorKey.value = 'home.geolocationUnsupported'
+    return
+  }
+
+  geolocationLoading.value = true
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      if (sequence !== geolocationSequence) return
+      geolocationLoading.value = false
+
+      const { latitude, longitude, accuracy } = position.coords
+      // GPS 坐标只用于本机地图聚焦；用户点击地图确认后才进入现有地址反查流程。
+      if (latitude < 18 || latitude > 54 || longitude < 73 || longitude > 135.2) {
+        geolocationErrorKey.value = 'home.geolocationOutside'
+        return
+      }
+
+      const zoom = accuracy <= 100 ? 16 : accuracy <= 1000 ? 14 : 12
+      mapFocus.value = { latitude, longitude, zoom }
+      geolocationCoordinate.value = { latitude, longitude }
+      geolocationLocated.value = true
+    },
+    (error) => {
+      if (sequence !== geolocationSequence) return
+      geolocationLoading.value = false
+      geolocationErrorKey.value = geolocationErrorMessage(error)
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 12_000,
+      maximumAge: 60_000,
+    },
+  )
+}
+
+function handleMapPick(latitude: number, longitude: number) {
+  // 用户手动确认优先于仍在等待中的 GPS 结果，避免稍后回调覆盖当前视角。
+  geolocationSequence += 1
+  geolocationLoading.value = false
+  geolocationLocated.value = false
+  geolocationErrorKey.value = ''
+  geolocationCoordinate.value = undefined
+  void pickLocation(latitude, longitude)
+}
 
 async function pickLocation(latitude: number, longitude: number) {
   pickedLatitude.value = latitude
@@ -265,6 +339,11 @@ function focusFood(food: Food) {
 
 // 回到地图默认视角：清空选中与选点状态，地图回全国范围（保留地区筛选与列表结果）。
 function resetMapView() {
+  geolocationSequence += 1
+  geolocationLoading.value = false
+  geolocationLocated.value = false
+  geolocationErrorKey.value = ''
+  geolocationCoordinate.value = undefined
   activeFoodId.value = undefined
   pickedLatitude.value = undefined
   pickedLongitude.value = undefined
@@ -329,6 +408,8 @@ async function openUpload() {
 }
 
 onMounted(async () => {
+  // 首次进入首页即请求浏览器位置权限；失败时保留完整的手动选点流程。
+  locateUser()
   try {
     regions.value = await getRegions()
   } catch {
@@ -347,7 +428,8 @@ onMounted(async () => {
       <FoodMap
         :foods="markerFoods"
         :focus="mapFocus"
-        @pick="pickLocation"
+        :picked-location="displayedLocation"
+        @pick="handleMapPick"
         @bounds-change="updateMapBounds"
       />
     </div>
@@ -394,7 +476,12 @@ onMounted(async () => {
     </aside>
 
     <div class="explorer-map-hint" role="status">
-      <span v-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>
+      <span v-if="geolocationLoading">{{ t('home.geolocationLoading') }}</span>
+      <span v-else-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>
+      <span v-else-if="geolocationErrorKey" class="error">
+        {{ t(geolocationErrorKey) }}
+        <button type="button" @click="locateUser">{{ t('home.retryLocation') }}</button>
+      </span>
       <span v-else-if="locationError" class="error">{{ locationError }}</span>
       <span v-else-if="pickedLatitude !== undefined">
         {{ pickedAddress
@@ -409,6 +496,7 @@ onMounted(async () => {
             })
         }}
       </span>
+      <span v-else-if="geolocationLocated">{{ t('home.geolocationReady') }}</span>
       <span v-else>{{ t('home.mapHint') }}</span>
     </div>
 

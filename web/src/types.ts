@@ -117,9 +117,12 @@ export interface PagedCatalog {
   pageSize: number
 }
 
-export interface MapFocus {
+export interface MapCoordinate {
   latitude: number
   longitude: number
+}
+
+export interface MapFocus extends MapCoordinate {
   zoom: number
 }
 
