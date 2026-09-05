@@ -46,8 +46,9 @@ for (let index = 0; index < 720; index += 1) {
     z = hub.z + (random() - 0.5) * 0.48
   }
   const shell = (0.96 + random() * 0.04) / Math.hypot(x, y, z)
+  // 偏向小尺寸，少量大节点作点缀；只在初始化取样，旋转时不会随机跳变。
   points.push({ x: x * shell, y: y * shell, z: z * shell,
-    size: index < HUB_COUNT ? 1.15 : 0.45 + random() * 0.45 })
+    size: index < HUB_COUNT ? 1.25 + (index % 5) * 0.15 : 0.38 + Math.pow(random(), 3) * 1.35 })
 }
 
 const connectionKeys = new Set<string>()
@@ -55,7 +56,7 @@ function connect(from: number, to: number) {
   const key = `${Math.min(from, to)}:${Math.max(from, to)}`
   if (from === to || connectionKeys.has(key)) return
   connectionKeys.add(key)
-  connections.push({ from, to, visible: random() < 0.24, phase: random(), pulse: random() < 0.3 })
+  connections.push({ from, to, visible: random() < 0.33, phase: random(), pulse: random() < 0.3 })
 }
 
 points.forEach((point, index) => {
@@ -94,7 +95,7 @@ function render(time: number) {
 
   const centerX = width / 2
   const centerY = height / 2
-  const sphereRadius = Math.min(width * 0.34, height * 0.4, 390)
+  const sphereRadius = Math.min(width * 0.34, height * 0.4, 390) * 1.12
   const rotation = time * 0.000075
   const tilt = -0.2
   const cosRotation = Math.cos(rotation)
@@ -119,18 +120,23 @@ function render(time: number) {
     }
   })
 
-  const gold = props.active ? '247, 207, 107' : '169, 118, 26'
+  // 入卷前后保持同一金色，浅纸背景上也能看清细点阵与传输光迹。
+  const gold = '125, 78, 20'
   connections.forEach((connection) => {
     const from = projected[connection.from]
     const to = projected[connection.to]
-    const depthAlpha = Math.max(0.035, ((from.depth + to.depth) / 2 + 1.2) * 0.085)
+    const depthAlpha = 0.12 + Math.max(0, Math.min(1, ((from.depth + to.depth) / 2 + 1) / 2)) * 0.11
     if (connection.visible) {
-      context.lineWidth = 0.4
-      context.strokeStyle = `rgba(${gold}, ${depthAlpha})`
+      // 常亮线路退到点阵之后；深金节点和经过的短光迹负责呈现球体层次。
+      context.lineWidth = 0.45
+      context.strokeStyle = `rgba(173, 125, 58, ${depthAlpha})`
+      // 每条线路固定虚实节奏，长短线段交错；不随帧随机改变。
+      context.setLineDash(connection.phase < 0.3 ? [] : [3 + connection.phase * 5, 4 + connection.phase * 4, 1.5, 5])
       context.beginPath()
       context.moveTo(from.screenX, from.screenY)
       context.lineTo(to.screenX, to.screenY)
       context.stroke()
+      context.setLineDash([])
     }
 
     const cycle = (time * 0.000065 + connection.phase) % 1
@@ -146,27 +152,38 @@ function render(time: number) {
     const tailX = from.screenX + deltaX * tail
     const tailY = from.screenY + deltaY * tail
     const intensity = Math.sin(Math.PI * travel) * Math.min(0.95, 0.65 + depthAlpha * 3)
+    // 传输期间显出完整的节点间路径，避免光迹在隐藏线路上看似悬空。
+    context.lineWidth = 0.45
+    context.strokeStyle = `rgba(173, 125, 58, ${intensity * 0.3})`
+    context.beginPath()
+    context.moveTo(from.screenX, from.screenY)
+    context.lineTo(to.screenX, to.screenY)
+    context.stroke()
     // 只点亮光点身后的短线路，不使用原来的大面积模糊光晕。
     const trail = context.createLinearGradient(tailX, tailY, pulseX, pulseY)
     trail.addColorStop(0, `rgba(${gold}, 0)`)
     trail.addColorStop(1, `rgba(${gold}, ${intensity})`)
-    context.lineWidth = 0.65
+    context.lineWidth = 0.8 + Math.pow(connection.phase, 2) * 0.7
+    context.lineCap = 'round'
     context.strokeStyle = trail
     context.beginPath()
     context.moveTo(tailX, tailY)
     context.lineTo(pulseX, pulseY)
     context.stroke()
-    context.fillStyle = `rgba(${props.active ? '255, 237, 165' : gold}, ${intensity})`
-    context.beginPath()
-    context.arc(pulseX, pulseY, 0.85, 0, Math.PI * 2)
-    context.fill()
+    // 光头属于连线本身，不再叠加独立圆点；圆润短光迹严格位于两个端点之间。
+    context.lineCap = 'butt'
   })
 
   projected
     .slice()
     .sort((a, b) => a.depth - b.depth)
     .forEach((point) => {
-      const alpha = Math.max(0.3, Math.min(0.95, (point.depth + 1.3) * 0.55))
+      // 后半球保留淡点，前半球加深；平滑过渡避免旋转经过赤道时闪变。
+      const depth = Math.max(-1, Math.min(1, point.depth))
+      const front = Math.max(0, Math.min(1, (depth + 0.15) / 0.3))
+      const blend = front * front * (3 - 2 * front)
+      const alpha = (0.38 + (depth + 1) * 0.15) * (1 - blend)
+        + (0.9 + Math.max(0, depth) * 0.1) * blend
       const dotRadius = point.size * (0.7 + (point.depth + 1) * 0.25)
       context.fillStyle = `rgba(${gold}, ${alpha})`
       context.beginPath()
@@ -246,7 +263,7 @@ onBeforeUnmount(() => {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  color: #fff8ed;
+  color: #49352b;
 }
 
 .login-loading-scene.is-active {
@@ -260,8 +277,9 @@ onBeforeUnmount(() => {
   content: '';
   opacity: 0;
   background:
-    radial-gradient(circle at 50% 42%, rgba(99, 43, 29, 0.48), transparent 30%),
-    radial-gradient(circle at 50% 45%, #291812 0%, #120d0b 45%, #080706 100%);
+    radial-gradient(ellipse 380px 360px at 50% 42%, rgba(153, 112, 65, 0.36), rgba(153, 112, 65, 0.22) 58%, transparent 100%),
+    radial-gradient(circle at 50% 45%, rgba(255, 253, 246, 0.92), transparent 66%),
+    linear-gradient(180deg, #eee3d4 0%, #faf6ef 18%, #f4eee4 82%, #e7d8c6 100%);
   transition: opacity 1100ms ease;
 }
 
@@ -274,8 +292,8 @@ onBeforeUnmount(() => {
   inset: 0;
   opacity: 0.18;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    linear-gradient(rgba(137, 103, 61, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(137, 103, 61, 0.06) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(circle, #000 15%, transparent 78%);
 }
@@ -318,9 +336,9 @@ onBeforeUnmount(() => {
   width: clamp(154px, 17vw, 214px);
   min-height: clamp(210px, 28vh, 292px);
   padding: 24px;
-  border: 1px solid rgba(239, 213, 183, 0.72);
-  background: rgba(19, 13, 11, 0.68);
-  box-shadow: 0 0 55px rgba(218, 148, 49, 0.14), inset 0 0 30px rgba(255, 241, 213, 0.04);
+  border: 1px solid rgba(174, 132, 72, 0.5);
+  background: rgba(255, 250, 240, 0.7);
+  box-shadow: 0 18px 55px rgba(119, 77, 37, 0.09), inset 0 0 30px rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(5px);
   transform: translate(-50%, -50%);
 }
@@ -331,7 +349,7 @@ onBeforeUnmount(() => {
   width: 17px;
   height: 17px;
   content: '';
-  border-color: #e6b043;
+  color: #b58643;
 }
 
 .login-loading-server::before {
@@ -353,14 +371,14 @@ onBeforeUnmount(() => {
   place-items: center;
   width: 52px;
   height: 52px;
-  color: #f1c45f;
+  color: #8f3028;
   font-family: serif;
   font-size: 31px;
-  border: 1px solid rgba(241, 196, 95, 0.75);
+  border: 1px solid rgba(174, 132, 72, 0.6);
 }
 
 .login-loading-server small {
-  color: #c9ad90;
+  color: #80674e;
   font-size: 12px;
   letter-spacing: 0.28em;
 }
@@ -373,6 +391,7 @@ onBeforeUnmount(() => {
 }
 
 .login-loading-server b {
+  color: #8f3028;
   font-size: clamp(52px, 7vw, 88px);
   font-weight: 300;
   line-height: 0.85;
@@ -388,14 +407,14 @@ onBeforeUnmount(() => {
 .login-loading-track {
   height: 3px;
   overflow: hidden;
-  background: rgba(239, 213, 183, 0.18);
+  background: rgba(145, 107, 58, 0.18);
 }
 
 .login-loading-track i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #a75b42, #f0bd4f 80%, #fff2b8);
-  box-shadow: 0 0 15px #e6b043;
+  background: linear-gradient(90deg, #963c2d, #b88935 80%, #d8ae59);
+  box-shadow: 0 0 10px rgba(184, 137, 53, 0.2);
   transition: width 180ms ease-out;
 }
 
@@ -403,13 +422,13 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   margin-top: 12px;
-  color: #d9c6b3;
+  color: #745d49;
   font-size: 12px;
   letter-spacing: 0.12em;
 }
 
 .login-loading-meta b {
-  color: #f0bd4f;
+  color: #8c5f24;
   font-size: 15px;
 }
 
@@ -423,8 +442,8 @@ onBeforeUnmount(() => {
   gap: 13px;
   min-height: 70px;
   padding: 12px clamp(24px, 4vw, 64px);
-  border-top: 1px solid rgba(239, 213, 183, 0.08);
-  background: rgba(4, 3, 3, 0.2);
+  border-top: 1px solid rgba(145, 107, 58, 0.12);
+  background: rgba(249, 244, 233, 0.5);
 }
 
 .login-loading-scene footer div {
@@ -433,7 +452,7 @@ onBeforeUnmount(() => {
 }
 
 .login-loading-scene footer small {
-  color: #a58b76;
+  color: #80674e;
   font-size: 10px;
 }
 
@@ -442,7 +461,7 @@ onBeforeUnmount(() => {
   place-items: center;
   width: 38px;
   height: 38px;
-  color: #f0bd4f;
+  color: #8f3028;
   font-family: serif;
   font-size: 23px;
   border: 1px solid #c79342;

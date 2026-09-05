@@ -121,15 +121,6 @@
   -webkit-backdrop-filter: none;
 }
 
-/* 背景在入卷后转深，导航文字也随之变浅，保持可读性。 */
-#app:has(.login-launch-page.is-loading) > header {
-  background: rgba(31, 22, 17, 0.65);
-}
-
-#app:has(.login-launch-page.is-loading) > header :is(.brand, .brand small, nav, .language-switch) {
-  color: #f4e4cc;
-}
-
 @media (max-width: 900px) {
   #app:has(.login-launch-page) {
     --login-header-height: var(--mobile-header-height, 64px);
