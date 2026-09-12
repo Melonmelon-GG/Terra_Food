@@ -36,20 +36,20 @@ const pixel = 'data:image/svg+xml,' + encodeURIComponent(
         if (path === '/api/foods/catalog') return route.fulfill({ json: { items: [food], total: 1, page: 1, pageSize: 30 } })
         if (path === '/api/foods/map-clusters') return route.fulfill({ json: { dataVersion: 1, total: 1, zoom: 4, items: [] } })
         if (path === '/api/regions') return route.fulfill({ json: [food.region] })
-        if (path === '/api/food-tags') return route.fulfill({ json: [] })
         return route.fulfill({ json: [] })
       })
 
       assert.equal((await page.goto(base + '/')).status(), 200)
       await page.locator('.explorer-card').waitFor()
       assert.equal(await page.locator('.explorer-sidebar').count(), 0)
-      assert.equal(await page.locator('.explorer-toolbar .explorer-search').count(), 0)
+      assert.equal(await page.locator('.explorer-toolbar').count(), 0)
       assert.equal(await page.locator('#app > header .header-food-search').count(), 1)
       const header = await page.locator('#app > header').boundingBox()
       const search = await page.locator('.header-food-search').boundingBox()
       assert(header && search && search.y >= header.y && search.y + search.height <= header.y + header.height)
-      const toolbar = await page.locator('.explorer-toolbar').boundingBox()
-      assert(toolbar && toolbar.y < 110)
+      const catalog = await page.locator('.explorer-catalog').boundingBox()
+      assert(catalog)
+      assert(Math.abs(catalog.x + catalog.width / 2 - viewport.width / 2) <= 2)
 
       const card = await page.locator('.explorer-card').boundingBox()
       const photo = await page.locator('.explorer-card-photo').boundingBox()
@@ -86,7 +86,7 @@ const pixel = 'data:image/svg+xml,' + encodeURIComponent(
       assert.deepEqual(errors, [])
       await page.close()
     }
-    console.log('PASS desktop/mobile: no sidebar, top search, four-action dock, agent/location/add actions, full-image frosted cards')
+    console.log('PASS desktop/mobile: no sidebar or filter toolbar, centered catalog, top search, four-action dock, full-image frosted cards')
   } finally {
     await browser.close()
   }

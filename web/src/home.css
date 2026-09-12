@@ -131,18 +131,6 @@ body:has(main > .map-explorer) > #app > header {
   border-radius: 8px;
 }
 
-.explorer-toolbar { top:18px; left:18px; right:auto; display:grid; grid-template-columns:auto auto auto; gap:10px; width:max-content; max-width:calc(100% - 354px); padding:10px; align-items:stretch; }
-.explorer-sort { display:flex; flex-direction:column; justify-content:center; gap:2px; padding:5px 10px; border:1px solid var(--border-paper); border-radius:10px; background:var(--surface-strong); }
-.explorer-sort span { font-size:10px; color:var(--color-accent-label); }
-.explorer-sort select { border:0; background:transparent; color:var(--ink); font:inherit; font-size:12px; }
-.explorer-filters { position:absolute; z-index:1000; top:calc(100% + 8px); right:0; width:min(680px, calc(100vw - 36px)); padding:18px; display:grid; grid-template-columns:repeat(3,1fr); gap:16px; background:var(--surface-strong); border:1px solid var(--border-paper); border-radius:14px; box-shadow:var(--shadow-card); }
-.explorer-filters fieldset { min-width:0; margin:0; padding:0; border:0; display:flex; flex-wrap:wrap; gap:7px; align-content:flex-start; }
-.explorer-filters legend { width:100%; margin-bottom:5px; font-weight:700; }
-.explorer-filters fieldset label { display:flex; gap:4px; align-items:center; padding:4px 7px; border:1px solid var(--border-paper); border-radius:999px; font-size:12px; }
-.bounds-choice { grid-column:1 / -1; display:flex; gap:7px; align-items:center; }
-.filter-actions { grid-column:1 / -1; display:flex; justify-content:flex-end; gap:8px; }
-.filter-actions button { padding:7px 14px; border:1px solid var(--border-paper); border-radius:8px; background:var(--surface-soft); color:var(--ink); cursor:pointer; }
-
 /* 左侧：个人收藏 */
 
 .explorer-sidebar {
@@ -454,13 +442,15 @@ body:has(main > .map-explorer) > #app > header {
 /* 底部悬浮目录 */
 
 .explorer-catalog {
-  right: 318px;
+  right: auto;
   bottom: 18px;
-  left: 18px;
+  left: 50%;
+  width: min(1080px, calc(100% - 380px));
   height: 216px;
   padding: 12px;
   overflow: hidden;
   border-radius: 20px;
+  transform: translateX(-50%);
 }
 
 .explorer-catalog-heading {
@@ -837,12 +827,8 @@ body:has(main > .map-explorer) > #app > header {
 }
 
 @media (max-width: 1180px) and (min-width: 901px) {
-  .explorer-toolbar {
-    max-width: calc(100% - 36px);
-  }
-
   .explorer-catalog {
-    right: 18px;
+    width: calc(100% - 36px);
   }
 
   .explorer-map-hint {
@@ -932,11 +918,6 @@ body:has(main > .map-explorer) > #app > header {
     overflow: visible;
   }
 
-  .explorer-toolbar { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; }
-  .explorer-toolbar .explorer-search { grid-column:1 / -1; }
-  .explorer-filters { position:fixed; inset:auto 10px 10px; width:auto; max-height:70vh; overflow:auto; grid-template-columns:1fr; }
-  .explorer-filters .bounds-choice, .explorer-filters .filter-actions { grid-column:1; }
-
   .explorer-sidebar h1 {
     font-size: clamp(30px, 9vw, 42px);
   }
@@ -963,6 +944,7 @@ body:has(main > .map-explorer) > #app > header {
   .explorer-catalog {
     height: auto;
     padding: 12px;
+    transform: none;
   }
 
   .explorer-cards {

@@ -4,12 +4,11 @@ import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getFoodCatalog, getFoodMapClusters, getFoodTags, getRegions, reverseMapLocation } from '../api'
+import { getFoodCatalog, getFoodMapClusters, getRegions, reverseMapLocation } from '../api'
 import { useAuth } from '../auth'
 import FoodMap from '../components/FoodMap.vue'
 const FoodUploadModal = defineAsyncComponent(() => import('../components/FoodUploadModal.vue'))
-const RegionDrawer = defineAsyncComponent(() => import('../components/RegionDrawer.vue'))
-import type { Food, FoodMapClusterItem, FoodSort, FoodTag, MapBounds, MapCoordinate, MapFocus, Region } from '../types'
+import type { Food, FoodMapClusterItem, FoodSort, MapBounds, MapCoordinate, MapFocus, Region } from '../types'
 
 const foods = ref<Food[]>([])
 const markerItems = ref<FoodMapClusterItem[]>([])
@@ -19,18 +18,15 @@ const catalogPage = ref(1)
 const catalogPageSize = 30
 const keyword = ref('')
 const selectedRegionId = ref<number>()
-const tags = ref<FoodTag[]>([])
 const selectedTasteIds = ref<number[]>([])
 const selectedIngredientIds = ref<number[]>([])
 const selectedCuisineIds = ref<number[]>([])
 const sort = ref<FoodSort>('RELEVANCE')
 const inBounds = ref(false)
-const filtersOpen = ref(false)
 const mapTruncated = ref(false)
 const loading = ref(true)
 const error = ref('')
 const uploadOpen = ref(false)
-const regionDrawerOpen = ref(false)
 const mapFocus = ref<MapFocus>()
 const pickedLatitude = ref<number>()
 const pickedLongitude = ref<number>()
@@ -78,8 +74,6 @@ catalogPage.value = queryNumber(route.query.page) ?? 1
 
 const selectedFilterCount = computed(() => selectedTasteIds.value.length
   + selectedIngredientIds.value.length + selectedCuisineIds.value.length + (inBounds.value ? 1 : 0))
-const tagsByType = (type: FoodTag['type']) => tags.value.filter((tag) => tag.type === type)
-
 function discoveryQuery() {
   return {
     ...(keyword.value.trim() ? { q: keyword.value.trim() } : {}),
@@ -116,13 +110,6 @@ function searchParams() {
     ...(inBounds.value ? mapBounds.value : undefined),
   }
 }
-
-const regionToggleLabel = computed(() => {
-  const selectedRegion = regions.value.find((region) => region.id === selectedRegionId.value)
-  return selectedRegion
-    ? t('home.regionPath', { province: selectedRegion.province, city: selectedRegion.name })
-    : t('home.allRegionsPath', { count: regions.value.length })
-})
 
 const catalogFoods = computed(() => foods.value)
 const catalogPages = computed(() => Math.max(1, Math.ceil(catalogTotal.value / catalogPageSize)))
@@ -261,7 +248,6 @@ function submitSearch() {
 }
 
 async function applyDiscovery() {
-  filtersOpen.value = false
   suppressRouteReload = true
   try { await router.replace({ path: '/', query: discoveryQuery() }) }
   finally { suppressRouteReload = false }
@@ -285,43 +271,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', closeActions)
   document.removeEventListener('keydown', closeActionsOnEscape)
 })
-
-async function chooseRegion(regionId?: number) {
-  selectedRegionId.value = regionId
-  await router.replace({ path: '/', query: discoveryQuery() })
-  lastMarkerView = undefined
-  mapBounds.value = undefined
-
-  const region = regions.value.find((item) => item.id === regionId)
-  if (!region) {
-    mapFocus.value = { latitude: 35.5, longitude: 104.2, zoom: 4 }
-    await loadCatalog(1)
-    // 重置为全国视野后标记集合需要与目录一致（bounds 已清空，直接全量拉取）。
-    await loadMarkers()
-    return
-  }
-
-  if (region.centerLatitude != null && region.centerLongitude != null) {
-    mapFocus.value = { latitude: region.centerLatitude, longitude: region.centerLongitude, zoom: 9 }
-  }
-
-  await loadCatalog(1)
-
-  if (region.centerLatitude == null || region.centerLongitude == null) {
-    const locatedFoods = foods.value.filter((food) => food.latitude != null && food.longitude != null)
-    mapFocus.value = locatedFoods.length
-      ? {
-          latitude: locatedFoods.reduce((sum, food) => sum + food.latitude, 0) / locatedFoods.length,
-          longitude: locatedFoods.reduce((sum, food) => sum + food.longitude, 0) / locatedFoods.length,
-          zoom: 9,
-        }
-      : { latitude: 35.5, longitude: 104.2, zoom: 4 }
-  }
-
-  // 地图飞到目标城市后 moveend 会按新视口再收窄一次标记；这里先无界拉取该地区的全量标记，
-  // 避免飞行动画期间地图上没有任何图钉。
-  await loadMarkers()
-}
 
 let locationLookupSequence = 0
 let locationLookupController: AbortController | undefined
@@ -546,7 +495,6 @@ onMounted(async () => {
   document.addEventListener('keydown', closeActionsOnEscape)
   performance.mark('terra:home-mounted')
   void getRegions().then((value) => { regions.value = value }).catch(() => {})
-  void getFoodTags().then((value) => { tags.value = value }).catch(() => {})
   void loadCatalog().finally(() => performance.mark('terra:catalog-settled'))
   // 地图初始化发出首个视口后再加载聚合点位。
 })
@@ -591,26 +539,6 @@ function fallbackToOriginal(event: Event, original?: string) {
       />
     </div>
     <div class="explorer-map-wash"></div>
-
-    <div class="explorer-toolbar explorer-panel">
-      <button class="explorer-outline" type="button" :aria-expanded="regionDrawerOpen" @click="regionDrawerOpen = true"><span>{{ t('home.regionEyebrow') }}</span><b>{{ regionToggleLabel }}</b></button>
-      <button class="explorer-outline" type="button" :aria-expanded="filtersOpen" @click="filtersOpen = !filtersOpen"><span>{{ t('home.filters') }}</span><b>{{ t('home.selectedFilters', { count: selectedFilterCount }) }}</b></button>
-      <label class="explorer-sort"><span>{{ t('home.sort') }}</span><select v-model="sort" @change="applyDiscovery"><option value="RELEVANCE">{{ t('home.sortRelevance') }}</option><option value="HEAT">{{ t('home.sortHeat') }}</option><option value="NEWEST">{{ t('home.sortNewest') }}</option></select></label>
-      <section v-if="filtersOpen" class="explorer-filters" :aria-label="t('home.filters')">
-        <fieldset v-for="type in (['TASTE', 'INGREDIENT', 'CUISINE'] as const)" :key="type">
-          <legend>{{ t(`home.tagType${type}`) }}</legend>
-          <label v-for="tag in tagsByType(type)" :key="tag.id">
-            <input v-if="type === 'TASTE'" v-model="selectedTasteIds" type="checkbox" :value="tag.id">
-            <input v-else-if="type === 'INGREDIENT'" v-model="selectedIngredientIds" type="checkbox" :value="tag.id">
-            <input v-else v-model="selectedCuisineIds" type="checkbox" :value="tag.id">
-            <span>{{ tag.name }}</span>
-          </label>
-          <small v-if="!tagsByType(type).length">{{ t('home.noApprovedTags') }}</small>
-        </fieldset>
-        <label class="bounds-choice"><input v-model="inBounds" type="checkbox">{{ t('home.onlyMapBounds') }}</label>
-        <div class="filter-actions"><button type="button" @click="clearFilters">{{ t('home.clearFilters') }}</button><button type="button" @click="applyDiscovery">{{ t('home.applyFilters') }}</button></div>
-      </section>
-    </div>
 
     <div class="explorer-map-hint" role="status">
       <span v-if="mapTruncated">{{ t('home.mapTruncated') }}</span>
@@ -790,14 +718,5 @@ function fallbackToOriginal(event: Event, original?: string) {
     :city="pickedCity"
     @close="uploadOpen = false"
     @saved="handleSaved"
-  />
-
-  <RegionDrawer
-    :open="regionDrawerOpen"
-    :regions="regions"
-    :model-value="selectedRegionId"
-    allow-nationwide
-    @close="regionDrawerOpen = false"
-    @select="chooseRegion"
   />
 </template>
