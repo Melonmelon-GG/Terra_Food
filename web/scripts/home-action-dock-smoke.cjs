@@ -43,6 +43,11 @@ const pixel = 'data:image/svg+xml,' + encodeURIComponent(
       assert.equal((await page.goto(base + '/')).status(), 200)
       await page.locator('.explorer-card').waitFor()
       assert.equal(await page.locator('.explorer-sidebar').count(), 0)
+      assert.equal(await page.locator('.explorer-toolbar .explorer-search').count(), 0)
+      assert.equal(await page.locator('#app > header .header-food-search').count(), 1)
+      const header = await page.locator('#app > header').boundingBox()
+      const search = await page.locator('.header-food-search').boundingBox()
+      assert(header && search && search.y >= header.y && search.y + search.height <= header.y + header.height)
       const toolbar = await page.locator('.explorer-toolbar').boundingBox()
       assert(toolbar && toolbar.y < 110)
 

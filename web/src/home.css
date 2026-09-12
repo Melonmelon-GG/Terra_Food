@@ -87,10 +87,51 @@ body:has(main > .map-explorer) > #app > header {
   backdrop-filter: blur(16px) saturate(1.16);
 }
 
-/* 公共搜索工具栏 */
-.explorer-toolbar { top:18px; left:18px; right:318px; display:grid; grid-template-columns:minmax(260px,1fr) auto auto auto; gap:10px; padding:10px; align-items:stretch; }
-.explorer-toolbar .explorer-search { grid-template-columns:1fr auto; margin:0; }
-.explorer-toolbar .explorer-search button { min-width:76px; }
+/* 页头搜索与地图筛选工具栏 */
+.home-search-slot {
+  flex: 1 1 420px;
+  max-width: 520px;
+  margin-inline: clamp(24px, 4vw, 68px);
+}
+
+.header-food-search {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  width: 100%;
+  padding: 4px;
+  background: #fffdf89e;
+  border: 1px solid #d3c3ab;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 #fff, 0 8px 22px #38251f12;
+}
+
+.header-food-search input {
+  min-width: 0;
+  padding: 9px 11px;
+  color: var(--color-ink);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.header-food-search:focus-within {
+  border-color: #9d574d;
+  box-shadow: 0 0 0 3px #8b342b18, 0 8px 22px #38251f12;
+}
+
+.header-food-search button {
+  min-width: 68px;
+  padding: 0 15px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  background: var(--color-accent);
+  border: 0;
+  border-radius: 8px;
+}
+
+.explorer-toolbar { top:18px; left:18px; right:auto; display:grid; grid-template-columns:auto auto auto; gap:10px; width:max-content; max-width:calc(100% - 354px); padding:10px; align-items:stretch; }
 .explorer-sort { display:flex; flex-direction:column; justify-content:center; gap:2px; padding:5px 10px; border:1px solid var(--border-paper); border-radius:10px; background:var(--surface-strong); }
 .explorer-sort span { font-size:10px; color:var(--color-accent-label); }
 .explorer-sort select { border:0; background:transparent; color:var(--ink); font:inherit; font-size:12px; }
@@ -797,7 +838,7 @@ body:has(main > .map-explorer) > #app > header {
 
 @media (max-width: 1180px) and (min-width: 901px) {
   .explorer-toolbar {
-    right: 18px;
+    max-width: calc(100% - 36px);
   }
 
   .explorer-catalog {
@@ -828,6 +869,33 @@ body:has(main > .map-explorer) > #app > header {
     margin: 0;
     padding-inline: 14px;
     border-radius: 0;
+  }
+
+  body:has(main > .map-explorer) .brand {
+    flex: 0 0 auto;
+  }
+
+  body:has(main > .map-explorer) .brand > div {
+    display: none;
+  }
+
+  .home-search-slot {
+    min-width: 0;
+    margin-inline: 8px;
+  }
+
+  .header-food-search {
+    padding: 3px;
+    border-radius: 10px;
+  }
+
+  .header-food-search input {
+    padding: 8px;
+  }
+
+  .header-food-search button {
+    min-width: 52px;
+    padding-inline: 9px;
   }
 
   .map-explorer {

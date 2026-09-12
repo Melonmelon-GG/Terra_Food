@@ -102,6 +102,8 @@ async function logout() {
       </div>
     </RouterLink>
 
+    <div v-if="route.path === '/'" id="home-search-slot" class="home-search-slot"></div>
+
     <button
       class="mobile-nav-toggle"
       type="button"

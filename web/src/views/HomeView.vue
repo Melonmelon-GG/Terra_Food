@@ -567,6 +567,13 @@ function fallbackToOriginal(event: Event, original?: string) {
 </script>
 
 <template>
+  <Teleport to="#home-search-slot">
+    <form class="header-food-search" role="search" @submit.prevent="submitSearch">
+      <input v-model="keyword" :placeholder="t('home.searchPlaceholder')">
+      <button>{{ t('home.search') }}</button>
+    </form>
+  </Teleport>
+
   <section
     class="map-explorer"
     :class="{
@@ -586,9 +593,6 @@ function fallbackToOriginal(event: Event, original?: string) {
     <div class="explorer-map-wash"></div>
 
     <div class="explorer-toolbar explorer-panel">
-      <form class="explorer-search" @submit.prevent="submitSearch">
-        <input v-model="keyword" :placeholder="t('home.searchPlaceholder')"><button>{{ t('home.search') }}</button>
-      </form>
       <button class="explorer-outline" type="button" :aria-expanded="regionDrawerOpen" @click="regionDrawerOpen = true"><span>{{ t('home.regionEyebrow') }}</span><b>{{ regionToggleLabel }}</b></button>
       <button class="explorer-outline" type="button" :aria-expanded="filtersOpen" @click="filtersOpen = !filtersOpen"><span>{{ t('home.filters') }}</span><b>{{ t('home.selectedFilters', { count: selectedFilterCount }) }}</b></button>
       <label class="explorer-sort"><span>{{ t('home.sort') }}</span><select v-model="sort" @change="applyDiscovery"><option value="RELEVANCE">{{ t('home.sortRelevance') }}</option><option value="HEAT">{{ t('home.sortHeat') }}</option><option value="NEWEST">{{ t('home.sortNewest') }}</option></select></label>
