@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:share": "node scripts/share-card-smoke.cjs",
     "test:food-edit-review": "node scripts/food-edit-review-smoke.cjs",
-    "test:collections": "node scripts/collection-etching-smoke.cjs"
+    "test:collections": "node scripts/collection-etching-smoke.cjs",
+    "test:home-actions": "node scripts/home-action-dock-smoke.cjs"
   },
   "dependencies": {
     "axios": "^1.8.4",

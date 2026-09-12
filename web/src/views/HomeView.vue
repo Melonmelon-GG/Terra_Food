@@ -4,7 +4,7 @@ import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getFoodCatalog, getFoodMapClusters, getFoodTags, getMyFavoritesPage, getRegions, reverseMapLocation } from '../api'
+import { getFoodCatalog, getFoodMapClusters, getFoodTags, getRegions, reverseMapLocation } from '../api'
 import { useAuth } from '../auth'
 import FoodMap from '../components/FoodMap.vue'
 const FoodUploadModal = defineAsyncComponent(() => import('../components/FoodUploadModal.vue'))
@@ -14,11 +14,6 @@ import type { Food, FoodMapClusterItem, FoodSort, FoodTag, MapBounds, MapCoordin
 const foods = ref<Food[]>([])
 const markerItems = ref<FoodMapClusterItem[]>([])
 const regions = ref<Region[]>([])
-const favorites = ref<Food[]>([])
-const favoriteTotal = ref(0)
-const favoritePage = ref(1)
-const favoritesLoading = ref(false)
-const favoritesError = ref('')
 const catalogTotal = ref(0)
 const catalogPage = ref(1)
 const catalogPageSize = 30
@@ -53,8 +48,9 @@ const pickHint = ref('')
 const mapBounds = ref<MapBounds>()
 const mapZoom = ref(4)
 const activeFoodId = ref<number>()
-const sidebarCollapsed = ref(window.matchMedia('(max-width: 700px)').matches)
 const catalogCollapsed = ref(false)
+const actionsOpen = ref(false)
+const actionDock = ref<HTMLElement>()
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
@@ -119,36 +115,6 @@ function searchParams() {
     inBounds: inBounds.value,
     ...(inBounds.value ? mapBounds.value : undefined),
   }
-}
-
-async function loadFavorites() {
-  const expectedUserId = auth.currentUser.value?.id
-  favorites.value = []
-  favoriteTotal.value = 0
-  favoritesError.value = ''
-  if (!expectedUserId) return
-  favoritesLoading.value = true
-  try {
-    const result = await getMyFavoritesPage(1, 10)
-    if (auth.currentUser.value?.id !== expectedUserId) return
-    favorites.value = result.items
-    favoriteTotal.value = result.total
-    favoritePage.value = result.page
-  } catch { if (auth.currentUser.value?.id === expectedUserId) favoritesError.value = t('home.favoritesError') }
-  finally { if (auth.currentUser.value?.id === expectedUserId) favoritesLoading.value = false }
-}
-
-async function loadMoreFavorites() {
-  const expectedUserId = auth.currentUser.value?.id
-  if (!expectedUserId || favoritesLoading.value || favorites.value.length >= favoriteTotal.value) return
-  favoritesLoading.value = true
-  try {
-    const result = await getMyFavoritesPage(favoritePage.value + 1, 10)
-    if (auth.currentUser.value?.id !== expectedUserId) return
-    favorites.value.push(...result.items.filter(item => !favorites.value.some(current => current.id === item.id)))
-    favoritePage.value = result.page
-  } catch { if (auth.currentUser.value?.id === expectedUserId) favoritesError.value = t('home.favoritesError') }
-  finally { if (auth.currentUser.value?.id === expectedUserId) favoritesLoading.value = false }
 }
 
 const regionToggleLabel = computed(() => {
@@ -316,6 +282,8 @@ onBeforeUnmount(() => {
   markerRequestController?.abort()
   geolocationSequence += 1
   locationLookupController?.abort()
+  document.removeEventListener('pointerdown', closeActions)
+  document.removeEventListener('keydown', closeActionsOnEscape)
 })
 
 async function chooseRegion(regionId?: number) {
@@ -521,8 +489,6 @@ watch(
   { flush: 'sync' },
 )
 
-watch(() => auth.currentUser.value?.id, () => { void loadFavorites() })
-
 async function openUpload() {
   if (!auth.currentUser.value) {
     await router.push({ path: '/login', query: { redirect: '/' } })
@@ -541,8 +507,43 @@ async function openUpload() {
   uploadOpen.value = true
 }
 
+function openAgent() {
+  actionsOpen.value = false
+  if (!auth.currentUser.value) {
+    void router.push({ path: '/login', query: { redirect: '/' } })
+    return
+  }
+  window.setTimeout(() => window.dispatchEvent(new CustomEvent('home:open-agent')), 0)
+}
+
+function openMusic() {
+  actionsOpen.value = false
+  window.setTimeout(() => window.dispatchEvent(new CustomEvent('home:open-music')), 0)
+}
+
+function locateFromDock() {
+  actionsOpen.value = false
+  locateUser()
+}
+
+function uploadFromDock() {
+  actionsOpen.value = false
+  void openUpload()
+}
+
+function closeActions(event: PointerEvent) {
+  if (actionsOpen.value && actionDock.value && !actionDock.value.contains(event.target as Node)) {
+    actionsOpen.value = false
+  }
+}
+
+function closeActionsOnEscape(event: KeyboardEvent) {
+  if (event.key === 'Escape') actionsOpen.value = false
+}
+
 onMounted(async () => {
-  void loadFavorites()
+  document.addEventListener('pointerdown', closeActions)
+  document.addEventListener('keydown', closeActionsOnEscape)
   performance.mark('terra:home-mounted')
   void getRegions().then((value) => { regions.value = value }).catch(() => {})
   void getFoodTags().then((value) => { tags.value = value }).catch(() => {})
@@ -569,7 +570,6 @@ function fallbackToOriginal(event: Event, original?: string) {
   <section
     class="map-explorer"
     :class="{
-      'sidebar-is-collapsed': sidebarCollapsed,
       'catalog-is-collapsed': catalogCollapsed,
     }"
   >
@@ -592,7 +592,6 @@ function fallbackToOriginal(event: Event, original?: string) {
       <button class="explorer-outline" type="button" :aria-expanded="regionDrawerOpen" @click="regionDrawerOpen = true"><span>{{ t('home.regionEyebrow') }}</span><b>{{ regionToggleLabel }}</b></button>
       <button class="explorer-outline" type="button" :aria-expanded="filtersOpen" @click="filtersOpen = !filtersOpen"><span>{{ t('home.filters') }}</span><b>{{ t('home.selectedFilters', { count: selectedFilterCount }) }}</b></button>
       <label class="explorer-sort"><span>{{ t('home.sort') }}</span><select v-model="sort" @change="applyDiscovery"><option value="RELEVANCE">{{ t('home.sortRelevance') }}</option><option value="HEAT">{{ t('home.sortHeat') }}</option><option value="NEWEST">{{ t('home.sortNewest') }}</option></select></label>
-      <button class="explorer-outline" type="button" @click="openUpload"><span>{{ t('home.mapEyebrow') }}</span><b>{{ t('home.addFood') }}</b></button>
       <section v-if="filtersOpen" class="explorer-filters" :aria-label="t('home.filters')">
         <fieldset v-for="type in (['TASTE', 'INGREDIENT', 'CUISINE'] as const)" :key="type">
           <legend>{{ t(`home.tagType${type}`) }}</legend>
@@ -609,51 +608,10 @@ function fallbackToOriginal(event: Event, original?: string) {
       </section>
     </div>
 
-    <aside
-      class="explorer-sidebar explorer-panel"
-      :class="{ 'is-collapsed': sidebarCollapsed }"
-    >
-      <div class="explorer-sidebar-head">
-        <div>
-          <p class="eyebrow">{{ t('home.favoritesEyebrow') }}</p>
-          <h1>{{ t('home.favoritesTitle') }}</h1>
-          <p class="explorer-intro">{{ t('home.favoritesCount', { count: favoriteTotal }) }}</p>
-        </div>
-        <button
-          class="explorer-panel-toggle"
-          type="button"
-          :aria-expanded="!sidebarCollapsed"
-          @click="sidebarCollapsed = !sidebarCollapsed"
-        >
-          <span>{{ t(sidebarCollapsed ? 'home.expandExplorer' : 'home.collapseExplorer') }}</span>
-          <b aria-hidden="true">{{ sidebarCollapsed ? '⌄' : '⌃' }}</b>
-        </button>
-      </div>
-
-      <section class="sidebar-favorites" aria-labelledby="sidebar-favorites-title">
-        <span class="sr-only" id="sidebar-favorites-title">{{ t('home.favoritesTitle') }}</span>
-        <p v-if="!auth.currentUser.value" class="explorer-notice">{{ t('home.favoritesLogin') }}</p>
-        <p v-else-if="favoritesLoading && favorites.length === 0" class="explorer-notice">{{ t('home.favoritesLoading') }}</p>
-        <p v-else-if="favoritesError" class="explorer-notice error">{{ favoritesError }} <button type="button" @click="loadFavorites">{{ t('home.retryLocation') }}</button></p>
-        <p v-else-if="favorites.length === 0" class="explorer-notice">{{ t('home.favoritesEmpty') }}</p>
-        <article v-for="favorite in favorites" :key="favorite.id" class="sidebar-favorite-item">
-          <RouterLink :to="`/foods/${favorite.id}`"><img v-if="favorite.imageUrl" :src="favorite.imageUrl" :alt="favorite.name"><span>{{ favorite.name }}</span><small>{{ favorite.region.name }}</small></RouterLink>
-          <button type="button" @click="focusFood(favorite)">{{ t('home.mapView') }}</button>
-        </article>
-        <button v-if="favorites.length < favoriteTotal" type="button" class="sidebar-favorites-more" :disabled="favoritesLoading" @click="loadMoreFavorites">{{ t('home.loadMoreFavorites') }}</button>
-        <RouterLink v-if="auth.currentUser.value" to="/profile" class="sidebar-favorites-more">{{ t('home.viewAllFavorites') }}</RouterLink>
-      </section>
-
-      <p v-if="pickHint" class="explorer-notice">{{ pickHint }}</p>
-      <div class="explorer-sidebar-foot">
-        <small>{{ t('home.catalogEyebrow') }}</small>
-        <strong>{{ t('home.recordCount', { count: catalogTotal }) }}</strong>
-      </div>
-    </aside>
-
     <div class="explorer-map-hint" role="status">
       <span v-if="mapTruncated">{{ t('home.mapTruncated') }}</span>
-      <span v-if="geolocationLoading">{{ t('home.geolocationLoading') }}</span>
+      <span v-if="pickHint">{{ pickHint }}</span>
+      <span v-else-if="geolocationLoading">{{ t('home.geolocationLoading') }}</span>
       <span v-else-if="locationResolving">{{ t('home.mapRegionLoading') }}</span>
       <span v-else-if="geolocationErrorKey" class="error">
         {{ t(geolocationErrorKey) }}
@@ -676,6 +634,32 @@ function fallbackToOriginal(event: Event, original?: string) {
       <span v-else-if="geolocationLocated">{{ t('home.geolocationReady') }}</span>
       <span v-else>{{ t('home.mapHint') }}</span>
     </div>
+
+    <nav ref="actionDock" class="home-action-dock" :class="{ 'is-open': actionsOpen }" :aria-label="t('home.quickActions')">
+      <div class="home-action-list" :aria-hidden="!actionsOpen">
+        <button type="button" :tabindex="actionsOpen ? 0 : -1" @click="uploadFromDock">
+          <span aria-hidden="true">+</span><b>{{ t('home.addFood') }}</b>
+        </button>
+        <button type="button" :tabindex="actionsOpen ? 0 : -1" @click="openAgent">
+          <span aria-hidden="true">AI</span><b>{{ t('home.openAgent') }}</b>
+        </button>
+        <button type="button" :tabindex="actionsOpen ? 0 : -1" @click="openMusic">
+          <span aria-hidden="true">&#9835;</span><b>{{ t('home.openMusic') }}</b>
+        </button>
+        <button type="button" :tabindex="actionsOpen ? 0 : -1" @click="locateFromDock">
+          <span aria-hidden="true">&#9678;</span><b>{{ t('home.locate') }}</b>
+        </button>
+      </div>
+      <button
+        class="home-action-trigger"
+        type="button"
+        :aria-label="t(actionsOpen ? 'home.closeQuickActions' : 'home.openQuickActions')"
+        :aria-expanded="actionsOpen"
+        @click="actionsOpen = !actionsOpen"
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+    </nav>
 
     <section class="explorer-catalog explorer-panel" :aria-busy="loading">
       <header class="explorer-catalog-heading">

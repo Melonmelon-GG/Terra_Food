@@ -154,9 +154,9 @@ async function logout() {
     <RouterView :key="`${route.fullPath}:${auth.getSessionRevision()}:${auth.currentUser.value?.id ?? 'anonymous'}`" />
   </main>
 
-  <BackgroundMusic v-if="!isAuthFlowPage" />
+  <BackgroundMusic v-if="!isAuthFlowPage" :launcher-visible="route.path !== '/'" />
   <AchievementToast />
-  <AgentPanel v-if="auth.currentUser.value" />
+  <AgentPanel v-if="auth.currentUser.value" :launcher-visible="route.path !== '/'" />
 
   <footer id="about">
     {{ t('footer') }}
