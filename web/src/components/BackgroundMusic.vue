@@ -1,6 +1,6 @@
 <template>
   <div id="MusicControl" ref="playerRef" :style="playerStyle" @pointerdown="startDrag" @click.capture="suppressDraggedClick">
-    <button v-if="!isPlayerVisible && currentMusic.src" class="reopen-btn" type="button" title="打开音乐播放器" aria-label="打开音乐播放器" @click.stop="openPlayer">♫</button>
+    <button v-if="!isPlayerVisible && currentMusic.src && props.launcherVisible !== false" class="reopen-btn" type="button" title="打开音乐播放器" aria-label="打开音乐播放器" @click.stop="openPlayer">♫</button>
     <div v-if="isPlayerVisible && currentMusic.src" class="control-bar" role="region" aria-label="音乐播放器">
       <button class="minimize-btn" type="button" title="最小化播放器" aria-label="最小化播放器" @click.stop="minimizePlayer">−</button>
       <div class="player-content">
@@ -34,6 +34,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 type Track = { name: string; artist: string; src: string }
 type PlayMode = 'list' | 'random'
+const props = defineProps<{ launcherVisible?: boolean }>()
 const musicList = ref<Track[]>([]), currentIndex = ref(0), currentTime = ref(0), duration = ref(0)
 const volume = ref(0.35), isMuted = ref(false), isMusicPlaying = ref(false), isPlayerVisible = ref(false), showPlaylist = ref(false)
 const playMode = ref<PlayMode>('list')
@@ -85,6 +86,7 @@ function toggleMute() { isMuted.value = !isMuted.value; if (bgMusic.value) bgMus
 function togglePlaylist() { showPlaylist.value = !showPlaylist.value }
 function minimizePlayer() { isPlayerVisible.value = false; showPlaylist.value = false; keepPlayerInBounds() }
 function openPlayer() { isPlayerVisible.value = true }
+function openFromHome() { openPlayer() }
 function setPlayMode(mode: PlayMode) { playMode.value = mode; localStorage.setItem('background-music-play-mode', mode) }
 function outside(e: MouseEvent) { if (isPlayerVisible.value && playerRef.value && !playerRef.value.contains(e.target as Node)) { isPlayerVisible.value = false; showPlaylist.value = false } }
 function startDrag(event: PointerEvent) { if (!playerRef.value) return; suppressClick.value = false; const rect = playerRef.value.getBoundingClientRect(); dragOffset.value = { x: event.clientX - rect.left, y: event.clientY - rect.top }; dragStart.value = { x: event.clientX, y: event.clientY }; dragging.value = false; dragMoved.value = false; window.addEventListener('pointermove', moveDrag); window.addEventListener('pointerup', stopDrag, { once: true }) }
@@ -95,8 +97,8 @@ async function keepPlayerInBounds() { await nextTick(); if (!playerRef.value) re
 watch(() => route.fullPath, () => minimizePlayer())
 watch(isPlayerVisible, visible => { if (visible) keepPlayerInBounds() })
 onMounted(async () => { const savedMode = localStorage.getItem('background-music-play-mode'); if (savedMode === 'list' || savedMode === 'random') playMode.value = savedMode; try { musicList.value = await (await fetch('/audio/music-manifest.json')).json(); await playCurrent() } catch { musicList.value = [] }; window.addEventListener('pointerdown', playCurrent, { once: true }); document.addEventListener('click', outside) })
-onMounted(() => window.addEventListener('resize', keepPlayerInBounds))
-onBeforeUnmount(() => { window.removeEventListener('pointerdown', playCurrent); window.removeEventListener('pointermove', moveDrag); window.removeEventListener('resize', keepPlayerInBounds); document.removeEventListener('click', outside) })
+onMounted(() => { window.addEventListener('resize', keepPlayerInBounds); window.addEventListener('home:open-music', openFromHome) })
+onBeforeUnmount(() => { window.removeEventListener('pointerdown', playCurrent); window.removeEventListener('pointermove', moveDrag); window.removeEventListener('resize', keepPlayerInBounds); window.removeEventListener('home:open-music', openFromHome); document.removeEventListener('click', outside) })
 </script>
 
 <style scoped>

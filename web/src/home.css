@@ -87,20 +87,49 @@ body:has(main > .map-explorer) > #app > header {
   backdrop-filter: blur(16px) saturate(1.16);
 }
 
-/* 公共搜索工具栏 */
-.explorer-toolbar { top:18px; left:278px; right:18px; display:grid; grid-template-columns:minmax(220px,1fr) auto auto auto auto; gap:10px; padding:10px; align-items:stretch; }
-.explorer-toolbar .explorer-search { grid-template-columns:1fr auto; margin:0; }
-.explorer-toolbar .explorer-search button { min-width:76px; }
-.explorer-sort { display:flex; flex-direction:column; justify-content:center; gap:2px; padding:5px 10px; border:1px solid var(--border-paper); border-radius:10px; background:var(--surface-strong); }
-.explorer-sort span { font-size:10px; color:var(--color-accent-label); }
-.explorer-sort select { border:0; background:transparent; color:var(--ink); font:inherit; font-size:12px; }
-.explorer-filters { position:absolute; z-index:1000; top:calc(100% + 8px); right:0; width:min(680px, calc(100vw - 36px)); padding:18px; display:grid; grid-template-columns:repeat(3,1fr); gap:16px; background:var(--surface-strong); border:1px solid var(--border-paper); border-radius:14px; box-shadow:var(--shadow-card); }
-.explorer-filters fieldset { min-width:0; margin:0; padding:0; border:0; display:flex; flex-wrap:wrap; gap:7px; align-content:flex-start; }
-.explorer-filters legend { width:100%; margin-bottom:5px; font-weight:700; }
-.explorer-filters fieldset label { display:flex; gap:4px; align-items:center; padding:4px 7px; border:1px solid var(--border-paper); border-radius:999px; font-size:12px; }
-.bounds-choice { grid-column:1 / -1; display:flex; gap:7px; align-items:center; }
-.filter-actions { grid-column:1 / -1; display:flex; justify-content:flex-end; gap:8px; }
-.filter-actions button { padding:7px 14px; border:1px solid var(--border-paper); border-radius:8px; background:var(--surface-soft); color:var(--ink); cursor:pointer; }
+/* 页头搜索与地图筛选工具栏 */
+.home-search-slot {
+  flex: 1 1 420px;
+  max-width: 520px;
+  margin-inline: clamp(24px, 4vw, 68px);
+}
+
+.header-food-search {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  width: 100%;
+  padding: 4px;
+  background: #fffdf89e;
+  border: 1px solid #d3c3ab;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 #fff, 0 8px 22px #38251f12;
+}
+
+.header-food-search input {
+  min-width: 0;
+  padding: 9px 11px;
+  color: var(--color-ink);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.header-food-search:focus-within {
+  border-color: #9d574d;
+  box-shadow: 0 0 0 3px #8b342b18, 0 8px 22px #38251f12;
+}
+
+.header-food-search button {
+  min-width: 68px;
+  padding: 0 15px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  background: var(--color-accent);
+  border: 0;
+  border-radius: 8px;
+}
 
 /* 左侧：个人收藏 */
 
@@ -313,16 +342,115 @@ body:has(main > .map-explorer) > #app > header {
   outline: none;
 }
 
+/* 右下角统一入口：默认只展示主按钮，展开后依次提供收录、AI、音乐与定位。 */
+.home-action-dock {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 950;
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+}
+
+.home-action-trigger,
+.home-action-list button {
+  color: #fff8ec;
+  cursor: pointer;
+  background: linear-gradient(145deg, #9d3a31, #57241f);
+  border: 1px solid #efd4b3;
+  box-shadow: 0 12px 30px #3e1b163d, inset 0 0 0 4px #ffffff12;
+}
+
+.home-action-trigger {
+  display: grid;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border-radius: 50%;
+  place-items: center;
+}
+
+.home-action-trigger span {
+  font-size: 34px;
+  font-weight: 300;
+  line-height: 1;
+  transition: transform .22s ease;
+}
+
+.home-action-list {
+  display: grid;
+  gap: 9px;
+  pointer-events: none;
+}
+
+.home-action-list button {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 10px;
+  align-items: center;
+  min-width: 132px;
+  min-height: 46px;
+  padding: 5px 7px 5px 15px;
+  font: inherit;
+  border-radius: 999px;
+  opacity: 0;
+  transform: translateY(14px) scale(.94);
+  transition: opacity .16s ease, transform .2s ease, background .2s ease;
+}
+
+.home-action-list button span {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  border: 1px solid #fff6;
+  border-radius: 50%;
+  place-items: center;
+}
+
+.home-action-list button b {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.home-action-list button:hover,
+.home-action-list button:focus-visible {
+  background: linear-gradient(145deg, #b44a3e, #702b25);
+  outline: 2px solid #fff8ec;
+  outline-offset: 2px;
+}
+
+.home-action-dock.is-open .home-action-list {
+  pointer-events: auto;
+}
+
+.home-action-dock.is-open .home-action-list button {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.home-action-dock.is-open .home-action-trigger span {
+  transform: rotate(45deg);
+}
+
 /* 底部悬浮目录 */
 
 .explorer-catalog {
-  right: 318px;
+  right: auto;
   bottom: 18px;
-  left: 278px;
+  left: 50%;
+  width: min(1080px, calc(100% - 380px));
   height: 216px;
   padding: 12px;
   overflow: hidden;
   border-radius: 20px;
+  transform: translateX(-50%);
 }
 
 .explorer-catalog-heading {
@@ -454,9 +582,9 @@ body:has(main > .map-explorer) > #app > header {
 
 .explorer-card {
   position: relative;
-  display: grid;
-  grid-template-rows: 88px minmax(0, 1fr);
+  display: block;
   min-width: 0;
+  min-height: 148px;
   overflow: hidden;
   background: #fffdf878;
   border: 1px solid #ffffff9c;
@@ -507,10 +635,10 @@ body:has(main > .map-explorer) > #app > header {
 }
 
 .explorer-card-photo {
-  position: relative;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  border-radius: 12px 12px 4px 4px;
+  border-radius: inherit;
 }
 
 .explorer-card-photo > img {
@@ -519,18 +647,29 @@ body:has(main > .map-explorer) > #app > header {
   object-fit: cover;
 }
 
+.explorer-card-photo::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: linear-gradient(180deg, transparent 36%, #24130e38 68%, #24130e8c 100%);
+  pointer-events: none;
+}
+
 .explorer-card-photo span {
   position: absolute;
-  right: 7px;
-  bottom: 7px;
-  left: 7px;
+  top: 8px;
+  right: auto;
+  bottom: auto;
+  left: 8px;
   padding: 5px 7px;
   overflow: hidden;
   color: #fff;
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: #852d26e8;
+  background: #852d26d9;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
 }
 
 .explorer-card-photo.no-cover,
@@ -542,8 +681,17 @@ body:has(main > .map-explorer) > #app > header {
 }
 
 .explorer-card-body {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
   min-width: 0;
-  padding: 8px 9px;
+  padding: 9px 10px;
+  color: #392720;
+  background: #fffaf0b8;
+  border-top: 1px solid #ffffffb8;
+  backdrop-filter: blur(13px) saturate(1.2);
 }
 
 .explorer-card-body h3 {
@@ -566,7 +714,7 @@ body:has(main > .map-explorer) > #app > header {
   overflow: hidden;
   color: var(--color-accent);
   font-size: 9px;
-  border-top: 1px solid #e0d5c5;
+  border-top: 1px solid #cdbda790;
   white-space: nowrap;
 }
 
@@ -680,7 +828,7 @@ body:has(main > .map-explorer) > #app > header {
 
 @media (max-width: 1180px) and (min-width: 901px) {
   .explorer-catalog {
-    right: 18px;
+    width: calc(100% - 36px);
   }
 
   .explorer-map-hint {
@@ -689,6 +837,10 @@ body:has(main > .map-explorer) > #app > header {
 
   .explorer-preview {
     display: none;
+  }
+
+  .home-action-dock {
+    bottom: 252px;
   }
 }
 
@@ -703,6 +855,33 @@ body:has(main > .map-explorer) > #app > header {
     margin: 0;
     padding-inline: 14px;
     border-radius: 0;
+  }
+
+  body:has(main > .map-explorer) .brand {
+    flex: 0 0 auto;
+  }
+
+  body:has(main > .map-explorer) .brand > div {
+    display: none;
+  }
+
+  .home-search-slot {
+    min-width: 0;
+    margin-inline: 8px;
+  }
+
+  .header-food-search {
+    padding: 3px;
+    border-radius: 10px;
+  }
+
+  .header-food-search input {
+    padding: 8px;
+  }
+
+  .header-food-search button {
+    min-width: 52px;
+    padding-inline: 9px;
   }
 
   .map-explorer {
@@ -739,11 +918,6 @@ body:has(main > .map-explorer) > #app > header {
     overflow: visible;
   }
 
-  .explorer-toolbar { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px; }
-  .explorer-toolbar .explorer-search { grid-column:1 / -1; }
-  .explorer-filters { position:fixed; inset:auto 10px 10px; width:auto; max-height:70vh; overflow:auto; grid-template-columns:1fr; }
-  .explorer-filters .bounds-choice, .explorer-filters .filter-actions { grid-column:1; }
-
   .explorer-sidebar h1 {
     font-size: clamp(30px, 9vw, 42px);
   }
@@ -770,6 +944,7 @@ body:has(main > .map-explorer) > #app > header {
   .explorer-catalog {
     height: auto;
     padding: 12px;
+    transform: none;
   }
 
   .explorer-cards {
@@ -782,7 +957,7 @@ body:has(main > .map-explorer) > #app > header {
 
   .explorer-card {
     flex: 0 0 min(76vw, 270px);
-    grid-template-rows: 120px auto;
+    min-height: 132px;
     scroll-snap-align: start;
   }
 
