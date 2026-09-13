@@ -16,6 +16,7 @@ const base = process.env.SHARE_TEST_URL || 'http://127.0.0.1:5173'
   await page.route('**/api/**',async route=>{
    const p=new URL(route.request().url()).pathname, method=route.request().method()
    if(p==='/api/auth/me')return route.fulfill({json:user})
+   if(p==='/api/profile/favorites/page' || p==='/api/profile/wishlist/page' || p==='/api/profile/check-ins' || p.endsWith('/comments/page'))return route.fulfill({json:{items:[],total:0,page:1,pageSize:20}})
    if(p==='/api/foods/1'){oldStarted();await oldResponse;return route.fulfill({json:dish(1)})}
    if(/^\/api\/foods\/\d+$/.test(p))return route.fulfill({json:dish(Number(p.split('/').pop()))})
    if(p.endsWith('/likes'))return route.fulfill({json:{likeCount:0,likedByMe:false}})
@@ -63,6 +64,7 @@ const base = process.env.SHARE_TEST_URL || 'http://127.0.0.1:5173'
   await page.waitForTimeout(100)
   assert.equal(await page.locator('.detail-hero h1').textContent(),'菜品2')
   await page.goto(base+'/profile')
+  await page.locator('.archive-tabs button').filter({hasText:'蚀刻章'}).click()
   await page.locator('.etching-create-button').click()
   await page.locator('.etching-tools > label input').fill('新章')
   await page.locator('.etching-studio footer button').last().click()
@@ -77,6 +79,7 @@ const base = process.env.SHARE_TEST_URL || 'http://127.0.0.1:5173'
   assert.equal(await page.locator('.etching-studio').count(),0)
   assert.equal(saveRequests,2)
   await page.reload()
+  await page.locator('.archive-tabs button').filter({hasText:'蚀刻章'}).click()
   await page.locator('.custom-etching-item').waitFor()
   assert(await page.locator('.custom-etching-item').textContent().then(s=>s.includes('新章')))
   await page.locator('.custom-etching-item > div button').first().click()

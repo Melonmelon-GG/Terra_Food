@@ -22,6 +22,8 @@ import {
 import { useAuth } from '../auth'
 import { apiErrorMessage } from '../apiError'
 import type { Food, FoodComment, FoodLikeStatus } from '../types'
+import LandmarkBackdrop from '../components/LandmarkBackdrop.vue'
+import '../archive.css'
 
 const FoodShareModal = defineAsyncComponent(() => import('../components/FoodShareModal.vue'))
 const shareOpen = ref(false)
@@ -63,11 +65,9 @@ const { t, locale } = useI18n()
 
 let foodLoadController: AbortController | undefined
 
-const heroStyle = computed(() => ({
-  backgroundImage: food.value?.imageUrl
-    ? 'linear-gradient(90deg, rgba(25, 12, 8, 0.78), rgba(25, 12, 8, 0.12)), url("' + food.value.imageUrl + '")'
-    : 'linear-gradient(135deg, #79483a, #211512)',
-}))
+const imageFailed = ref(false)
+watch(() => food.value?.imageUrl, () => { imageFailed.value = false })
+const ingredientTags = computed(() => [...new Set((food.value?.ingredients || '').split(/[、，,；;\n]+/).map(value => value.trim()).filter(Boolean))].slice(0, 5))
 
 function avatarInitial(name: string): string {
   return Array.from(name.trim())[0]?.toUpperCase() || '·'
@@ -274,20 +274,32 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="food" class="detail">
+  <div v-if="food" class="detail archive-detail">
+    <div class="archive-breadcrumb">
     <RouterLink to="/" class="back">
       {{ t('detail.back') }}
     </RouterLink>
+    <span>{{ t('archive.motto') }}</span>
+    </div>
 
-    <div class="detail-hero" :style="heroStyle">
+    <div class="detail-hero">
+      <figure class="archive-food-visual">
+        <img v-if="food.imageUrl && !imageFailed" :src="food.imageUrl" :alt="food.name" fetchpriority="high" @error="imageFailed = true">
+        <div v-else class="archive-no-cover"><span>食</span><p>{{ t('archive.noCover') }}</p></div>
       <button type="button" class="food-share-button" @click="shareOpen = true">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 8 6-3m-6 11 6 3"/><circle cx="6" cy="12" r="4"/><circle cx="18" cy="4" r="3"/><circle cx="18" cy="20" r="3"/></svg>
         {{ t('share.open') }}
       </button>
-      <div>
+      </figure>
+      <div class="archive-dossier">
+        <LandmarkBackdrop :province="food.region.province" />
+        <div class="archive-dossier-heading"><span>{{ t('archive.foodDossier') }}</span><small>NO. {{ String(food.id).padStart(5, '0') }}</small></div>
+        <div class="archive-dossier-copy">
         <small>{{ food.region.province }} · {{ food.region.name }}</small>
         <h1>{{ food.name }}</h1>
         <p>{{ food.summary }}</p>
+        <p v-if="food.address" class="archive-address">{{ food.address }}</p>
+        <div class="archive-ingredient-tags" :aria-label="t('detail.ingredients')"><span v-for="ingredient in ingredientTags" :key="ingredient">{{ ingredient }}</span></div>
         <div class="collection-actions">
           <button
             class="like-button"
@@ -322,10 +334,6 @@ onBeforeUnmount(() => {
         </div>
         <p v-if="collectionError" class="collection-action-error" aria-live="polite">{{ collectionError }}</p>
       </div>
-    </div>
-
-    <FoodShareModal v-if="shareOpen" :food="food" @close="shareOpen = false" />
-
     <section class="food-creator">
       <RouterLink
         v-if="food.creator.id"
@@ -357,8 +365,12 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </section>
+      </div>
+    </div>
 
-    <article>
+    <FoodShareModal v-if="shareOpen" :food="food" @close="shareOpen = false" />
+
+    <article class="archive-reading">
       <section>
         <small>{{ t('detail.ingredientsEyebrow') }}</small>
         <h2>{{ t('detail.ingredients') }}</h2>

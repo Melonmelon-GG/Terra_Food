@@ -1,20 +1,18 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
-import axios from 'axios'
 import { toBlob } from 'html-to-image'
-import { getAchievements, getMyEtchings, getMyProfileStats, getUserPublic } from '../api'
-import { useAuth } from '../auth'
-import type { Achievement, EtchingDesign, Food, ProfileStats, UserPublic } from '../types'
-import HexEtching from './HexEtching.vue'
+import type { Food } from '../types'
+import { defaultLandmark, resolveLandmark } from '../landmarks'
 
 const props = defineProps<{ food: Food }>()
 const emit = defineEmits<{ close: [] }>()
 const { t, locale } = useI18n()
 const router = useRouter()
-const user = useAuth().currentUser
+const WIDTH = 640
+const HEIGHT = 1080
 const dialog = ref<HTMLDialogElement>()
 const viewport = ref<HTMLElement>()
 const card = ref<HTMLElement>()
@@ -23,37 +21,21 @@ const loading = ref(true)
 const exporting = ref(false)
 const importing = ref(false)
 const error = ref('')
-const loadFailed = ref(false)
-const profileWarning = ref(false)
-const sealLoadFailed = ref(false)
 const imageWarning = ref(false)
-const stats = ref<ProfileStats>()
-const statsLoading = ref(false)
-const statsError = ref('')
-const profile = ref<UserPublic>()
-const achievements = ref<Achievement[]>([])
-const etchings = ref<EtchingDesign[]>([])
 const foodImage = ref('')
-const avatar = ref('')
 const background = ref('')
 const defaultBackground = ref('')
 const qr = ref('')
 const preview = ref('')
+const controller = new AbortController()
 let observer: ResizeObserver | undefined
 let disposed = false
 let uploadVersion = 0
-const controller = new AbortController()
-const openedAt = new Date()
+const issuedAt = new Date()
+const date = computed(() => issuedAt.toLocaleDateString(locale.value))
 const shareUrl = new URL(router.resolve('/foods/' + props.food.id).href, window.location.origin).href
 const localAddress = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
-const displayName = computed(() => profile.value?.displayName || user.value?.displayName || t('share.guest'))
-const date = computed(() => openedAt.toLocaleDateString(locale.value))
-const seals = computed(() => [
-  ...etchings.value.map(item => ({ kind: 'custom' as const, ...item })),
-  ...achievements.value.map(item => ({ kind: 'achievement' as const, ...item })),
-].sort((a, b) => Number(b.selected) - Number(a.selected)))
-const visibleSeals = computed(() => seals.value.slice(0, 1))
-
+const filename = computed(() => (props.food.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').slice(0, 70) || 'food') + '-' + props.food.id + '.png')
 // Keep every encoded module and a four-module quiet zone intact.
 // Finder ornaments stay within their original 7x7 footprints.
 function createShareQr(url: string): string {
@@ -92,11 +74,12 @@ function createShareQr(url: string): string {
   return canvas.toDataURL('image/png')
 }
 
+
 function readBlob(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error('image read failed'))
+    reader.onerror = reject
     reader.readAsDataURL(blob)
   })
 }
@@ -104,16 +87,15 @@ async function decodeImage(src: string) {
   const img = new Image()
   img.src = src
   await img.decode()
-  if (img.naturalWidth * img.naturalHeight > 24_000_000) throw new Error('image too large')
+  if (img.naturalWidth * img.naturalHeight > 24_000_000) throw new Error('Image too large')
 }
-// Embed assets before export, so missing/CORS-blocked images get an explicit fallback.
-async function embedImage(url?: string | null, optional = false): Promise<string> {
+async function embedImage(url?: string, optional = false): Promise<string> {
   if (!url) return ''
   try {
     const response = await fetch(url, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]) })
-    if (!response.ok) throw new Error('image unavailable')
+    if (!response.ok) throw new Error('Image unavailable')
     const blob = await response.blob()
-    if (blob.size > 10 * 1024 * 1024) throw new Error('image too large')
+    if (blob.size > 10 * 1024 * 1024) throw new Error('Image too large')
     const data = await readBlob(blob)
     await decodeImage(data)
     return data
@@ -122,85 +104,24 @@ async function embedImage(url?: string | null, optional = false): Promise<string
     return ''
   }
 }
-async function loadStats() {
-  if (!user.value || statsLoading.value || disposed) return
-  statsLoading.value = true
-  statsError.value = ''
-  try {
-    const counts = await getMyProfileStats()
-    if (!counts || !Number.isSafeInteger(counts.viewedFoodCount) || counts.viewedFoodCount < 0
-      || !Number.isSafeInteger(counts.favoriteCount) || counts.favoriteCount < 0) {
-      throw new Error('invalid-stats')
-    }
-    if (!disposed) stats.value = counts
-  } catch (cause) {
-    if (disposed) return
-    const status = axios.isAxiosError(cause) ? cause.response?.status : undefined
-    statsError.value = status
-      ? t('share.statsHttpError', { status })
-      : t(axios.isAxiosError(cause) ? 'share.statsNetworkError' : 'share.statsFormatError')
-  } finally {
-    if (!disposed) statsLoading.value = false
-  }
-}
-
 async function load() {
   loading.value = true
-  loadFailed.value = false
-  profileWarning.value = false
-  sealLoadFailed.value = false
-  clearPreview()
   error.value = ''
   imageWarning.value = false
-  // Start statistics immediately; image downloads must not delay the counts.
-  const statsTask = loadStats()
+  clearPreview()
   try {
-    const [qrData, dishImage, art] = await Promise.all([
-      createShareQr(shareUrl),
-      embedImage(props.food.imageUrl),
-      embedImage(import.meta.env.BASE_URL + 'share-backgrounds/default.jpg', true),
-    ])
-    qr.value = qrData
+    qr.value = createShareQr(shareUrl)
+    const artwork = resolveLandmark(props.food.region.province)
+    const [dishImage, art] = await Promise.all([embedImage(props.food.imageUrl), embedImage(artwork.image, true)])
+    if (disposed) return
     foodImage.value = dishImage
-    if (background.value === defaultBackground.value) background.value = art
-    defaultBackground.value = art
-    if (user.value) {
-      // Optional profile endpoints may be unavailable during rolling deployments.
-      // Keep each successful section and never gate PNG export on these requests.
-      const results = await Promise.allSettled([
-        statsTask,
-        (async () => {
-          const publicUser = await getUserPublic(user.value!.id)
-          if (!publicUser || typeof publicUser.displayName !== 'string') throw new Error('Invalid public profile')
-          profile.value = publicUser
-          avatar.value = await embedImage(publicUser.avatarUrl)
-        })(),
-        (async () => {
-          const badges = await getAchievements()
-          if (!Array.isArray(badges)) throw new Error('Invalid achievements')
-          achievements.value = await Promise.all(badges.map(async badge => ({
-            ...badge, imageUrl: await embedImage(badge.imageUrl),
-          })))
-        })(),
-        (async () => {
-          const designs = await getMyEtchings()
-          if (!Array.isArray(designs)) throw new Error('Invalid etchings')
-          etchings.value = designs
-        })(),
-      ])
-      if (!disposed) {
-        profileWarning.value = results.some(result => result.status === 'rejected')
-        sealLoadFailed.value = results[2].status === 'rejected' || results[3].status === 'rejected'
-      }
-      if (!avatar.value && !profile.value) avatar.value = await embedImage(user.value?.avatarUrl)
-    }
+    const resolvedArt = art || (artwork.image !== defaultLandmark.image ? await embedImage(defaultLandmark.image, true) : '')
+    if (disposed) return
+    if (background.value === defaultBackground.value) background.value = resolvedArt
+    defaultBackground.value = resolvedArt
   } catch {
-    if (!disposed) {
-      loadFailed.value = true
-      error.value = t('share.loadError')
-    }
+    if (!disposed) error.value = t('share.loadError')
   } finally {
-    await statsTask
     if (!disposed) loading.value = false
   }
 }
@@ -212,9 +133,9 @@ async function importBackground(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
-  if (!file) return
+  if (!file || loading.value || exporting.value || importing.value) return
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
-    error.value = t('share.fileError')
+    error.value = t('archive.ticketFileError')
     return
   }
   const version = ++uploadVersion
@@ -227,32 +148,34 @@ async function importBackground(event: Event) {
     background.value = data
     clearPreview()
   } catch {
-    if (!disposed) error.value = t('share.fileError')
+    if (!disposed) error.value = t('archive.ticketFileError')
   } finally {
     if (!disposed && version === uploadVersion) importing.value = false
   }
 }
 function resetBackground() {
+  if (exporting.value || importing.value) return
   background.value = defaultBackground.value
-  error.value = ''
   clearPreview()
+  error.value = ''
 }
 async function exportCard() {
-  if (!card.value || loading.value || exporting.value || importing.value) return
+  if (!card.value || loading.value || exporting.value || importing.value || !qr.value) return
   exporting.value = true
   error.value = ''
   try {
     await document.fonts.ready
     await nextTick()
     await Promise.all(Array.from(card.value.querySelectorAll('img')).map(img => img.decode()))
-    const blob = await toBlob(card.value, { width: 1200, height: 840, pixelRatio: 2, skipFonts: true })
-    if (!blob) throw new Error('empty export')
+    // Export the fixed ticket canvas, independent of the scaled mobile preview.
+    const blob = await toBlob(card.value, { width: WIDTH, height: HEIGHT, pixelRatio: 2, skipFonts: true })
+    if (!blob) throw new Error('Empty export')
     if (disposed) return
     clearPreview()
     preview.value = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = preview.value
-    link.download = (props.food.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').slice(0, 70) || 'food') + '-' + props.food.id + '.png'
+    link.download = filename.value
     document.body.append(link)
     link.click()
     link.remove()
@@ -262,159 +185,101 @@ async function exportCard() {
     if (!disposed) exporting.value = false
   }
 }
-watch(() => user.value?.id, () => emit('close'))
-function closeOnEscape(event: KeyboardEvent) {
-  if (event.key === 'Escape' && dialog.value?.open) {
-    event.preventDefault()
-    dialog.value.close()
-  }
-}
-
 onMounted(() => {
   dialog.value?.showModal()
-  window.addEventListener('keydown', closeOnEscape)
   observer = new ResizeObserver(entries => {
     const width = entries[0]?.contentRect.width
-    if (width) scale.value = width / 1200
+    if (width) scale.value = width / WIDTH
   })
-  if (viewport.value) observer.observe(viewport.value)
+  if (viewport.value) {
+    scale.value = viewport.value.clientWidth / WIDTH
+    observer.observe(viewport.value)
+  }
   void load()
 })
 onBeforeUnmount(() => {
   disposed = true
   controller.abort()
-  window.removeEventListener('keydown', closeOnEscape)
   observer?.disconnect()
   clearPreview()
 })
 </script>
 
 <template>
-  <Teleport to="body">
-    <dialog ref="dialog" class="food-share-dialog" aria-labelledby="share-title" @close="emit('close')" @cancel="dialog?.close()" @click="event => { if (event.target === dialog) dialog?.close() }">
-      <header class="share-toolbar">
-        <div><small>{{ t('share.eyebrow') }}</small><h2 id="share-title">{{ t('share.title') }}</h2></div>
-        <button type="button" :aria-label="t('share.close')" autofocus @click="dialog?.close()">×</button>
-      </header>
-      <p class="share-intro">{{ t('share.intro') }}</p>
-      <p v-if="loading" class="share-notice" role="status">{{ t('share.loading') }}</p>
-      <p v-if="statsError" class="share-notice share-error share-stats-error" role="status">
-        {{ statsError }}
-        <button type="button" :disabled="statsLoading || exporting" @click="loadStats">{{ t('share.retryStats') }}</button>
-      </p>
-      <div ref="viewport"  class="share-viewport" :aria-busy="loading">
-        <div class="share-scale" :style="{ transform: 'scale(' + scale + ')' }">
-          <article ref="card" class="share-card">
-            <img v-if="background" class="share-art" :src="background" alt="">
-            <div class="share-shade" />
-            <section class="share-dish">
-              <div class="share-kicker"><span>{{ t('share.archive') }}</span><span>No. {{ String(food.id).padStart(5, '0') }}</span></div>
-              <div class="share-dish-image"><img v-if="foodImage" :src="foodImage" :alt="food.name"><span v-else>{{ t('share.noPhoto') }}</span></div>
-              <small class="share-region">{{ food.region.province }} / {{ food.region.name }}</small>
-              <h2>{{ food.name }}</h2>
-              <p class="share-summary">{{ food.summary }}</p>
-              <div class="share-ingredients"><small>{{ t('detail.ingredients') }}</small><p>{{ food.ingredients }}</p></div>
-              <p class="share-credit">{{ t('detail.uploadedBy') }} · {{ food.creator.displayName }}</p>
-            </section>
-            <section class="share-person">
-              <div class="share-identity share-panel">
-                <div class="share-avatar"><img v-if="avatar" :src="avatar" alt=""><span v-else>{{ Array.from(displayName)[0] }}</span></div>
-                <div><small>{{ t('share.sharedBy') }}</small><h3>{{ displayName }}</h3></div>
-              </div>
-              <p class="share-signature" :title="profile?.signature || user?.signature || t('share.signature')">{{ profile?.signature || user?.signature || t('share.signature') }}</p>
-              <div class="share-stats share-panel">
-                <div><small>{{ t('share.views') }}</small><strong>{{ stats?.viewedFoodCount.toLocaleString(locale) ?? (statsLoading ? '…' : '—') }}</strong></div>
-                <div><small>{{ t('share.favorites') }}</small><strong>{{ stats?.favoriteCount.toLocaleString(locale) ?? (statsLoading ? '…' : '—') }}</strong></div>
-              </div>
-              <div class="share-seals share-panel">
-                <div class="share-seals-heading"><small>{{ t('share.seals') }}</small></div>
-                <div v-if="visibleSeals.length" class="share-seal-grid">
-                  <div v-for="seal in visibleSeals" :key="seal.kind + '-' + seal.id" class="share-seal" :class="{ selected: seal.selected }">
-                    <HexEtching v-if="seal.kind === 'custom'" :layer-one="seal.layerOne" />
-                    <img v-else-if="seal.imageUrl" :src="seal.imageUrl" alt="">
-                    <span v-else class="share-seal-fallback">◇</span>
-                    <small>{{ seal.name }}</small>
-                  </div>
-                </div>
-                <p v-else class="share-empty">{{ sealLoadFailed ? t('profile.sealLoadError') : user ? t('share.noSeals') : t('share.guestHint') }}</p>
-              </div>
-            </section>
-            <aside class="share-rail">
-              <div><strong>{{ t('common.appName') }}</strong><small>{{ t('share.edition') }}</small><time>{{ date }}</time></div>
-              <div class="share-qr"><img v-if="qr" :src="qr" :alt="t('share.qrAlt')"><p>{{ t('share.scan') }}</p><small>{{ t('share.scanHint') }}</small></div>
-              <span class="share-rail-bottom">{{ t('share.footer') }}</span>
-            </aside>
-          </article>
-        </div>
+  <dialog ref="dialog" class="food-share-dialog" :aria-label="t('archive.ticketTitle')" @close="emit('close')" @click="event => { if (event.target === dialog) dialog?.close() }">
+    <header class="share-toolbar">
+      <div><small>{{ t('archive.ticketStub') }}</small><h2>{{ t('archive.ticketTitle') }}</h2></div>
+      <button class="share-close" type="button" :aria-label="t('share.close')" @click="dialog?.close()">×</button>
+    </header>
+    <p class="share-intro">{{ t('archive.ticketIntro') }}</p>
+    <p v-if="loading" class="share-notice" role="status">{{ t('archive.ticketPreparing') }}</p>
+    <p v-if="localAddress" class="share-notice">{{ t('share.localAddress') }}</p>
+    <p v-if="imageWarning" class="share-notice" role="status">{{ t('share.imageWarning') }}</p>
+    <div ref="viewport" class="share-viewport">
+      <div class="share-scale" :style="{ transform: 'scale(' + scale + ')' }">
+        <article ref="card" class="share-card">
+          <img v-if="background" class="ticket-art" :src="background" alt="">
+          <section class="ticket-main share-dish">
+            <header class="ticket-heading"><strong>{{ t('common.appName') }}</strong><span>{{ t('archive.ticket') }}</span></header>
+            <div class="share-dish-image"><img v-if="foodImage" :src="foodImage" :alt="food.name"><span v-else>{{ t('archive.noCover') }}</span></div>
+            <p class="share-region">{{ food.region.province }} · {{ food.region.name }}</p>
+            <h2>{{ food.name }}</h2>
+            <p class="share-summary">{{ food.summary }}</p>
+            <div class="share-ingredients"><small>{{ t('detail.ingredients') }}</small><p>{{ food.ingredients }}</p></div>
+          </section>
+          <section class="ticket-stub">
+            <div class="ticket-stub-copy">
+              <small>{{ t('archive.ticketStub') }}</small>
+              <strong>NO. {{ String(food.id).padStart(5, '0') }}</strong>
+              <span>{{ t('archive.ticketDate') }}</span>
+              <time>{{ date }}</time>
+              <p>{{ t('archive.motto') }}</p>
+              <div class="ticket-perforation" aria-hidden="true"></div>
+            </div>
+            <div class="share-qr"><img v-if="qr" :src="qr" :alt="t('archive.ticketHint')"><p>{{ t('archive.ticketHint') }}</p></div>
+          </section>
+        </article>
       </div>
-      <p v-if="error" class="share-notice share-error" role="alert">{{ error }} <button v-if="loadFailed && !loading" type="button" @click="load">{{ t('share.retry') }}</button></p>
-      <p v-if="profileWarning" class="share-notice share-profile-warning" role="status">{{ t('share.partialProfile') }} <button type="button" :disabled="loading || exporting || importing" @click="load">{{ t('share.retry') }}</button></p>
-      <p v-if="imageWarning"  class="share-notice" role="status">{{ t('share.imageWarning') }}</p>
-      <p v-if="localAddress" class="share-notice">{{ t('share.localAddress') }}</p>
-      <div class="share-controls">
-        <label class="share-import" :class="{ disabled: loading || exporting || importing }">{{ importing ? t('share.importing') : t('share.import') }}<input type="file" accept="image/jpeg,image/png,image/webp" :disabled="loading || exporting || importing" @change="importBackground"></label>
-        <button type="button" :disabled="loading || exporting || importing" @click="resetBackground">{{ t('share.reset') }}</button>
-        <button type="button" class="share-export" :disabled="loading || statsLoading || exporting || importing || loadFailed || !qr" @click="exportCard">{{ exporting ? t('share.exporting') : t('share.export') }}</button>
-      </div>
-      <p class="share-note">{{ t('share.backgroundHint') }} {{ t('share.statsHint') }}</p>
-      <div v-if="preview" class="share-export-result" role="status"><p>{{ t('share.saved') }}</p><a :href="preview" target="_blank" rel="noopener">{{ t('share.openImage') }}</a><img :src="preview" :alt="t('share.previewAlt')"></div>
-    </dialog>
-  </Teleport>
+    </div>
+    <div class="share-controls">
+      <label class="share-import">{{ t('share.import') }}<input type="file" accept="image/jpeg,image/png,image/webp" :disabled="loading || exporting || importing" @change="importBackground"></label>
+      <button type="button" :disabled="loading || exporting || importing" @click="resetBackground">{{ t('share.reset') }}</button>
+      <button class="share-export" type="button" :disabled="loading || exporting || importing || !qr" @click="exportCard">{{ exporting ? t('share.exporting') : t('archive.ticketDownload') }}</button>
+    </div>
+    <p class="share-note">{{ t('archive.ticketNote') }}</p>
+    <p v-if="error" class="share-error" role="alert">{{ error }} <button v-if="!qr" type="button" @click="load">{{ t('share.retry') }}</button></p>
+    <div v-if="preview" class="share-export-result" role="status">
+      <p>{{ t('archive.ticketSaved') }}</p>
+      <a :href="preview" :download="filename">{{ t('archive.ticketDownload') }}</a>
+      <img :src="preview" :alt="food.name">
+    </div>
+  </dialog>
 </template>
 
 <style scoped>
-.food-share-dialog{width:min(1280px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:24px;border:1px solid var(--border-paper);background:var(--color-paper);color:var(--color-ink);box-shadow:0 24px 70px #4b2f1f33;box-sizing:border-box;overflow:auto}
-.food-share-dialog::backdrop{background:#30231ccc;backdrop-filter:blur(5px)}
-.share-toolbar{display:flex;justify-content:space-between;align-items:center}.share-toolbar small{font-size:10px;letter-spacing:3px;color:var(--color-accent-label)}.share-toolbar h2{margin:5px 0;font-size:25px}.share-toolbar>button{background:none;border:0;font-size:32px;cursor:pointer;color:inherit}
-.share-intro,.share-note{font-size:13px;line-height:1.7;color:#7c6756}.share-viewport{width:100%;aspect-ratio:1200/840;overflow:hidden;background:var(--color-bg)}.share-scale{width:1200px;height:840px;transform-origin:top left}
-.share-card{position:relative;isolation:isolate;display:grid;grid-template-columns:780px 348px;grid-template-rows:466px 302px;gap:24px;width:1200px;height:840px;box-sizing:border-box;padding:24px;color:var(--color-ink);overflow:hidden;background:radial-gradient(ellipse at 10% 25%,#fffdf8 0,transparent 55%),linear-gradient(120deg,#fffaf0,#f5f0e5 58%,#f1e5d2);font-family:Arial,"Microsoft YaHei",sans-serif;text-align:left;line-height:1.4}
-.share-card *{box-sizing:border-box}.share-card p{margin:0}.share-art,.share-shade{position:absolute;inset:0;width:100%;height:100%;z-index:-2;object-fit:cover}.share-shade{z-index:-1;background:linear-gradient(90deg,#fbf8f0d9,#f5ead8ed);border-top:5px solid var(--color-accent)}
-.share-dish{grid-row:1 / 3;padding:8px 10px;min-width:0}.share-kicker{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:2px;color:#826c5b}.share-kicker span:first-child{padding:4px 8px;color:var(--color-paper);background:var(--color-accent)}
-.share-dish-image{width:100%;aspect-ratio:16 / 9;margin:12px 0;display:grid;place-items:center;background:#efe1c9;border:1px solid var(--border-paper);overflow:hidden}.share-dish-image img{width:100%;height:100%;object-fit:cover}.share-dish-image span{font-size:18px;letter-spacing:5px;color:#826c5b}
-.share-region{font-size:13px;letter-spacing:3px;color:var(--color-accent-label)}.share-dish h2{margin:10px 0 12px;font-size:36px;line-height:1.25;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
-.share-summary{font-size:16px;line-height:1.7;color:#6c5547;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
-.share-ingredients{margin-top:14px;border-top:1px solid var(--border-paper);padding-top:12px}.share-ingredients small{font-size:11px;letter-spacing:2px;color:var(--color-accent-label)}.share-ingredients p{font-size:14px;line-height:1.6;margin-top:5px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}.share-credit{font-size:11px;color:#826c5b;margin-top:12px!important;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
-.share-person{display:grid;grid-template-rows:94px 54px 80px 202px;gap:12px;padding-top:0;min-width:0}.share-panel{background:#fbf8f0e6;border:1px solid var(--border-paper);border-radius:4px;overflow:hidden}
-.share-identity{display:flex;align-items:center;padding:12px;gap:12px;background:linear-gradient(120deg,#fffaf0,#f1e5d2)}.share-avatar{flex-shrink:0;width:52px;height:52px;border:2px solid #b89878;padding:3px;display:grid;place-items:center;font-size:26px;background:#efe1c9}.share-avatar img{width:100%;height:100%;object-fit:cover}.share-identity>div:last-child{min-width:0}.share-identity small{font-size:11px;letter-spacing:3px;color:var(--color-accent-label)}.share-identity h3{margin:4px 0;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.share-identity p{font-size:12px;color:#826c5b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-.share-signature{padding:2px 12px;font-size:13px;line-height:20px;color:#826c5b;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
-.share-stats{display:grid;grid-template-columns:1fr 1fr;padding:16px 22px}.share-stats>div+div{border-left:1px solid var(--border-paper);padding-left:24px}.share-stats small{display:block;font-size:12px;letter-spacing:2px;color:#7c6756}.share-stats strong{color:var(--color-accent);font-size:26px;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums}
-.share-seals{display:flex;align-items:center;gap:14px;padding:10px 14px;background:#fffbf3e6}.share-seals-heading{display:flex;justify-content:space-between;color:var(--color-accent-label)}.share-seals-heading small{color:var(--color-accent-label);font-size:12px;letter-spacing:3px}.share-seals-heading span{font-size:18px;color:var(--color-accent)}.share-seal-grid{flex:1;min-width:0}.share-seal{display:flex;align-items:center;gap:10px;min-width:0;text-align:left}.share-seal img,.share-seal :deep(svg),.share-seal-fallback{display:block;width:78px;height:78px;object-fit:contain;margin:0 auto}.share-seal-fallback{font-size:55px;color:#9e6d55}.share-seal small{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#7c6756}.share-seal.selected small{color:var(--color-accent)}.share-empty{padding:0;text-align:left;font-size:12px;line-height:1.8;color:#826c5b}
-.share-rail{border-top:1px solid var(--border-paper);padding:14px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center}.share-rail strong{color:var(--color-accent);font-family:serif;font-size:26px;letter-spacing:2px;display:block}.share-rail>div>small{display:block;font-size:10px;letter-spacing:2px;color:#826c5b;margin-top:6px}.share-rail time{display:block;font-size:14px;color:#6c5547;margin-top:22px}.share-qr{width:100%}.share-qr img{display:block;width:160px;height:160px;max-width:100%;margin:auto;background:white}.share-qr p{font-size:15px;letter-spacing:2px;margin-top:8px}.share-qr small{font-size:11px;line-height:1.7;color:#7c6756;display:block;margin-top:7px}.share-rail-bottom{font-size:10px;letter-spacing:3px;color:#826c5b}
-.share-controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;align-items:center}.share-controls button,.share-import{font:inherit;font-size:14px;padding:11px 17px;border:1px solid var(--border-paper);background:var(--color-input);color:var(--color-ink);cursor:pointer}.share-import{position:relative;overflow:hidden}.share-import input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.share-import:focus-within{outline:2px solid var(--color-accent)}.share-controls .share-export{margin-left:auto;background:var(--color-accent);color:white;border-color:var(--color-accent)}.share-controls button:disabled,.share-import.disabled{opacity:.5;cursor:wait}.share-notice{font-size:13px;line-height:1.6;color:#7c6756}.share-error{color:var(--color-accent)}.share-export-result{padding-top:12px;font-size:13px}.share-export-result img{display:block;width:100%;margin-top:12px}.share-export-result a{color:var(--color-accent)}
-
-/* Warm dossier panel: translucent information strips over an engraved bronze field. */
-.share-card::after{content:"";position:absolute;z-index:-1;top:24px;right:24px;bottom:24px;width:348px;background:linear-gradient(145deg,#624337,#30231c 66%,#542c25);border-top:3px solid #b89878}
-.share-person{padding:12px 12px 0;gap:12px;grid-template-rows:82px 54px 80px 202px}
-.share-panel{border-color:#e5d4b745;border-radius:2px;box-shadow:0 4px 10px #160c0822}
-.share-identity{position:relative;background:linear-gradient(115deg,#fbf8f0f5,#ead9bee8);border-left:3px solid var(--color-accent)}
-.share-identity::after{content:"";position:absolute;right:10px;top:10px;width:20px;height:20px;border-top:1px solid #9e6d55;border-right:1px solid #9e6d55}
-.share-identity small{font-size:10px;letter-spacing:2px}
-.share-signature{margin:0!important;padding:7px 12px 7px 30px;position:relative;background:#fbf8f0de;border-left:2px solid #b89878;color:#6c5547;font-size:12px;line-height:19px}
-.share-signature::before{content:"“";position:absolute;left:10px;top:1px;font-family:serif;font-size:28px;color:#9e6d55}
-.share-stats{padding:9px 16px;background:#fbf8f0e8}
-.share-stats>div+div{padding-left:18px}
-.share-stats strong{font-size:30px}
-.share-stats small{font-size:10px}
-.share-seals{position:relative;display:block;padding:12px 16px;background:radial-gradient(circle at 50% 58%,#b898782b,transparent 65%),#211914a8}
-.share-seals::before{content:"";position:absolute;left:50%;top:50%;width:136px;height:136px;transform:translate(-50%,-42%) rotate(30deg);border:1px solid #b898783d;border-radius:50%;pointer-events:none}
-.share-seals-heading small{color:#d9c6a6;font-size:10px;letter-spacing:3px}
-.share-seal{position:relative;display:flex;flex-direction:column;gap:0;margin-top:8px}
-.share-seal img,.share-seal :deep(svg),.share-seal-fallback{width:122px;height:122px;object-fit:contain;margin:0 auto}
-.share-seal small,.share-seal.selected small{color:#e6d4b4;font-size:11px;max-width:260px}
-.share-empty{padding:42px 10px;color:#d5bfa4;text-align:center}
-.share-rail{position:relative;margin:0 12px 12px;padding:14px 8px;display:grid;grid-template-columns:minmax(0,1fr) 166px;grid-template-rows:1fr 28px;gap:10px;align-items:center;border-top:1px solid #d9c6a650;color:#f5ead8}
-.share-rail strong{font-size:21px;line-height:1.6;letter-spacing:1px;color:#f5ead8}
-.share-rail>div>small,.share-rail time,.share-qr small{color:#cdb79a}
-.share-rail time{font-size:11px;margin-top:14px}
-.share-qr{position:relative}
-.share-qr::before,.share-qr::after{content:"";position:absolute;width:14px;height:14px;border-color:#d2af77;border-style:solid;pointer-events:none}
-.share-qr::before{left:-4px;top:-4px;border-width:2px 0 0 2px}
-.share-qr::after{right:-4px;top:150px;border-width:0 2px 2px 0}
-.share-qr img{width:160px;height:160px;border-radius:3px;box-shadow:0 4px 16px #170e0a55}
-.share-qr p{font-size:13px;margin-top:12px}
-.share-qr small{font-size:9px;letter-spacing:1px}
-.share-rail-bottom{grid-column:1 / -1;border-top:1px solid #d9c6a630;padding-top:12px;color:#bfa98a;font-size:9px;letter-spacing:3px}
-
-@media(max-width:600px){.food-share-dialog{padding:14px;width:calc(100vw - 16px);max-height:calc(100dvh - 16px)}.share-controls{gap:8px}.share-controls button,.share-import{padding:10px 12px;font-size:12px}.share-toolbar h2{font-size:21px}.share-controls .share-export{width:100%;margin:0}.share-intro{font-size:12px}}
+.food-share-dialog{width:min(620px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:24px;border:1px solid var(--border-paper);background:var(--color-paper);color:var(--color-ink);box-sizing:border-box;overflow:auto;overscroll-behavior:contain;border-radius:4px 18px 4px 4px}
+.food-share-dialog::backdrop{background:#241910a8;backdrop-filter:blur(4px)}
+.share-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:start}.share-toolbar small{font-size:10px;letter-spacing:3px;color:var(--color-accent-label)}.share-toolbar h2{margin:8px 0;font-size:24px}
+.share-close{flex:0 0 44px;width:44px;height:44px;border:1px solid var(--border-paper);background:none;color:var(--color-ink);font-size:26px;cursor:pointer}
+.share-intro,.share-note,.share-notice{font-size:13px;line-height:1.8;color:var(--muted)}.share-viewport{width:100%;aspect-ratio:640/1080;overflow:hidden;margin:20px auto;background:#f5f0e5}.share-scale{width:640px;height:1080px;transform-origin:top left}
+.share-card{--color-ink:#30231c;--color-paper:#fbf8f0;--color-accent:#842d26;position:relative;isolation:isolate;box-sizing:border-box;width:640px;height:1080px;overflow:hidden;background:#fbf8f0;color:#30231c;border:1px solid #d8cbb8;font:16px/1.5 Arial,"Microsoft YaHei",sans-serif;text-align:left;border-radius:12px}
+.share-card *{box-sizing:border-box}.share-card p{margin:0}.ticket-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.13;z-index:-1}
+.ticket-main{height:784px;padding:28px 32px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.ticket-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:32px;border-bottom:1px solid #d8cbb8;padding-bottom:10px}
+.ticket-heading strong{font-size:22px;letter-spacing:3px;font-family:serif}.ticket-heading span{font-size:12px;color:#842d26;letter-spacing:3px}
+.share-dish-image{flex:0 0 auto;width:100%;aspect-ratio:16/9;display:grid;place-items:center;background:#efe5d4;overflow:hidden;border:1px solid #d8cbb8}.share-dish-image img{width:100%;height:100%;object-fit:cover}.share-dish-image span{font-size:16px;letter-spacing:3px;color:#826f60}
+.share-region{font-size:14px;letter-spacing:2px;color:#842d26}
+.share-dish h2{font-size:36px;line-height:1.2;font-family:"Microsoft YaHei",sans-serif;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
+.share-summary{font-size:17px;line-height:1.65;color:#665347;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
+.share-ingredients{border-top:1px solid #d8cbb8;padding-top:10px;margin-top:auto;flex-shrink:0}.share-ingredients small{font-size:12px;color:#842d26;letter-spacing:2px}.share-ingredients p{margin-top:4px;font-size:15px;line-height:1.6;color:#665347;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.ticket-stub{position:relative;height:296px;border-top:2px dashed #b89f80;padding:28px 32px;display:grid;grid-template-columns:minmax(0,1fr) 194px;gap:28px;background:#efe5d447}
+.ticket-stub::before,.ticket-stub::after{content:"";position:absolute;top:-16px;width:30px;height:30px;border:1px solid #d8cbb8;border-radius:50%;background:#f5f0e5}.ticket-stub::before{left:-16px}.ticket-stub::after{right:-16px}
+.ticket-stub-copy{display:flex;flex-direction:column;align-items:start;gap:7px}.ticket-stub-copy>small{color:#842d26;letter-spacing:3px;font-size:14px}.ticket-stub-copy strong{font:26px monospace;letter-spacing:3px;margin:5px 0}.ticket-stub-copy>span{color:#826f60;font-size:12px}.ticket-stub-copy time{font:18px monospace}.ticket-stub-copy p{font-size:12px;color:#826f60;letter-spacing:1px}
+.ticket-perforation{height:18px;width:175px;margin-top:10px;background:repeating-linear-gradient(90deg,#842d2666 0 1px,transparent 1px 5px)}
+.share-qr{align-self:center;text-align:center}.share-qr img{display:block;width:194px;height:194px;background:#fff;border:6px solid #fff}.share-qr p{font-size:13px;color:#665347;margin-top:9px}
+.share-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.share-controls button,.share-import{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 12px;font:13px inherit;border:1px solid var(--border-paper);color:var(--color-ink);background:var(--color-input);cursor:pointer}
+.share-import{position:relative;overflow:hidden}.share-import input{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}.share-import:focus-within{outline:2px solid var(--color-accent);outline-offset:2px}.share-controls button:disabled{opacity:.5;cursor:wait}
+.share-controls .share-export{flex-basis:100%;background:var(--color-accent);color:var(--color-paper);border-color:var(--color-accent)}
+.share-error{color:var(--color-accent-label);font-size:13px}.share-export-result{font-size:13px;line-height:1.8}.share-export-result img{display:block;width:100%;margin-top:12px}.share-export-result a{display:inline-flex;align-items:center;min-height:44px;color:var(--color-accent)}
+@media(max-width:600px){.food-share-dialog{padding:16px;width:calc(100vw - 16px);max-height:calc(100dvh - 16px)}.share-toolbar h2{font-size:21px}.share-viewport{margin:14px auto}.share-controls>*{flex:1}.share-note{font-size:12px}}
 </style>
