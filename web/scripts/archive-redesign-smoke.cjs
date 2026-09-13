@@ -23,14 +23,28 @@ async function openShare(page) {
  await page.waitForFunction(() => document.querySelector('.share-export') && !document.querySelector('.share-export').disabled)
 }
 async function exportTicket(page, name) {
+ const geometry = await page.locator('.share-card').evaluate(card => {
+  const box = selector => card.querySelector(selector).getBoundingClientRect()
+  const main = box('.ticket-main'), stub = box('.ticket-stub'), photo = box('.share-dish-image')
+  const frame = card.getBoundingClientRect()
+  const copy = box('.ticket-dish-copy'), ingredients = box('.share-ingredients')
+  return { landscape:card.clientWidth > card.clientHeight, stubOnRight:stub.left >= main.right - 1,
+   photoRatio:photo.width/photo.height, copyFits:copy.bottom <= ingredients.top,
+   photoFits:photo.bottom <= ingredients.top, allInside:ingredients.bottom <= frame.bottom && stub.bottom <= frame.bottom,
+   noInset:Math.abs(main.left-frame.left)<2 && Math.abs(main.top-frame.top)<2 }
+ })
+ assert(geometry.landscape && geometry.stubOnRight,'ticket must remain landscape with a right-hand stub')
+ assert(Math.abs(geometry.photoRatio-16/9)<.015,'ticket photo must remain 16:9')
+ assert(geometry.copyFits && geometry.photoFits,'dish contents must not overlap ingredients')
+ assert(geometry.allInside && geometry.noInset,'page styles must not add insets or clip ticket contents')
  const pending = page.waitForEvent('download')
  await page.locator('.share-export').click()
  const download = await pending
  const filename = path.join(out,name+'.png')
  await download.saveAs(filename)
  const png = PNG.sync.read(await fs.readFile(filename))
- assert.equal(png.width,1280)
- assert.equal(png.height,2160)
+ assert.equal(png.width,2000)
+ assert.equal(png.height,1000)
  const decoded = jsQR(new Uint8ClampedArray(png.data),png.width,png.height)
  assert.equal(decoded?.data,base+'/foods/123')
  return filename
@@ -197,6 +211,8 @@ async function exportTicket(page, name) {
    assert.deepEqual(errors,[])
    await page.close()
   }
-  console.log('PASS: responsive archive pages; favorites; review failure/retry; 16:9 image; province fallback; ticket PNG 1280x2160 + decoded QR; no personal data; missing image/long text; background validation; Escape.')
+  console.log(shareOnly
+   ? 'PASS: landscape ticket PNG 2000x1000 + decoded QR; desktop/mobile; 16:9 photo; no personal data; missing image/long text; background validation; Escape.'
+   : 'PASS: responsive archive pages; favorites; review failure/retry; 16:9 image; province fallback; landscape ticket PNG 2000x1000 + decoded QR; no personal data; missing image/long text; background validation; Escape.')
  } finally {await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1})
