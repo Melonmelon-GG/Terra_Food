@@ -12,7 +12,7 @@ const emit = defineEmits<{ close: [] }>()
 const { t, locale } = useI18n()
 const router = useRouter()
 const WIDTH = 1000
-const HEIGHT = 500
+const HEIGHT = 450
 const dialog = ref<HTMLDialogElement>()
 const viewport = ref<HTMLElement>()
 const card = ref<HTMLElement>()
@@ -263,25 +263,26 @@ onBeforeUnmount(() => {
 .food-share-dialog::backdrop{background:#241910a8;backdrop-filter:blur(4px)}
 .share-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:start}.share-toolbar small{font-size:10px;letter-spacing:3px;color:var(--color-accent-label)}.share-toolbar h2{margin:8px 0;font-size:24px}
 .share-close{flex:0 0 44px;width:44px;height:44px;border:1px solid var(--border-paper);background:none;color:var(--color-ink);font-size:26px;cursor:pointer}
-.share-intro,.share-note,.share-notice{font-size:13px;line-height:1.8;color:var(--muted)}.share-viewport{width:100%;aspect-ratio:2/1;overflow:hidden;margin:20px auto;background:#f5f0e5}.share-scale{width:1000px;height:500px;transform-origin:top left}
-.share-card{--color-ink:#30231c;--color-paper:#fbf8f0;--color-accent:#842d26;position:relative;isolation:isolate;box-sizing:border-box;width:1000px;height:500px;display:grid;grid-template-columns:minmax(0,1fr) 240px;overflow:hidden;background:#fbf8f0;color:#30231c;border:1px solid #d8cbb8;font:16px/1.5 Arial,"Microsoft YaHei",sans-serif;text-align:left;border-radius:12px}
+.share-intro,.share-note,.share-notice{font-size:13px;line-height:1.8;color:var(--muted)}.share-viewport{width:100%;aspect-ratio:20/9;overflow:hidden;margin:20px auto;background:#f5f0e5}.share-scale{width:1000px;height:450px;transform-origin:top left}
+.share-card{--color-ink:#30231c;--color-paper:#fbf8f0;--color-accent:#842d26;position:relative;isolation:isolate;box-sizing:border-box;width:1000px;height:450px;display:grid;grid-template-columns:800px 200px;overflow:hidden;background:#fbf8f0;color:#30231c;border:1px solid #d8cbb8;font:16px/1.5 Arial,"Microsoft YaHei",sans-serif;text-align:left;border-radius:12px}
 /* Reset detail-page article spacing so preview and export use the same fixed canvas. */
 .share-card{padding:0;gap:0}
 .share-card *{box-sizing:border-box}.share-card p{margin:0}.ticket-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.13;z-index:-1}
-.ticket-main{min-width:0;padding:28px;display:grid;grid-template-columns:480px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:20px 24px;overflow:hidden}
-.ticket-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:32px;border-bottom:1px solid #d8cbb8;padding-bottom:12px}
-.ticket-heading strong{font-size:22px;letter-spacing:3px;font-family:serif}.ticket-heading span{font-size:12px;color:#842d26;letter-spacing:3px}
-.share-dish-image{align-self:center;width:100%;aspect-ratio:16/9;display:grid;place-items:center;background:#efe5d4;overflow:hidden;border:1px solid #d8cbb8}.share-dish-image img{width:100%;height:100%;object-fit:cover}.share-dish-image span{font-size:16px;letter-spacing:3px;color:#826f60}
-.ticket-dish-copy{min-width:0;align-self:center;display:flex;flex-direction:column;gap:12px}.ticket-dish-copy .share-region{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
-.share-region{font-size:14px;letter-spacing:2px;color:#842d26}
-.share-dish h2{font-size:32px;line-height:1.25;font-family:"Microsoft YaHei",sans-serif;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
-.share-summary{font-size:15px;line-height:1.65;color:#665347;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
-.share-ingredients{grid-column:1/-1;border-top:1px solid #d8cbb8;padding-top:12px}.share-ingredients small{font-size:12px;color:#842d26;letter-spacing:2px}.share-ingredients p{margin-top:4px;font-size:15px;line-height:1.6;color:#665347;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
-.ticket-stub{position:relative;min-width:0;border-left:2px dashed #b89f80;padding:28px 22px;display:flex;flex-direction:column;justify-content:space-between;gap:16px;background:#efe5d447}
+.ticket-main{position:relative;isolation:isolate;min-width:0;padding:26px 28px;display:grid;grid-template-columns:minmax(0,1fr) 330px;grid-template-rows:auto minmax(0,1fr) auto;gap:16px 24px;overflow:hidden;color:#fff;background:#2b1b14}
+.ticket-main::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(25,15,10,.04) 0%,rgba(25,15,10,.12) 34%,rgba(25,15,10,.74) 58%,rgba(25,15,10,.96) 100%),linear-gradient(0deg,rgba(25,15,10,.42),transparent 34%)}
+.ticket-heading{position:relative;z-index:1;grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:32px;border-bottom:1px solid #ffffff73;padding-bottom:11px;text-shadow:0 1px 5px #24150f}
+.ticket-heading strong{font-size:22px;letter-spacing:3px;font-family:serif}.ticket-heading span{font-size:12px;color:#f3c5b5;letter-spacing:3px}
+.share-dish-image{position:absolute;inset:0;z-index:-2;display:grid;place-items:center;background:#6e5442;overflow:hidden}.share-dish-image img{width:100%;height:100%;object-fit:cover}.share-dish-image span{font-size:16px;letter-spacing:3px;color:#eadfce}
+.ticket-dish-copy{grid-column:2;grid-row:2;min-width:0;align-self:center;display:flex;flex-direction:column;gap:10px;text-shadow:0 1px 6px #1a0e09}.ticket-dish-copy .share-region{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.share-region{font-size:13px;letter-spacing:2px;color:#f3c5b5}
+.share-dish h2{font-size:32px;line-height:1.25;font-family:"Microsoft YaHei",sans-serif;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
+.share-summary{font-size:15px;line-height:1.65;color:#f3ebe3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
+.share-ingredients{grid-column:2;grid-row:3;border-top:1px solid #ffffff73;padding-top:10px;text-shadow:0 1px 5px #1a0e09}.share-ingredients small{font-size:11px;color:#f3c5b5;letter-spacing:2px}.share-ingredients p{margin-top:3px;font-size:13px;line-height:1.55;color:#f3ebe3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.ticket-stub{position:relative;min-width:0;border-left:2px dashed #b89f80;padding:20px 18px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;background:#efe5d447}
 .ticket-stub::before,.ticket-stub::after{content:"";position:absolute;left:-16px;width:30px;height:30px;border:1px solid #d8cbb8;border-radius:50%;background:#f5f0e5}.ticket-stub::before{top:-16px}.ticket-stub::after{bottom:-16px}
-.ticket-stub-copy{display:flex;flex-direction:column;align-items:start;gap:7px}.ticket-stub-copy>small{color:#842d26;letter-spacing:3px;font-size:14px}.ticket-stub-copy strong{font:24px monospace;letter-spacing:2px;margin:5px 0}.ticket-stub-copy>span{color:#826f60;font-size:12px}.ticket-stub-copy time{font:18px monospace}.ticket-stub-copy p{font-size:12px;color:#826f60;letter-spacing:1px}
-.ticket-perforation{height:14px;width:100%;margin-top:8px;background:repeating-linear-gradient(90deg,#842d2666 0 1px,transparent 1px 5px)}
-.share-qr{align-self:center;text-align:center}.share-qr img{display:block;width:188px;height:188px;background:#fff;border:6px solid #fff}.share-qr p{font-size:13px;color:#665347;margin-top:9px}
+.ticket-stub-copy{display:flex;flex-direction:column;align-items:start;gap:4px}.ticket-stub-copy>small{color:#842d26;letter-spacing:3px;font-size:12px}.ticket-stub-copy strong{font:22px monospace;letter-spacing:2px;margin:3px 0}.ticket-stub-copy>span{color:#826f60;font-size:11px}.ticket-stub-copy time{font:16px monospace}.ticket-stub-copy p{font-size:11px;color:#826f60;letter-spacing:1px}
+.ticket-perforation{height:10px;width:100%;margin-top:5px;background:repeating-linear-gradient(90deg,#842d2666 0 1px,transparent 1px 5px)}
+.share-qr{align-self:center;text-align:center}.share-qr img{display:block;width:156px;height:156px;background:#fff;border:5px solid #fff}.share-qr p{font-size:12px;color:#665347;margin-top:7px}
 .share-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.share-controls button,.share-import{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 12px;font:13px inherit;border:1px solid var(--border-paper);color:var(--color-ink);background:var(--color-input);cursor:pointer}
 .share-import{position:relative;overflow:hidden}.share-import input{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}.share-import:focus-within{outline:2px solid var(--color-accent);outline-offset:2px}.share-controls button:disabled{opacity:.5;cursor:wait}
 .share-controls .share-export{flex-basis:100%;background:var(--color-accent);color:var(--color-paper);border-color:var(--color-accent)}

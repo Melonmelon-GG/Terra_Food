@@ -30,14 +30,18 @@ async function exportTicket(page, name) {
   const copy = box('.ticket-dish-copy'), ingredients = box('.share-ingredients')
   return { landscape:card.clientWidth > card.clientHeight, stubOnRight:stub.left >= main.right - 1,
    photoRatio:photo.width/photo.height, copyFits:copy.bottom <= ingredients.top,
-   photoFits:photo.bottom <= ingredients.top, allInside:ingredients.bottom <= frame.bottom && stub.bottom <= frame.bottom,
+   photoFillsMain:Math.abs(photo.left-main.left)<2 && Math.abs(photo.top-main.top)<2
+    && Math.abs(photo.width-main.width)<2 && Math.abs(photo.height-main.height)<2,
+   copyOnRight:copy.left >= main.left + main.width * .5,
+   allInside:ingredients.bottom <= frame.bottom && stub.bottom <= frame.bottom,
    noInset:Math.abs(main.left-frame.left)<2 && Math.abs(main.top-frame.top)<2,
-   photoDominates:photo.width >= frame.width * .45 }
+   photoDominates:photo.width >= frame.width * .75 }
  })
  assert(geometry.landscape && geometry.stubOnRight,'ticket must remain landscape with a right-hand stub')
  assert(Math.abs(geometry.photoRatio-16/9)<.015,'ticket photo must remain 16:9')
  assert(geometry.photoDominates,'dish photo should occupy the visual majority of the ticket body')
- assert(geometry.copyFits && geometry.photoFits,'dish contents must not overlap ingredients')
+ assert(geometry.photoFillsMain && geometry.copyOnRight,'dish photo must cover the main ticket behind its right-side copy')
+ assert(geometry.copyFits,'dish copy must not overlap ingredients')
  assert(geometry.allInside && geometry.noInset,'page styles must not add insets or clip ticket contents')
  const pending = page.waitForEvent('download')
  await page.locator('.share-export').click()
@@ -46,7 +50,7 @@ async function exportTicket(page, name) {
  await download.saveAs(filename)
  const png = PNG.sync.read(await fs.readFile(filename))
  assert.equal(png.width,2000)
- assert.equal(png.height,1000)
+ assert.equal(png.height,900)
  const decoded = jsQR(new Uint8ClampedArray(png.data),png.width,png.height)
  assert.equal(decoded?.data,base+'/foods/123')
  return filename
@@ -214,7 +218,7 @@ async function exportTicket(page, name) {
    await page.close()
   }
   console.log(shareOnly
-   ? 'PASS: landscape ticket PNG 2000x1000 + decoded QR; desktop/mobile; 16:9 photo; no personal data; missing image/long text; background validation; Escape.'
-   : 'PASS: responsive archive pages; favorites; review failure/retry; 16:9 image; province fallback; landscape ticket PNG 2000x1000 + decoded QR; no personal data; missing image/long text; background validation; Escape.')
+   ? 'PASS: landscape ticket PNG 2000x900 + decoded QR; desktop/mobile; full-bleed 16:9 photo; no personal data; missing image/long text; background validation; Escape.'
+   : 'PASS: responsive archive pages; favorites; review failure/retry; 16:9 image; province fallback; landscape ticket PNG 2000x900 + decoded QR; no personal data; missing image/long text; background validation; Escape.')
  } finally {await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1})
