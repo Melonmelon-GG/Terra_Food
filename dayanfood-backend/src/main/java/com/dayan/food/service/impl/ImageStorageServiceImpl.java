@@ -6,6 +6,7 @@ import com.dayan.food.service.UploadTooLargeException;
 import com.dayan.food.mapper.FoodMapper;
 import com.dayan.food.mapper.ImageAssetMapper;
 import com.dayan.food.entity.po.ImageAsset;
+import com.dayan.food.entity.vo.ImageExportVO;
 import com.dayan.food.image.ImageDimensions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -126,6 +127,32 @@ public class ImageStorageServiceImpl implements ImageStorageService {
             return url;
         } catch (IOException exception) {
             throw new IllegalStateException("图片保存失败", exception);
+        }
+    }
+
+    @Override
+    public ImageExportVO readForExport(String imageUrl) {
+        if (imageUrl == null || !imageUrl.startsWith("/uploads/")) {
+            throw new IllegalArgumentException("无效的站内图片地址");
+        }
+        Path target = uploadDirectory.resolve(imageUrl.substring("/uploads/".length())).normalize();
+        if (!target.startsWith(uploadDirectory) || !Files.isRegularFile(target)) {
+            throw new IllegalArgumentException("站内图片不存在");
+        }
+        try {
+            byte[] content = Files.readAllBytes(target);
+            if (content.length > maxImageBytes) {
+                throw new UploadTooLargeException("图片不能超过配置的大小限制");
+            }
+            String extension = detectImageExtension(content);
+            ImageDimensions dimensions = ImageDimensions.read(content);
+            if (dimensions.pixels() > 24_000_000L) {
+                throw new IllegalArgumentException("图片像素过多");
+            }
+            String contentType = extension.equals("jpg") ? "image/jpeg" : "image/" + extension;
+            return new ImageExportVO(content, contentType);
+        } catch (IOException exception) {
+            throw new IllegalStateException("站内图片读取失败", exception);
         }
     }
 

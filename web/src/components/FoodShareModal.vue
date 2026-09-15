@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import { toBlob } from 'html-to-image'
+import { getFoodExportImage } from '../api'
 import type { Food } from '../types'
 import { defaultLandmark, resolveLandmark } from '../landmarks'
 
@@ -89,17 +90,26 @@ async function decodeImage(src: string) {
   await img.decode()
   if (img.naturalWidth * img.naturalHeight > 24_000_000) throw new Error('Image too large')
 }
-async function embedImage(url?: string, optional = false): Promise<string> {
+async function embedBlob(blob: Blob): Promise<string> {
+  if (blob.size > 10 * 1024 * 1024) throw new Error('Image too large')
+  const data = await readBlob(blob)
+  await decodeImage(data)
+  return data
+}
+async function embedImage(url?: string, optional = false, useFoodFallback = false): Promise<string> {
   if (!url) return ''
   try {
     const response = await fetch(url, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]) })
     if (!response.ok) throw new Error('Image unavailable')
-    const blob = await response.blob()
-    if (blob.size > 10 * 1024 * 1024) throw new Error('Image too large')
-    const data = await readBlob(blob)
-    await decodeImage(data)
-    return data
+    return await embedBlob(await response.blob())
   } catch {
+    if (useFoodFallback && !controller.signal.aborted) {
+      try {
+        return await embedBlob(await getFoodExportImage(props.food.id, controller.signal))
+      } catch {
+        // The existing warning below keeps export available with the placeholder.
+      }
+    }
     if (!optional && !disposed) imageWarning.value = true
     return ''
   }
@@ -112,7 +122,7 @@ async function load() {
   try {
     qr.value = createShareQr(shareUrl)
     const artwork = resolveLandmark(props.food.region.province)
-    const [dishImage, art] = await Promise.all([embedImage(props.food.imageUrl), embedImage(artwork.image, true)])
+    const [dishImage, art] = await Promise.all([embedImage(props.food.imageUrl, false, true), embedImage(artwork.image, true)])
     if (disposed) return
     foodImage.value = dishImage
     const resolvedArt = art || (artwork.image !== defaultLandmark.image ? await embedImage(defaultLandmark.image, true) : '')
