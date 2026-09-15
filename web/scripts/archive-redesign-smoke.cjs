@@ -7,6 +7,12 @@ const jsQR = require('jsqr')
 const base = process.env.SHARE_TEST_URL || 'http://127.0.0.1:5173'
 const out = process.env.ARCHIVE_TEST_OUT || path.join(require('node:os').tmpdir(), 'dayan-archive-test')
 const shareOnly = process.argv.includes('--share-only')
+const landmarkSlugs = [
+ 'beijing','tianjin','hebei','shanxi','inner-mongolia','liaoning','jilin','heilongjiang',
+ 'shanghai','jiangsu','zhejiang','anhui','fujian','jiangxi','shandong','henan','hubei',
+ 'hunan','guangdong','guangxi','hainan','chongqing','sichuan','guizhou','yunnan','tibet',
+ 'shaanxi','gansu','qinghai','ningxia','xinjiang','taiwan','hong-kong','macau',
+]
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540"><defs><radialGradient id="g"><stop stop-color="#b88755"/><stop offset="1" stop-color="#36251d"/></radialGradient></defs><rect width="960" height="540" fill="url(#g)"/><ellipse cx="480" cy="290" rx="320" ry="185" fill="#ddc6a2"/><ellipse cx="480" cy="277" rx="285" ry="158" fill="#733923"/><g fill="#bd6b39" stroke="#773621" stroke-width="8"><rect x="300" y="160" width="130" height="110" rx="12"/><rect x="460" y="140" width="140" height="110" rx="12"/><rect x="408" y="282" width="140" height="106" rx="12"/></g></svg>'
 const user = { id:42, username:'explorer', displayName:'寻味者·龙门', signature:'走过山海，记住每一口家乡的味道。', role:'ADMIN', active:true, createdAt:'2026-09-01' }
 const dish = {id:123,name:'龙门红烧肉',region:{id:1,name:'南京',province:'江苏省'},latitude:32,longitude:118,summary:'小火慢炖，浓油赤酱。一道承载着旧日记忆与人间烟火的经典风味。',ingredients:'五花肉、冰糖、黄酒、八角、葱姜',story:'循着街巷里的熟悉味道，记下旅途中的一餐一饭。\n一碗热饭，也是相逢的理由。',imageUrl:'/test-food.svg',creator:user,createdBy:user.username,heat:88,reviewStatus:'APPROVED',contentVersion:2,createdAt:'2026-09-13'}
@@ -57,6 +63,14 @@ async function exportTicket(page, name) {
 }
 ;(async () => {
  await fs.mkdir(out,{recursive:true})
+ const landmarkDir = path.join(__dirname,'../public/art/landmarks')
+ const landmarkFiles = (await fs.readdir(landmarkDir)).filter(name=>name.endsWith('.webp'))
+ assert.equal(landmarkFiles.length,landmarkSlugs.length)
+ await Promise.all(landmarkSlugs.map(async slug => {
+  const data = await fs.readFile(path.join(landmarkDir,slug+'.webp'))
+  assert.equal(data.subarray(0,4).toString(),'RIFF')
+  assert.equal(data.subarray(8,12).toString(),'WEBP')
+ }))
  const browser = await chromium.launch({channel:process.env.SHARE_TEST_BROWSER || 'chrome',headless:true})
  try {
   for (const width of shareOnly ? [1440,390] : [1440,768,390,320]) {
@@ -117,7 +131,7 @@ async function exportTicket(page, name) {
    const box = await page.locator('.archive-food-visual').boundingBox()
    assert(Math.abs(box.width/box.height-16/9)<.015)
    assert.equal(await page.locator('.archive-reading img').count(),0)
-   assert.equal(await page.locator('.archive-dossier .archive-landmark').getAttribute('src'),'/art/landmarks/lungmen.png')
+   assert.equal(await page.locator('.archive-dossier .archive-landmark').getAttribute('src'),'/art/landmarks/jiangsu.webp')
    assert((await page.locator('.archive-dossier').innerText()).includes('江苏省'))
    await page.waitForFunction(()=>!document.querySelector('.collection-button').disabled)
    await page.locator('.collection-button').first().click()
@@ -219,6 +233,6 @@ async function exportTicket(page, name) {
   }
   console.log(shareOnly
    ? 'PASS: landscape ticket PNG 2000x900 + decoded QR; desktop/mobile; full-bleed 16:9 photo; no personal data; missing image/long text; background validation; Escape.'
-   : 'PASS: responsive archive pages; favorites; review failure/retry; 16:9 image; province fallback; landscape ticket PNG 2000x900 + decoded QR; no personal data; missing image/long text; background validation; Escape.')
+   : 'PASS: responsive archive pages; 34 province artworks; favorites; review failure/retry; 16:9 image; landscape ticket PNG 2000x900 + decoded QR; no personal data; missing image/long text; background validation; Escape.')
  } finally {await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1})
