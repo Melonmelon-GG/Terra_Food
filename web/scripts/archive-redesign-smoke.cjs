@@ -22,6 +22,8 @@ async function noOverflow(page, label) {
  assert(sizes.scroll <= sizes.width + 1, label + ' overflows: ' + JSON.stringify(sizes))
 }
 async function screenshot(page, name) {
+ await page.evaluate(() => window.scrollTo(0, 0))
+ await page.waitForTimeout(50)
  await page.screenshot({ path:path.join(out,name+'.png'), fullPage:true })
 }
 async function openShare(page) {
@@ -137,6 +139,15 @@ async function exportTicket(page, name) {
    await page.locator('.collection-button').first().click()
    await page.waitForFunction(()=>document.querySelector('.collection-button').classList.contains('active'))
    assert(favorite)
+   if (width <= 390) {
+    const composer = page.locator('.mobile-comment-composer')
+    assert.equal(await composer.getAttribute('open'), null)
+    assert.equal(await page.locator('.comment-form').isVisible(), false)
+    await composer.locator('summary').click()
+    assert(await page.locator('.comment-form').isVisible())
+    await composer.locator('summary').click()
+    assert((await page.evaluate(() => document.documentElement.scrollHeight)) < 1500,'mobile detail should stay below 1500px with fixture content')
+   }
    await screenshot(page,'detail-'+width)
    const beforeOpen = personalRequests.length
    await openShare(page)
@@ -155,6 +166,15 @@ async function exportTicket(page, name) {
     await page.goto(base+'/profile')
     await page.locator('.profile-food-card').first().waitFor()
     await noOverflow(page,'profile '+width)
+    if (width <= 390) {
+     const cardGeometry = await page.locator('.profile-food-card').first().evaluate(card => {
+      const cardBox = card.getBoundingClientRect()
+      const coverBox = card.querySelector('.profile-food-cover').getBoundingClientRect()
+      return {compact:coverBox.width < cardBox.width * .4, sideBySide:coverBox.right <= cardBox.left + cardBox.width * .45}
+     })
+     assert(cardGeometry.compact && cardGeometry.sideBySide,'mobile profile cards must use compact side-by-side layout')
+     assert((await page.evaluate(() => document.documentElement.scrollHeight)) < 1400,'mobile profile should stay below 1400px with fixture content')
+    }
     await screenshot(page,'profile-'+width)
     await page.locator('.archive-tabs button').filter({hasText:'收藏夹'}).click()
     await page.locator('.favorite-card').waitFor()

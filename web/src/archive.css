@@ -259,6 +259,7 @@
 .archive-detail .comment-body > p, .archive-detail .comment-form label, .archive-detail .comment-meta strong { color:var(--color-ink); }
 .archive-detail .comment-form textarea { font-family:inherit; font-size:16px; color:var(--color-ink); }
 .archive-detail .comment-form-actions button, .archive-detail .comment-mode-switch button { min-height:44px; }
+.archive-detail .mobile-comment-composer > summary { display:none; }
 @media (max-width:1100px) {
   .archive-detail .detail-hero { grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); }
   .archive-dossier { padding:18px; }
@@ -281,4 +282,83 @@
   .archive-detail .checkin-options { display:grid; }
   .archive-detail .checkin-options label { flex-wrap:wrap; }
   .archive-detail .checkin-options :is(input,select) { min-width:0; max-width:100%; font-size:16px; min-height:44px; }
+}
+
+@media (max-width:600px) {
+  .archive-profile.profile-page { padding:10px 12px 28px; }
+  .archive-profile .profile-hero { gap:10px; padding:14px; }
+  .archive-profile .profile-identity { gap:11px; }
+  .archive-profile .profile-avatar-control { flex-basis:56px; }
+  .archive-profile .profile-avatar { width:56px; height:56px; }
+  .archive-profile .profile-identity h1 { margin:2px 0; font-size:21px; line-height:1.25; }
+  .archive-profile .profile-identity > div:last-child > p { margin:3px 0; font-size:12px; }
+  .archive-profile .profile-signature { margin-top:6px; }
+  .archive-profile .profile-signature > p { display:-webkit-box; margin:0; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; font-size:12px; line-height:1.55; }
+  .archive-profile :is(.display-name-edit,.signature-edit) { min-height:32px; padding:3px 7px; font-size:11px; }
+  .archive-profile .profile-stats { padding-top:6px; }
+  .archive-profile .profile-stats article { min-height:50px; padding:5px 3px; }
+  .archive-profile .profile-stats strong { font-size:22px; }
+  .archive-featured-seal { grid-template-columns:54px minmax(0,1fr); padding:10px 12px; gap:2px 10px; }
+  .archive-featured-seal > :is(img,svg) { width:54px; height:54px; }
+  .archive-featured-seal p { font-size:11px; line-height:1.45; }
+  .archive-featured-seal button { min-height:32px; }
+  .archive-profile .archive-tabs { margin:10px 0 14px; }
+  .archive-tabs > button { min-height:42px; padding:9px 12px; font-size:13px; }
+  .archive-profile :is(.profile-section-title,.collection-heading) { margin-bottom:12px; padding-bottom:9px; }
+  .archive-profile :is(.profile-section-title,.collection-heading) h2 { font-size:21px; }
+  .archive-profile :is(.profile-section-title,.collection-heading) > p { display:none; }
+  .archive-profile .profile-food-list { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+  .archive-profile .profile-food-card { display:grid; grid-template-columns:104px minmax(0,1fr); min-height:142px; border-radius:2px 10px 2px 2px; }
+  .archive-profile .profile-food-cover { width:104px; height:100%; min-height:142px; aspect-ratio:auto; }
+  .archive-profile .profile-food-body { padding:10px; }
+  .archive-profile .profile-food-heading { gap:4px; }
+  .archive-profile .profile-food-heading small { font-size:10px; }
+  .archive-profile .profile-food-heading h3 { margin-top:2px; font-size:17px; }
+  .archive-profile .review-status { padding:3px 5px; font-size:10px; }
+  .archive-profile .profile-food-body > p { display:-webkit-box; margin:7px 0; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; font-size:11px; line-height:1.55; }
+  .archive-profile .food-remark { display:none; }
+  .archive-profile .profile-food-body footer { margin-top:auto; align-items:flex-end; }
+  .archive-profile .profile-food-body footer time { display:none; }
+  .archive-profile .profile-food-body footer :is(a,button) { min-height:34px; padding:5px 8px; font-size:11px; }
+  .archive-profile .favorite-card { display:grid; grid-template-columns:104px minmax(0,1fr); min-height:112px; }
+  .archive-profile .favorite-cover { width:104px; height:100%; aspect-ratio:auto; }
+  .archive-profile .favorite-card > div { padding:12px; }
+
+  .archive-detail.detail { margin:10px auto 28px; padding:0 12px; }
+  .archive-breadcrumb { margin-bottom:10px; }
+  .archive-detail .detail-hero { gap:8px; }
+  .archive-detail .food-share-button { top:10px; right:10px; min-height:40px; padding:8px 10px; }
+  .archive-dossier { padding:14px; }
+  .archive-dossier-heading { padding-bottom:9px; }
+  .archive-dossier-copy { padding-top:10px; }
+  .archive-detail .detail-hero h1 { margin:7px 0 9px; font-size:28px; }
+  .archive-detail .detail-hero p { margin:6px 0; font-size:13px; line-height:1.65; }
+  .archive-ingredient-tags { gap:5px; margin:10px 0; }
+  .archive-ingredient-tags > span { padding:4px 7px; font-size:11px; }
+  .archive-detail .collection-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:12px 0; }
+  .archive-detail .collection-actions > button { min-height:40px; padding:7px 8px; font-size:12px; }
+  .archive-detail .collection-actions > .like-button { grid-column:1/-1; justify-self:start; min-height:30px; padding:2px 0; }
+  .archive-detail .food-creator { padding-top:11px; }
+  .archive-detail .food-creator-avatar { width:40px; height:40px; }
+  .archive-detail .food-creator strong { font-size:12px; }
+  .archive-detail .food-creator span, .archive-detail .food-creator small { font-size:10px; }
+  .archive-detail .archive-reading { gap:8px; margin-top:8px; }
+  .archive-reading > section { padding:14px; }
+  .archive-detail .archive-reading h2 { margin:3px 0 10px; padding-bottom:8px; font-size:20px; }
+  .archive-detail .archive-reading p { margin:0; font-size:13px; line-height:1.7; }
+  .archive-detail .comment-section { margin-top:8px; padding:14px; }
+  .archive-detail .comment-heading { margin-bottom:10px; }
+  .archive-detail .comment-heading h2 { font-size:20px; }
+  .archive-detail .mobile-comment-composer { margin-bottom:10px; border:1px solid var(--border-paper); background:var(--surface-soft); }
+  .archive-detail .mobile-comment-composer > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; padding:10px 12px; color:var(--color-accent); cursor:pointer; list-style:none; }
+  .archive-detail .mobile-comment-composer > summary::-webkit-details-marker { display:none; }
+  .archive-detail .mobile-comment-composer > summary::after { content:'＋'; font-size:18px; }
+  .archive-detail .mobile-comment-composer[open] > summary { border-bottom:1px solid var(--border-paper); }
+  .archive-detail .mobile-comment-composer[open] > summary::after { content:'－'; }
+  .archive-detail .mobile-comment-composer > summary small { margin-left:auto; color:var(--muted); font-size:10px; }
+  .archive-detail .mobile-comment-composer > .comment-form { margin:0; padding:10px; border:0; }
+  .archive-detail .comment-form textarea { min-height:84px; }
+  .archive-detail .comment-card { gap:10px; padding:12px 0; }
+  .archive-detail .comment-avatar { width:38px; height:38px; }
+  .archive-detail .comment-body > p { margin:7px 0 0; font-size:12px; line-height:1.65; }
 }

@@ -27,6 +27,12 @@ import '../archive.css'
 
 const FoodShareModal = defineAsyncComponent(() => import('../components/FoodShareModal.vue'))
 const shareOpen = ref(false)
+const compactMobile = ref(false)
+let compactMediaQuery: MediaQueryList | undefined
+
+function syncCompactMobile(event?: MediaQueryListEvent) {
+  compactMobile.value = event?.matches ?? compactMediaQuery?.matches ?? false
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -264,11 +270,15 @@ watch(
 )
 
 onMounted(() => {
+  compactMediaQuery = window.matchMedia('(max-width: 600px)')
+  syncCompactMobile()
+  compactMediaQuery.addEventListener('change', syncCompactMobile)
   window.addEventListener('agent:comment-published', handleAgentCommentPublished)
 })
 
 onBeforeUnmount(() => {
   foodLoadController?.abort()
+  compactMediaQuery?.removeEventListener('change', syncCompactMobile)
   window.removeEventListener('agent:comment-published', handleAgentCommentPublished)
 })
 </script>
@@ -397,7 +407,12 @@ onBeforeUnmount(() => {
         <span>{{ t('detail.commentCount', { count: commentsTotal }) }}</span>
       </div>
 
-    <form v-if="currentUser" class="comment-form" @submit.prevent="checkinMode ? submitCheckin() : submitComment()">
+      <details v-if="currentUser" class="mobile-comment-composer" :open="!compactMobile">
+        <summary>
+          <span>{{ t('detail.commentMode') }} / {{ t('detail.checkinMode') }}</span>
+          <small>{{ currentUser.displayName }}</small>
+        </summary>
+        <form class="comment-form" @submit.prevent="checkinMode ? submitCheckin() : submitComment()">
         <div class="user-avatar comment-form-avatar">
           <img
             v-if="currentUser.avatarUrl"
@@ -430,7 +445,8 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </div>
-      </form>
+        </form>
+      </details>
       <p v-else class="comment-login-hint">
         <RouterLink to="/login" :query="{ redirect: route.fullPath }">{{ t('detail.loginToComment') }}</RouterLink>
       </p>
