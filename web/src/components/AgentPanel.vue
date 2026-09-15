@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
@@ -20,6 +20,8 @@ interface MusicTrack {
   name: string
   artist?: string
 }
+
+const props = defineProps<{ launcherVisible?: boolean }>()
 
 const { t } = useI18n()
 const route = useRoute()
@@ -119,6 +121,7 @@ watch(() => route.params.id, async (routeFoodId) => {
 }, { immediate: true })
 
 onMounted(async () => {
+  window.addEventListener('home:open-agent', openFromHome)
   try {
     const response = await fetch('/audio/music-manifest.json')
     const tracks = await response.json() as MusicTrack[]
@@ -129,12 +132,20 @@ onMounted(async () => {
     availableTracks.value = []
   }
 })
+
+function openFromHome() {
+  open.value = true
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('home:open-agent', openFromHome)
+})
 </script>
 
 <template>
   <div class="agent-shell" :class="{ open }">
     <button
-      v-if="!open"
+      v-if="!open && props.launcherVisible !== false"
       class="agent-orb"
       type="button"
       :aria-label="t('agent.open')"
@@ -143,7 +154,7 @@ onMounted(async () => {
       <span>余</span>
     </button>
 
-    <section v-else class="agent-panel" :aria-label="t('agent.title')">
+    <section v-if="open" class="agent-panel" :aria-label="t('agent.title')">
       <header>
         <div class="agent-portrait" aria-hidden="true">余</div>
         <div>

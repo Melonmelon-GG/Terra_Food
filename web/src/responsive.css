@@ -620,6 +620,27 @@
     text-align: center;
   }
 
+  .home-action-dock {
+    position: absolute;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(162px, calc(154px + env(safe-area-inset-bottom)));
+    gap: 8px;
+  }
+
+  .home-action-trigger {
+    width: 52px;
+    height: 52px;
+  }
+
+  .home-action-list {
+    gap: 7px;
+  }
+
+  .home-action-list button {
+    min-width: 118px;
+    min-height: 42px;
+  }
+
   .explorer-catalog {
     grid-row: 3;
     height: 148px;
@@ -718,6 +739,10 @@
   }
 
   .map-explorer.catalog-is-collapsed .explorer-map-hint {
+    bottom: max(60px, calc(52px + env(safe-area-inset-bottom)));
+  }
+
+  .map-explorer.catalog-is-collapsed .home-action-dock {
     bottom: max(60px, calc(52px + env(safe-area-inset-bottom)));
   }
 

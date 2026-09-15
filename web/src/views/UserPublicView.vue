@@ -6,6 +6,8 @@ import { useRoute } from 'vue-router'
 import { getUserPublic } from '../api'
 import type { UserPublic } from '../types'
 import HexEtching from '../components/HexEtching.vue'
+import LandmarkBackdrop from '../components/LandmarkBackdrop.vue'
+import '../archive.css'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -50,12 +52,13 @@ watch(
 </script>
 
 <template>
-  <section class="user-page">
+  <section class="user-page archive-public">
     <p v-if="loading" class="user-state">{{ t('user.loading') }}</p>
     <p v-else-if="error" class="user-state error">{{ error }}</p>
 
     <template v-else-if="profile">
       <header class="user-hero">
+        <LandmarkBackdrop />
         <div class="user-avatar">
           <img
             v-if="profile.avatarUrl"

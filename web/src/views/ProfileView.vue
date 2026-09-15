@@ -10,6 +10,8 @@ import { apiErrorMessage } from '../apiError'
 const FoodEditModal = defineAsyncComponent(() => import('../components/FoodEditModal.vue'))
 const EtchingStudio = defineAsyncComponent(() => import('../components/EtchingStudio.vue'))
 import HexEtching from '../components/HexEtching.vue'
+import LandmarkBackdrop from '../components/LandmarkBackdrop.vue'
+import '../archive.css'
 import type { Achievement, EtchingDesign, Food, FoodCheckin, FoodFootprint, FoodReviewStatus, Region, SignatureStatus, WishlistItem, WishlistMatchField } from '../types'
 
 const { locale, t } = useI18n()
@@ -33,6 +35,16 @@ const favoritesPage = ref(1)
 const wishlistPage = ref(1)
 const collectionsLoading = ref(false)
 const collectionTab = ref<'favorites' | 'wishlist'>(route.query.tab === 'wishlist' ? 'wishlist' : 'favorites')
+type ArchiveTab = 'records' | 'favorites' | 'wishlist' | 'diary' | 'seals' | 'footprints'
+const archiveTabs: ArchiveTab[] = ['records', 'favorites', 'wishlist', 'diary', 'seals', 'footprints']
+const archiveTab = ref<ArchiveTab>(route.query.tab === 'wishlist' ? 'wishlist' : 'records')
+function selectArchiveTab(tab: ArchiveTab) {
+  archiveTab.value = tab
+  if (tab === 'favorites' || tab === 'wishlist') collectionTab.value = tab
+}
+watch(() => route.query.tab, value => {
+  if (archiveTabs.includes(value as ArchiveTab)) selectArchiveTab(value as ArchiveTab)
+})
 const wishlistDraft = ref('')
 const wishlistSaving = ref(false)
 const collectionRemoving = ref<string>()
@@ -366,28 +378,34 @@ async function loadProfile() {
 }
 onMounted(loadProfile)
 
+let collectionLoadSequence = 0
 async function loadCurrentCollection(reset = true) {
-  if (collectionsLoading.value) return
+  if (!reset && collectionsLoading.value) return
+  const sequence = ++collectionLoadSequence
+  const requestedTab = collectionTab.value
   collectionsLoading.value = true
   collectionError.value = ''
   try {
-    if (collectionTab.value === 'favorites') {
+    if (requestedTab === 'favorites') {
       const page = reset ? 1 : favoritesPage.value + 1
       const result = await getMyFavoritesPage(page, 20)
+      if (sequence !== collectionLoadSequence) return
+      if (!result || !Array.isArray(result.items)) throw new Error('Invalid favorites page')
       favorites.value = reset ? result.items : [...favorites.value, ...result.items]
       favoritesPage.value = result.page
       favoritesTotal.value = result.total
     } else {
       const page = reset ? 1 : wishlistPage.value + 1
       const result = await getMyWishlistPage(page, 20)
+      if (sequence !== collectionLoadSequence) return
       wishlist.value = reset ? result.items : [...wishlist.value, ...result.items]
       wishlistPage.value = result.page
       wishlistTotal.value = result.total
     }
   } catch (cause) {
-    collectionError.value = apiErrorMessage(cause, t('profile.loadError'))
+    if (sequence === collectionLoadSequence) collectionError.value = apiErrorMessage(cause, t('profile.loadError'))
   } finally {
-    collectionsLoading.value = false
+    if (sequence === collectionLoadSequence) collectionsLoading.value = false
   }
 }
 
@@ -396,12 +414,13 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
 </script>
 
 <template>
-  <div class="profile-page">
+  <div class="profile-page archive-profile">
     <p v-if="loadFailures.length" class="form-error" role="status">
       {{ t('profile.partialLoadError') }}
       <button type="button" :disabled="loading" @click="loadProfile">{{ t('share.retry') }}</button>
     </p>
     <section class="profile-hero">
+      <LandmarkBackdrop />
       <div class="profile-identity">
         <div class="profile-avatar-control">
           <button
@@ -501,9 +520,28 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
         <article><strong>{{ statusCounts.approved }}</strong><span>{{ t('profile.status.approved') }}</span></article>
         <article><strong>{{ statusCounts.rejected }}</strong><span>{{ t('profile.status.rejected') }}</span></article>
       </div>
+      <div class="archive-featured-seal">
+        <small>{{ t('archive.seals') }}</small>
+        <p v-if="sealLoadFailed">{{ t('profile.sealLoadError') }}</p>
+        <p v-else-if="loading">{{ t('profile.loading') }}</p>
+        <template v-else-if="selectedEtching || selectedAchievement">
+          <HexEtching v-if="selectedEtching" :layer-one="selectedEtching.layerOne" />
+          <img v-else-if="selectedAchievement" :src="selectedAchievement.imageUrl" :alt="selectedAchievement.name">
+          <strong>{{ selectedEtching?.name || selectedAchievement?.name }}</strong>
+        </template>
+        <p v-else>{{ t('archive.noSeal') }}</p>
+        <button type="button" @click="selectArchiveTab('seals')">{{ t('archive.manageSeal') }} ↗</button>
+      </div>
     </section>
 
-    <section class="collection-panel">
+    <nav class="archive-tabs" :aria-label="t('archive.profile')">
+      <button v-for="tab in archiveTabs" :key="tab" type="button" :class="{ active: archiveTab === tab }"
+        :aria-pressed="archiveTab === tab" aria-controls="archive-profile-content" @click="selectArchiveTab(tab)">
+        {{ t('archive.' + tab) }}
+      </button>
+    </nav>
+    <div id="archive-profile-content">
+    <section v-show="archiveTab === 'favorites' || archiveTab === 'wishlist'" class="collection-panel">
       <div class="collection-heading">
         <div>
           <small>{{ t('profile.collectionsEyebrow') }}</small>
@@ -607,7 +645,7 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
       </template>
     </section>
 
-    <section class="collection-panel checkin-panel">
+    <section v-show="archiveTab === 'diary'" class="collection-panel checkin-panel">
       <div class="collection-heading"><div><small>味觉日记</small><h2>我的打卡</h2></div><p>记录真正吃过的珍馐，公开或仅自己可见。</p></div>
       <div v-if="checkins.length" class="checkin-list">
         <article v-for="item in checkins" :key="item.id" class="wishlist-card">
@@ -628,8 +666,8 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
       <p v-else-if="!checkins.length && !loading && !loadFailures.includes('checkins')" class="collection-empty">还没有打卡，去菜品详情记录第一次体验吧。</p>
     </section>
 
-    <section class="profile-layout">
-      <div class="profile-foods">
+    <section v-show="archiveTab === 'records' || archiveTab === 'seals'" class="profile-layout">
+      <div v-show="archiveTab === 'records'" class="profile-foods">
         <div class="profile-section-title">
           <div>
             <small>{{ t('profile.recordsEyebrow') }}</small>
@@ -684,7 +722,7 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
         </div>
       </div>
 
-      <aside class="etching-panel">
+      <aside v-show="archiveTab === 'seals'" class="etching-panel">
         <small>{{ t('profile.sealEyebrow') }}</small>
         <h2>{{ t('profile.sealTitle') }}</h2>
         <p v-if="loading" role="status">{{ t('profile.loading') }}</p>
@@ -753,7 +791,7 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
       </aside>
     </section>
 
-    <section class="footprint-panel">
+    <section v-show="archiveTab === 'footprints'" class="footprint-panel">
       <div class="profile-section-title">
         <div>
           <small>{{ t('profile.footprintEyebrow') }}</small>
@@ -784,6 +822,7 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
       <p v-else-if="!loading && !loadFailures.includes('footprints')" class="footprint-empty">{{ t('profile.noFootprints') }}</p>
     </section>
 
+    </div>
     <FoodEditModal
       v-if="selectedFood"
       :food="selectedFood"

@@ -23,6 +23,7 @@ const base = process.env.SHARE_TEST_URL || 'http://127.0.0.1:5173'
     }
     if(path==='/api/profile/foods')return route.fulfill({json:[food]})
     if(path==='/api/profile/check-ins')return route.fulfill({json:{items:[],total:0,page:1,pageSize:20}})
+    if(path==='/api/profile/favorites/page' || path==='/api/profile/wishlist/page')return route.fulfill({json:{items:[],total:0,page:1,pageSize:20}})
     if(path==='/api/regions')return route.fulfill({json:[food.region]})
     return route.fulfill({json:[]})
    })

@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import LandmarkBackdrop from '../components/LandmarkBackdrop.vue'
+import '../archive.css'
 
 const { t } = useI18n()
 </script>
 
 <template>
-  <section class="not-found">
+  <section class="not-found archive-not-found">
+    <LandmarkBackdrop />
     <h1>404</h1>
-    <p>{{ t('notFound.description') }}</p>
+    <h2>{{ t('archive.missingArchive') }}</h2>
+    <p>{{ t('archive.missingHint') }}</p>
     <RouterLink to="/" class="not-found-back">{{ t('notFound.backHome') }}</RouterLink>
   </section>
 </template>

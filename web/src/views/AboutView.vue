@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import LandmarkBackdrop from '../components/LandmarkBackdrop.vue'
+import '../archive.css'
 
 const { t } = useI18n()
 </script>
 
 <template>
-  <section class="about-page">
+  <section class="about-page archive-about">
+    <LandmarkBackdrop />
+    <div class="archive-about-copy">
     <div class="about-seal">炎</div>
-    <h1>{{ t('common.appName') }}</h1>
-    <p class="about-tagline">{{ t('common.tagline') }}</p>
-    <p class="about-body">{{ t('about.description') }}</p>
+    <p class="about-tagline">{{ t('archive.aboutEyebrow') }}</p>
+    <h1>{{ t('archive.aboutTitle') }}</h1>
+    <p class="about-body">{{ t('archive.aboutIntro') }}</p>
     <RouterLink to="/" class="about-back">{{ t('notFound.backHome') }}</RouterLink>
+    </div>
+    <div class="archive-about-notes">
+      <article v-for="topic in ['explore', 'record', 'collect']" :key="topic">
+        <h2>{{ t('archive.' + topic + 'Title') }}</h2>
+        <p>{{ t('archive.' + topic + 'Body') }}</p>
+      </article>
+    </div>
+    <footer class="archive-about-footer"><p>{{ t('archive.fanNotice') }}</p><small>{{ t('archive.aboutCredit') }}</small></footer>
   </section>
 </template>
 

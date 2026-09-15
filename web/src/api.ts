@@ -149,6 +149,15 @@ export async function getFood(id: number): Promise<Food> {
   return response.data
 }
 
+export async function getFoodExportImage(id: number, signal?: AbortSignal): Promise<Blob> {
+  const response = await api.get<Blob>('/images/foods/' + id + '/export', {
+    responseType: 'blob',
+    signal,
+    timeout: 12_000,
+  })
+  return response.data
+}
+
 export async function getUserPublic(id: number): Promise<UserPublic> {
   const response = await api.get<UserPublic>(`/users/${id}`)
   return response.data

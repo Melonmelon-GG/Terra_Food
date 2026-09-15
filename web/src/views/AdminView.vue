@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import '../archive.css'
 import { useI18n } from 'vue-i18n'
 
 import {
@@ -72,6 +73,14 @@ const reviewingUser = ref<AuthUser | null>(null)
 const usersPageTotal = computed(() => Math.max(1, Math.ceil(usersTotal.value / usersPageSize.value)))
 
 const visibleFoods = computed(() => foods.value)
+const selectedReviewId = ref<number>()
+const reviewPanel = ref<HTMLElement>()
+const selectedReview = computed(() => visibleFoods.value.find(food => food.id === selectedReviewId.value) || visibleFoods.value[0])
+async function selectReview(id: number) {
+  selectedReviewId.value = id
+  await nextTick()
+  reviewPanel.value?.focus()
+}
 const canPrevFoods = computed(() => foodsPage.value > 1)
 const canNextFoods = computed(() => foodsPage.value < foodsPageTotal.value)
 const canPrevUsers = computed(() => usersPage.value > 1)
@@ -89,6 +98,7 @@ const foodsPageStart = computed(() => foods.value.length ? (foodsPage.value - 1)
 const foodsPageEnd = computed(() => Math.min(foodsPage.value * foodsPageSize.value, foodsTotal.value))
 
 function switchTab(tab: AdminTab) {
+  selectedReviewId.value = undefined
   activeTab.value = tab
   // 每次进入用户标签都重新拉取，避免长时间停留在后台时显示挂载时的陈旧数据。
   if (tab === 'users') {
@@ -221,6 +231,8 @@ async function reviewSubmission(food: Food, status: Extract<FoodReviewStatus, 'A
   pendingFoodIds.value.add(food.id)
   try {
     await reviewFood(food.id, { status, expectedVersion: food.contentVersion })
+    viewingFood.value = null
+    selectedReviewId.value = undefined
     await loadFoodsPage(foodsPage.value, foodsPageSize.value)
   } catch {
     error.value = t('admin.reviewError')
@@ -442,11 +454,11 @@ onMounted(loadFoodsAndMeta)
 </script>
 
 <template>
-  <section class="admin-page">
+  <section class="admin-page archive-admin">
     <div class="admin-heading">
       <div>
         <small>{{ t('admin.eyebrow') }}</small>
-        <h1>{{ t('admin.title') }}</h1>
+        <h1>{{ t('archive.reviewDesk') }}</h1>
         <p>{{ t('admin.description') }}</p>
       </div>
       <RouterLink to="/" class="outline-action">{{ t('admin.backToSite') }}</RouterLink>
@@ -520,6 +532,38 @@ onMounted(loadFoodsAndMeta)
         <p v-else-if="error" class="state error">{{ error }}</p>
         <template v-else>
           <p v-if="!visibleFoods.length" class="state">{{ t('admin.noFoods') }}</p>
+          <div v-else-if="activeTab === 'reviews'" class="archive-review-workspace" :class="{ 'has-selection': selectedReviewId !== undefined }">
+            <div class="archive-review-queue">
+              <button v-for="dish in visibleFoods" :key="dish.id" type="button" :class="{ selected: selectedReview?.id === dish.id }"
+                :aria-pressed="selectedReview?.id === dish.id" @click="selectReview(dish.id)">
+                <img v-if="dish.imageUrl" :src="dish.imageUrl" alt="" loading="lazy">
+                <span v-else class="archive-review-placeholder" aria-hidden="true">食</span>
+                <span><strong>{{ dish.name }}</strong><small>{{ dish.region.province }} · {{ dish.region.name }}</small>
+                  <small>{{ dish.createdBy || t('admin.anonymousName') }}</small></span>
+                <em>{{ t('admin.pending') }}</em>
+              </button>
+            </div>
+            <section v-if="selectedReview" ref="reviewPanel" class="archive-review-detail" tabindex="-1" :aria-label="t('admin.reviewManagement')">
+              <button class="archive-back-queue" type="button" @click="selectedReviewId = undefined">← {{ t('archive.backQueue') }}</button>
+              <small>{{ t('admin.reviewManagement') }}</small>
+              <h2>{{ selectedReview.name }}</h2>
+              <img v-if="selectedReview.imageUrl" class="archive-review-photo" :src="selectedReview.imageUrl" :alt="selectedReview.name">
+              <dl>
+                <div><dt>{{ t('admin.region') }}</dt><dd>{{ selectedReview.region.province }} · {{ selectedReview.region.name }}</dd></div>
+                <div><dt>{{ t('admin.creator') }}</dt><dd>{{ selectedReview.creator?.displayName || selectedReview.createdBy }}</dd></div>
+                <div v-if="selectedReview.address"><dt>{{ t('upload.address') }}</dt><dd>{{ selectedReview.address }}</dd></div>
+                <div><dt>{{ t('detail.ingredients') }}</dt><dd>{{ selectedReview.ingredients }}</dd></div>
+                <div><dt>{{ t('upload.summary') }}</dt><dd>{{ selectedReview.summary }}</dd></div>
+                <div><dt>{{ t('detail.story') }}</dt><dd>{{ selectedReview.story }}</dd></div>
+                <div v-if="selectedReview.remark"><dt>{{ t('detail.remark') }}</dt><dd>{{ selectedReview.remark }}</dd></div>
+              </dl>
+              <p class="archive-review-notice">{{ t('archive.reviewHint') }}</p>
+              <div class="archive-review-actions">
+                <button type="button" :disabled="pendingFoodIds.has(selectedReview.id)" @click="reviewSubmission(selectedReview, 'APPROVED')">{{ t('admin.approve') }}</button>
+                <button type="button" :disabled="pendingFoodIds.has(selectedReview.id)" @click="reviewSubmission(selectedReview, 'REJECTED')">{{ t('admin.reject') }}</button>
+              </div>
+            </section>
+          </div>
           <div v-else class="admin-table-wrap">
             <table>
               <thead>
