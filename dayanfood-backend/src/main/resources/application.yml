@@ -50,8 +50,6 @@ spring:
       max-request-size: 6MB
 app:
   upload-directory: ${UPLOAD_DIRECTORY:uploads}
-  image-export:
-    max-image-bytes: ${IMAGE_EXPORT_MAX_BYTES:10485760}
   upload:
     max-image-bytes: ${MAX_IMAGE_BYTES:5242880}
     orphan-retention: ${UPLOAD_ORPHAN_RETENTION:24h}

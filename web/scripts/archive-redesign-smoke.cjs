@@ -83,7 +83,7 @@ async function exportTicket(page, name) {
    page.on('dialog', dialog => dialog.accept())
    let favorite = false
    let missingPhoto = false
-   let proxyOnlyPhoto = false
+   let uploadProxyRequired = false
    let exportImageFallbacks = 0
    let longText = false
    let reviewed = false
@@ -96,14 +96,14 @@ async function exportTicket(page, name) {
    const personalRequests = []
    await page.route('**/test-food.svg', route => route.fulfill({contentType:'image/svg+xml',body:svg}))
    await page.route('**/missing-food.png', route => route.fulfill({status:404,body:''}))
-   await page.route('https://images.example.test/**', route => route.fulfill({status:403,body:''}))
+   await page.route('**/uploads/proxy-only-food.png', route => route.fulfill({status:404,body:''}))
    await page.route('**/api/**', async route => {
     const url = new URL(route.request().url())
     const p = url.pathname
     const method = route.request().method()
     if (/\/(profile|etchings|users|achievements)\//.test(p) && !p.endsWith('/notifications')) personalRequests.push(p)
     if (p === '/api/auth/me') return route.fulfill({json:user})
-    if (p === '/api/foods/123') return route.fulfill({json:{...dish,imageUrl:missingPhoto?'/missing-food.png':proxyOnlyPhoto?'https://images.example.test/remote-food.png':dish.imageUrl,name:longText?'这是一个用于测试手机和票根排版的很长很长的菜品名称'.repeat(3):dish.name,summary:longText?dish.summary.repeat(20):dish.summary,ingredients:longText?dish.ingredients.repeat(10):dish.ingredients}})
+    if (p === '/api/foods/123') return route.fulfill({json:{...dish,imageUrl:missingPhoto?'/missing-food.png':uploadProxyRequired?'/uploads/proxy-only-food.png':dish.imageUrl,name:longText?'这是一个用于测试手机和票根排版的很长很长的菜品名称'.repeat(3):dish.name,summary:longText?dish.summary.repeat(20):dish.summary,ingredients:longText?dish.ingredients.repeat(10):dish.ingredients}})
     if (p === '/api/images/foods/123/export') {
      if (missingPhoto) return route.fulfill({status:404,body:''})
      exportImageFallbacks++
@@ -171,17 +171,17 @@ async function exportTicket(page, name) {
    assert.equal(personalRequests.length,afterOpen,'export should not fetch personal information')
    await page.locator('.share-close').click()
    if (width === 1440) {
-    proxyOnlyPhoto = true
+    uploadProxyRequired = true
     await page.goto(base+'/foods/123')
     await page.locator('.archive-dossier h1').waitFor()
     await openShare(page)
-    assert.equal(exportImageFallbacks,1,'CORS-blocked food image should use the authenticated export endpoint')
+    assert.equal(exportImageFallbacks,1,'an unavailable /uploads route should use the authenticated export endpoint')
     assert.equal(await page.locator('.share-dish-image img').count(),1)
     assert((await page.locator('.share-dish-image img').getAttribute('src')).startsWith('data:image/svg+xml'))
     assert.equal(await page.locator('.share-notice[role="status"]').count(),0)
     await exportTicket(page,'ticket-image-fallback')
     await page.locator('.share-close').click()
-    proxyOnlyPhoto = false
+    uploadProxyRequired = false
    }
    if(!shareOnly) {
     await page.goto(base+'/profile')

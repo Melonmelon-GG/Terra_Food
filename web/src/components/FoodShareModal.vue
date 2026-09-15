@@ -96,14 +96,14 @@ async function embedBlob(blob: Blob): Promise<string> {
   await decodeImage(data)
   return data
 }
-async function embedImage(url?: string, optional = false, useFoodFallback = false): Promise<string> {
+async function embedImage(url?: string, optional = false): Promise<string> {
   if (!url) return ''
   try {
     const response = await fetch(url, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]) })
     if (!response.ok) throw new Error('Image unavailable')
     return await embedBlob(await response.blob())
   } catch {
-    if (useFoodFallback && !controller.signal.aborted) {
+    if (!optional && url.startsWith('/uploads/') && !controller.signal.aborted) {
       try {
         return await embedBlob(await getFoodExportImage(props.food.id, controller.signal))
       } catch {
@@ -122,7 +122,7 @@ async function load() {
   try {
     qr.value = createShareQr(shareUrl)
     const artwork = resolveLandmark(props.food.region.province)
-    const [dishImage, art] = await Promise.all([embedImage(props.food.imageUrl, false, true), embedImage(artwork.image, true)])
+    const [dishImage, art] = await Promise.all([embedImage(props.food.imageUrl), embedImage(artwork.image, true)])
     if (disposed) return
     foodImage.value = dishImage
     const resolvedArt = art || (artwork.image !== defaultLandmark.image ? await embedImage(defaultLandmark.image, true) : '')
