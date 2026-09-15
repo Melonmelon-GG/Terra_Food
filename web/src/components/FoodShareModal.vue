@@ -268,14 +268,14 @@ onBeforeUnmount(() => {
 /* Reset detail-page article spacing so preview and export use the same fixed canvas. */
 .share-card{padding:0;gap:0}
 .share-card *{box-sizing:border-box}.share-card p{margin:0}.ticket-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.13;z-index:-1}
-.ticket-main{min-width:0;padding:28px;display:grid;grid-template-columns:400px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:20px 24px;overflow:hidden}
+.ticket-main{min-width:0;padding:28px;display:grid;grid-template-columns:480px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:20px 24px;overflow:hidden}
 .ticket-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:32px;border-bottom:1px solid #d8cbb8;padding-bottom:12px}
 .ticket-heading strong{font-size:22px;letter-spacing:3px;font-family:serif}.ticket-heading span{font-size:12px;color:#842d26;letter-spacing:3px}
 .share-dish-image{align-self:center;width:100%;aspect-ratio:16/9;display:grid;place-items:center;background:#efe5d4;overflow:hidden;border:1px solid #d8cbb8}.share-dish-image img{width:100%;height:100%;object-fit:cover}.share-dish-image span{font-size:16px;letter-spacing:3px;color:#826f60}
-.ticket-dish-copy{min-width:0;align-self:center;display:flex;flex-direction:column;gap:16px}.ticket-dish-copy .share-region{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.ticket-dish-copy{min-width:0;align-self:center;display:flex;flex-direction:column;gap:12px}.ticket-dish-copy .share-region{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
 .share-region{font-size:14px;letter-spacing:2px;color:#842d26}
-.share-dish h2{font-size:36px;line-height:1.25;font-family:"Microsoft YaHei",sans-serif;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
-.share-summary{font-size:17px;line-height:1.65;color:#665347;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
+.share-dish h2{font-size:32px;line-height:1.25;font-family:"Microsoft YaHei",sans-serif;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
+.share-summary{font-size:15px;line-height:1.65;color:#665347;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
 .share-ingredients{grid-column:1/-1;border-top:1px solid #d8cbb8;padding-top:12px}.share-ingredients small{font-size:12px;color:#842d26;letter-spacing:2px}.share-ingredients p{margin-top:4px;font-size:15px;line-height:1.6;color:#665347;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
 .ticket-stub{position:relative;min-width:0;border-left:2px dashed #b89f80;padding:28px 22px;display:flex;flex-direction:column;justify-content:space-between;gap:16px;background:#efe5d447}
 .ticket-stub::before,.ticket-stub::after{content:"";position:absolute;left:-16px;width:30px;height:30px;border:1px solid #d8cbb8;border-radius:50%;background:#f5f0e5}.ticket-stub::before{top:-16px}.ticket-stub::after{bottom:-16px}

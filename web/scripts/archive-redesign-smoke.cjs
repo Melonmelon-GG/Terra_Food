@@ -31,10 +31,12 @@ async function exportTicket(page, name) {
   return { landscape:card.clientWidth > card.clientHeight, stubOnRight:stub.left >= main.right - 1,
    photoRatio:photo.width/photo.height, copyFits:copy.bottom <= ingredients.top,
    photoFits:photo.bottom <= ingredients.top, allInside:ingredients.bottom <= frame.bottom && stub.bottom <= frame.bottom,
-   noInset:Math.abs(main.left-frame.left)<2 && Math.abs(main.top-frame.top)<2 }
+   noInset:Math.abs(main.left-frame.left)<2 && Math.abs(main.top-frame.top)<2,
+   photoDominates:photo.width >= frame.width * .45 }
  })
  assert(geometry.landscape && geometry.stubOnRight,'ticket must remain landscape with a right-hand stub')
  assert(Math.abs(geometry.photoRatio-16/9)<.015,'ticket photo must remain 16:9')
+ assert(geometry.photoDominates,'dish photo should occupy the visual majority of the ticket body')
  assert(geometry.copyFits && geometry.photoFits,'dish contents must not overlap ingredients')
  assert(geometry.allInside && geometry.noInset,'page styles must not add insets or clip ticket contents')
  const pending = page.waitForEvent('download')
