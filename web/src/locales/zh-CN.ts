@@ -1,4 +1,16 @@
 export default {
+  location: {
+    cityNavigation: '找不到位置？先跳到已收录城市，再点选实际地点',
+    chooseCity: '选择城市（不会自动作为美食坐标）',
+    title: '美食位置',
+    entryHelp: '定位不是必选项：可使用当前位置、返回地图选点，或直接填写下方经纬度。请填写美食实际位置。',
+    useCurrent: '使用当前位置',
+    pickMap: '返回地图选点',
+    manualEntry: '手动填写位置',
+    verifyPosition: '已填入定位坐标，请核对是否为美食位置，并补充省市和地址。',
+    addressUnavailable: '地址识别暂不可用，坐标已保留，可直接收录并手动补充地址。',
+  },
+
   archive: {
     motto: '山河有味 · 人间长食', foodDossier: '风味档案', noCover: '风味影像 · 待收录',
     profile: '寻味者档案', records: '我的收录', favorites: '收藏夹', wishlist: '想吃清单', diary: '味觉日记',
@@ -264,7 +276,7 @@ export default {
     regionPath: '全国 / {province} / {city}',
     latitude: '纬度',
     longitude: '经度',
-    coordinateTip: '可先关闭表单并点击地图选取位置，再次打开时会自动带入坐标、地区和详细地址。',
+    coordinateTip: '可直接输入准确经纬度；也可返回地图选点后再次打开，已填写的文字会保留。',
     regionCoordinateMismatch: '所选地区与地图坐标不匹配，请恢复地图识别的地区，或重新在地图上选点。',
     address: '详细地址',
     addressPlaceholder: '地图点击后会自动带入，也可手动补充',
@@ -279,7 +291,7 @@ export default {
     imageNeedsReselect: '已选择的封面在刷新页面后需重新选择',
     imageTip: '可选；支持 JPG、PNG、WebP，最大 5MB',
     regionRequired: '请选择所属地区。',
-    coordinateRequired: '请先在地图上点击选择坐标。',
+    coordinateRequired: '请填写有效经纬度，或使用定位、地图选点。',
     pendingSuccess: '菜品已提交，管理员审批通过后会显示在地图上。',
     saveError: '保存失败，请检查填写内容和后端服务。',
     imageUploadError: '图片上传失败，请检查格式和大小后重试。',

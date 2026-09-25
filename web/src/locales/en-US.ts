@@ -1,4 +1,16 @@
 export default {
+  location: {
+    cityNavigation: 'Jump to a listed city, then select the actual location',
+    chooseCity: 'Choose a city (not the food coordinates)',
+    title: 'Food location',
+    entryHelp: 'Location access is optional. Use your current position, pick on the map, or enter coordinates below. Use the actual food location.',
+    useCurrent: 'Use current location',
+    pickMap: 'Pick on map',
+    manualEntry: 'Enter location manually',
+    verifyPosition: 'Coordinates filled. Confirm the food location and add its region and address.',
+    addressUnavailable: 'Address lookup is unavailable. Coordinates are preserved; continue and enter the address manually.',
+  },
+
   archive: {
     motto: 'Across landscapes, around the table', foodDossier: 'Culinary archive', noCover: 'Photograph to come',
     profile: 'Seeker archive', records: 'My submissions', favorites: 'Favorites', wishlist: 'Wishlist', diary: 'Food diary',
@@ -264,7 +276,7 @@ export default {
     regionPath: 'Nationwide / {province} / {city}',
     latitude: 'Latitude',
     longitude: 'Longitude',
-    coordinateTip: 'Close this form and tap the map. Coordinates, region, and address will be filled in when you reopen it.',
+    coordinateTip: 'Enter precise coordinates, or return to the map and select a point. Your text draft will be preserved.',
     regionCoordinateMismatch: 'The selected region does not match the map coordinates. Restore the detected region or pick a new map location.',
     address: 'Detailed address',
     addressPlaceholder: 'Filled from the map; you can also add details',
@@ -279,7 +291,7 @@ export default {
     imageNeedsReselect: 'The previously chosen cover must be selected again after a page reload',
     imageTip: 'Optional; JPG, PNG, or WebP, up to 5 MB',
     regionRequired: 'Please select a region.',
-    coordinateRequired: 'Pick a location on the map first.',
+    coordinateRequired: 'Enter valid coordinates, use location access, or pick on the map.',
     pendingSuccess: 'Your dish was submitted and will appear on the map after administrator approval.',
     saveError: 'Unable to save. Please check the form and backend service.',
     imageUploadError: 'Image upload failed. Check the format and size, then try again.',

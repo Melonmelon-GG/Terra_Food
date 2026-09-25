@@ -1,0 +1,48 @@
+{
+  "live_unchanged_during_cleanup": true,
+  "live": [
+    {
+      "name": "/terrafood-web",
+      "id": "f74d7df1a9106d41fa59de069840b826dde8a8b67cbb03c8a8f618ac9f056f54",
+      "started": "2026-09-19T13:19:24.870098411Z",
+      "image": "sha256:e8d38c60ad7dfa8a99a15cf12c90a3ec1951b0e6e4ac27b50f1ab74cb67b063f"
+    },
+    {
+      "name": "/terrafood-backend",
+      "id": "8734853fff654aec1ea419f92642aa9977d8b0f695937beb8126e500d46c9704",
+      "started": "2026-09-19T13:19:14.066694572Z",
+      "image": "sha256:251bff271e7ec54ffac551627cfe929dacf98dc35d3014997e4bbc3d636a210d"
+    },
+    {
+      "name": "/terrafood-mysql",
+      "id": "629bca4ef677d9ee7249ad3ff0d32e488ad36b23aa37d585b61dce7607632552",
+      "started": "2026-09-19T13:19:03.083729841Z",
+      "image": "sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb"
+    },
+    {
+      "name": "/terrafood-redis",
+      "id": "ae5505b08dde1f5412f3517dc4bf0db3f044d6b4558cc0d3d93368a6ed68f638",
+      "started": "2026-09-19T13:19:03.081286141Z",
+      "image": "sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf"
+    },
+    {
+      "name": "/terrafood-agent-api",
+      "id": "7db0a9a92207ffd4abee4ae8a9d7d566d8a56f832370c752e559d50598396047",
+      "started": "2026-09-19T13:19:03.456052017Z",
+      "image": "sha256:d6e38cf2cb1fc7a206c71f7c1099515891c4d5412002ef274c145c8cdd6c6e32"
+    },
+    {
+      "name": "/terrafood-agent-mcp",
+      "id": "ceb7916713ffc908148df3a24d6c2c9607256df5151d0ef4bcc6e57228ac818b",
+      "started": "2026-09-19T13:19:03.073652824Z",
+      "image": "sha256:04c10bfa6097f3727d25a1d50e6be905f097bc0d83c2b78c7e316a7cd049cf35"
+    }
+  ],
+  "removed_previews": [
+    "tf-location-fixed",
+    "tf-location-baseline",
+    "tf-location-live-baseline",
+    "tf-location-hotfix"
+  ],
+  "deployment_performed": false
+}

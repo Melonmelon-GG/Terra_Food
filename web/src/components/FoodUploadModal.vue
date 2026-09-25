@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { createFood, uploadImage } from '../api'
 import { apiErrorMessage } from '../apiError'
 import { useAuth } from '../auth'
+import { requestBrowserLocation, validCoordinate } from '../location'
 import FoodTagPicker from './FoodTagPicker.vue'
 import {
   cacheDraftImage,
@@ -15,7 +16,7 @@ import {
   saveDraft,
   type DraftImageMeta,
 } from '../drafts'
-import type { Food, FoodCreatePayload, Region } from '../types'
+import type { Food, FoodCreatePayload, MapFocus, Region } from '../types'
 
 const props = defineProps<{
   regions: Region[]
@@ -29,11 +30,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
+  pickOnMap: [focus?: MapFocus]
   saved: [food: Food]
 }>()
 
-// 坐标只能来自地图选点（通过 props 注入），表单自身不提供默认坐标，
-// 避免未选点时带上无效经纬度直接创建。
+// No default coordinates: explicit map selection, browser location or manual entry is required.
 type UploadForm = Omit<FoodCreatePayload, 'latitude' | 'longitude'> & {
   latitude?: number
   longitude?: number
@@ -41,12 +42,12 @@ type UploadForm = Omit<FoodCreatePayload, 'latitude' | 'longitude'> & {
 
 const form = reactive<UploadForm>({
   name: '',
-  regionId: undefined,
-  province: '',
-  city: '',
-  latitude: undefined,
-  longitude: undefined,
-  address: '',
+  regionId: props.regionId,
+  province: props.province || '',
+  city: props.city || '',
+  latitude: props.latitude == null ? undefined : Number(props.latitude.toFixed(7)),
+  longitude: props.longitude == null ? undefined : Number(props.longitude.toFixed(7)),
+  address: props.address || '',
   summary: '',
   story: '',
   ingredients: '',
@@ -67,36 +68,42 @@ const accountId = auth.currentUser.value?.id
 const DRAFT_KEY = `foodUpload.v2.${accountId}`
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
 let uploadController: AbortController | undefined
+let active = true
 
-watch(
-  () => [props.latitude, props.longitude],
-  ([latitude, longitude]) => {
-    if (latitude != null && longitude != null) {
-      form.latitude = Number(latitude.toFixed(7))
-      form.longitude = Number(longitude.toFixed(7))
-    }
-  },
-  { immediate: true },
-)
+// Snapshot the chosen location. Late parent geocoding must not replace edits.
+const locating = ref(false)
+const locationMessage = ref('')
+const cityId = ref('')
+const mappedRegions = computed(() => props.regions.filter(region => validCoordinate(region.centerLatitude, region.centerLongitude)))
+function findCity() {
+  const region = mappedRegions.value.find(item => String(item.id) === cityId.value)
+  if (!region) return
+  stopLocation()
+  // City centres are navigation hints, never submitted food coordinates.
+  emit('pickOnMap', { latitude: region.centerLatitude!, longitude: region.centerLongitude!, zoom: 13 })
+}
+let cancelLocation: (() => void) | undefined
+function stopLocation() {
+  cancelLocation?.()
+  locating.value = false
+}
+function useCurrentLocation() {
+  stopLocation()
+  locating.value = true
+  locationMessage.value = ''
+  const revision = auth.getSessionRevision()
+  cancelLocation = requestBrowserLocation(coordinate => {
+    locating.value = false
+    if (!active || saving.value || revision !== auth.getSessionRevision() || accountId !== auth.currentUser.value?.id) return
+    form.latitude = Number(coordinate.latitude.toFixed(7))
+    form.longitude = Number(coordinate.longitude.toFixed(7))
+    form.regionId = undefined
+    form.province = ''; form.city = ''; form.address = ''
+    locationMessage.value = 'location.verifyPosition'
+  }, key => { locating.value = false; locationMessage.value = key })
+}
 
-watch(
-  () => [props.province, props.city],
-  ([province, city]) => {
-    if (!form.province) form.province = province || ''
-    if (!form.city) form.city = city || ''
-  },
-  { immediate: true },
-)
-
-watch(
-  () => props.address,
-  (address) => {
-    form.address = address || ''
-  },
-  { immediate: true },
-)
-
-// 草稿缓存：文本字段在误关弹窗后保留；坐标/地区/地址永远跟随地图选点（props），不参与草稿。
+// Explicit map selection wins; otherwise restore this account’s previously entered location.
 interface UploadDraft {
   name: string
   summary: string
@@ -108,6 +115,7 @@ interface UploadDraft {
   idempotencyKey: string
   tagIds?: number[]
   expiresAt: number
+  location?: { latitude?: number; longitude?: number; regionId?: number; province?: string; city?: string; address?: string }
 }
 
 let draft = readDraft<UploadDraft>(DRAFT_KEY)
@@ -115,7 +123,16 @@ if (draft && (!Number.isFinite(draft.expiresAt) || draft.expiresAt <= Date.now()
   clearDraft(DRAFT_KEY)
   draft = undefined
 }
+if (props.latitude == null && props.longitude == null && draft?.location
+    && validCoordinate(draft.location.latitude, draft.location.longitude)) {
+  const saved = draft.location
+  form.latitude = saved.latitude; form.longitude = saved.longitude
+  form.regionId = saved.regionId; form.province = saved.province || ''
+  form.city = saved.city || ''; form.address = saved.address || ''
+}
 const idempotencyKey = ref(draft?.idempotencyKey || crypto.randomUUID())
+const currentLocation = () => ({ latitude: form.latitude, longitude: form.longitude, regionId: form.regionId, province: form.province, city: form.city, address: form.address })
+if (draft && JSON.stringify(draft.location) !== JSON.stringify(currentLocation())) idempotencyKey.value = crypto.randomUUID()
 if (draft) {
   form.name = draft.name
   form.summary = draft.summary
@@ -146,6 +163,7 @@ function persistDraft() {
     idempotencyKey: idempotencyKey.value,
     tagIds: form.tagIds,
     expiresAt: Date.now() + DRAFT_TTL_MS,
+    location: currentLocation(),
   })
 }
 
@@ -158,6 +176,8 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  active = false
+  stopLocation()
   uploadController?.abort()
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
 })
@@ -192,13 +212,12 @@ async function submit() {
   if (saving.value) return
   error.value = ''
 
-  // 坐标必须来自地图选点，禁止带着默认值直接创建。
-  if (form.latitude == null || form.longitude == null
-      || !Number.isFinite(form.latitude) || !Number.isFinite(form.longitude)) {
+  if (!validCoordinate(form.latitude, form.longitude)) {
     error.value = t('upload.coordinateRequired')
     return
   }
 
+  stopLocation()
   saving.value = true
   try {
     // 图片与菜品信息分两步提交：先取得资源 URL，再保存稳定的业务记录。
@@ -259,6 +278,20 @@ function cancelUpload() {
           <button v-if="stage === 'uploading'" type="button" @click="cancelUpload">{{ t('upload.cancelUpload') }}</button>
         </p>
         <fieldset class="submit-snapshot" :disabled="saving">
+        <div class="location-entry" role="group" :aria-label="t('location.title')">
+          <p>{{ t('location.entryHelp') }}</p>
+          <button type="button" class="secondary-button" :disabled="locating" @click="useCurrentLocation">{{ t('location.useCurrent') }}</button>
+          <button type="button" class="secondary-button" @click="stopLocation(); emit('pickOnMap')">{{ t('location.pickMap') }}</button>
+          <label v-if="mappedRegions.length">
+            {{ t('location.cityNavigation') }}
+            <select v-model="cityId" @change="findCity">
+              <option value="">{{ t('location.chooseCity') }}</option>
+              <option v-for="region in mappedRegions" :key="region.id" :value="String(region.id)">{{ region.province }} · {{ region.name }}</option>
+            </select>
+          </label>
+          <p v-if="locating" role="status">{{ t('home.geolocationLoading') }} <button type="button" @click="stopLocation">{{ t('common.cancel') }}</button></p>
+          <p v-else-if="locationMessage" role="status">{{ t(locationMessage) }}</p>
+        </div>
         <div class="form-grid">
           <label>
             {{ t('upload.name') }}
@@ -266,16 +299,16 @@ function cancelUpload() {
           </label>
           <label>
             {{ t('upload.cityLabel') }}
-            <input v-model.trim="form.province" maxlength="100" :placeholder="t('upload.provincePlaceholder')">
-            <input v-model.trim="form.city" maxlength="100" :placeholder="t('upload.cityPlaceholder')">
+            <input v-model.trim="form.province" @input="stopLocation" maxlength="100" :placeholder="t('upload.provincePlaceholder')">
+            <input v-model.trim="form.city" @input="stopLocation" maxlength="100" :placeholder="t('upload.cityPlaceholder')">
           </label>
           <label>
             {{ t('upload.latitude') }}
-            <input v-model.number="form.latitude" type="number" min="-90" max="90" step="0.0000001" required>
+            <input v-model.number="form.latitude" @input="stopLocation" type="number" min="-90" max="90" step="0.0000001" required>
           </label>
           <label>
             {{ t('upload.longitude') }}
-            <input v-model.number="form.longitude" type="number" min="-180" max="180" step="0.0000001" required>
+            <input v-model.number="form.longitude" @input="stopLocation" type="number" min="-180" max="180" step="0.0000001" required>
           </label>
         </div>
 
@@ -283,7 +316,7 @@ function cancelUpload() {
 
         <label>
           {{ t('upload.address') }}
-          <input v-model.trim="form.address" maxlength="500" :placeholder="t('upload.addressPlaceholder')">
+          <input v-model.trim="form.address" @input="stopLocation" maxlength="500" :placeholder="t('upload.addressPlaceholder')">
         </label>
 
         <label>

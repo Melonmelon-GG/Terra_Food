@@ -10,7 +10,7 @@ const pixel = 'data:image/svg+xml,' + encodeURIComponent(
 )
 
 ;(async () => {
-  const browser = await chromium.launch({ channel: 'chrome', headless: true })
+  const browser = await chromium.launch({ ...(process.env.HOME_TEST_EXECUTABLE ? { executablePath: process.env.HOME_TEST_EXECUTABLE } : { channel: 'chrome' }), headless: true })
   try {
     for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
       const page = await browser.newPage({ viewport, locale: 'zh-CN' })
@@ -82,7 +82,8 @@ const pixel = 'data:image/svg+xml,' + encodeURIComponent(
 
       await page.getByRole('button', { name: '展开快捷操作' }).click()
       await page.getByRole('button', { name: '＋ 收录珍馐', exact: true }).click()
-      await page.getByText('请先在地图上点击选择坐标，再收录珍馐。').waitFor()
+      await page.locator('.upload-modal').waitFor()
+      assert.equal(await page.locator('.upload-modal input[type=number]').first().inputValue(), '')
       assert.deepEqual(errors, [])
       await page.close()
     }

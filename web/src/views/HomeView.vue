@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getFoodCatalog, getFoodMapClusters, getRegions, reverseMapLocation } from '../api'
 import { useAuth } from '../auth'
+import { requestBrowserLocation, validCoordinate } from '../location'
 import FoodMap from '../components/FoodMap.vue'
 const FoodUploadModal = defineAsyncComponent(() => import('../components/FoodUploadModal.vue'))
 import type { Food, FoodMapClusterItem, FoodSort, MapBounds, MapCoordinate, MapFocus, Region } from '../types'
@@ -266,71 +267,43 @@ onBeforeUnmount(() => {
   if (boundsLoadTimer) clearTimeout(boundsLoadTimer)
   catalogRequestController?.abort()
   markerRequestController?.abort()
-  geolocationSequence += 1
-  locationLookupController?.abort()
+  stopGeolocation()
+  cancelLocationLookup()
   document.removeEventListener('pointerdown', closeActions)
   document.removeEventListener('keydown', closeActionsOnEscape)
 })
 
 let locationLookupSequence = 0
 let locationLookupController: AbortController | undefined
-let geolocationSequence = 0
 
-function geolocationErrorMessage(error: GeolocationPositionError) {
-  if (error.code === error.PERMISSION_DENIED) return 'home.geolocationDenied'
-  if (error.code === error.TIMEOUT) return 'home.geolocationTimeout'
-  return 'home.geolocationUnavailable'
+let cancelGeolocation: (() => void) | undefined
+function stopGeolocation() {
+  cancelGeolocation?.()
+  geolocationLoading.value = false
 }
-
+function cancelLocationLookup() {
+  ++locationLookupSequence
+  locationLookupController?.abort()
+  locationResolving.value = false
+}
 function locateUser() {
-  const sequence = ++geolocationSequence
+  stopGeolocation()
+  pickHint.value = ''
   geolocationLocated.value = false
   geolocationErrorKey.value = ''
   geolocationCoordinate.value = undefined
-
-  if (!window.isSecureContext) {
-    geolocationErrorKey.value = 'home.geolocationInsecure'
-    return
-  }
-  if (!navigator.geolocation) {
-    geolocationErrorKey.value = 'home.geolocationUnsupported'
-    return
-  }
-
   geolocationLoading.value = true
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      if (sequence !== geolocationSequence) return
-      geolocationLoading.value = false
-
-      const { latitude, longitude, accuracy } = position.coords
-      // GPS 坐标只用于本机地图聚焦；用户点击地图确认后才进入现有地址反查流程。
-      if (latitude < 18 || latitude > 54 || longitude < 73 || longitude > 135.2) {
-        geolocationErrorKey.value = 'home.geolocationOutside'
-        return
-      }
-
-      const zoom = accuracy <= 100 ? 16 : accuracy <= 1000 ? 14 : 12
-      mapFocus.value = { latitude, longitude, zoom }
-      geolocationCoordinate.value = { latitude, longitude }
-      geolocationLocated.value = true
-    },
-    (error) => {
-      if (sequence !== geolocationSequence) return
-      geolocationLoading.value = false
-      geolocationErrorKey.value = geolocationErrorMessage(error)
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 12_000,
-      maximumAge: 60_000,
-    },
-  )
+  cancelGeolocation = requestBrowserLocation(({ latitude, longitude }, accuracy) => {
+    geolocationLoading.value = false
+    mapFocus.value = { latitude, longitude, zoom: accuracy <= 100 ? 16 : accuracy <= 1000 ? 14 : 12 }
+    geolocationCoordinate.value = { latitude, longitude }
+    geolocationLocated.value = true
+  }, key => { geolocationLoading.value = false; geolocationErrorKey.value = key })
 }
 
 function handleMapPick(latitude: number, longitude: number) {
   // 用户手动确认优先于仍在等待中的 GPS 结果，避免稍后回调覆盖当前视角。
-  geolocationSequence += 1
+  stopGeolocation()
   geolocationLoading.value = false
   geolocationLocated.value = false
   geolocationErrorKey.value = ''
@@ -339,6 +312,7 @@ function handleMapPick(latitude: number, longitude: number) {
 }
 
 async function pickLocation(latitude: number, longitude: number) {
+  if (!validCoordinate(latitude, longitude)) return
   pickedLatitude.value = latitude
   pickedLongitude.value = longitude
   pickHint.value = ''
@@ -350,6 +324,8 @@ async function pickLocation(latitude: number, longitude: number) {
   locationResolving.value = true
   locationLookupController?.abort()
   locationLookupController = new AbortController()
+  const controller = locationLookupController
+  const deadline = setTimeout(() => controller.abort(), 8_000)
 
   const lookupSequence = ++locationLookupSequence
   try {
@@ -372,9 +348,10 @@ async function pickLocation(latitude: number, longitude: number) {
   } catch (requestError) {
     if (lookupSequence === locationLookupSequence) {
       pickedRegionId.value = undefined
-      locationError.value = ''
+      locationError.value = t('location.addressUnavailable')
     }
   } finally {
+    clearTimeout(deadline)
     if (lookupSequence === locationLookupSequence) {
       locationResolving.value = false
     }
@@ -396,7 +373,8 @@ function focusFood(food: Food) {
 
 // 回到地图默认视角：清空选中与选点状态，地图回全国范围（保留地区筛选与列表结果）。
 function resetMapView() {
-  geolocationSequence += 1
+  cancelLocationLookup()
+  stopGeolocation()
   geolocationLoading.value = false
   geolocationLocated.value = false
   geolocationErrorKey.value = ''
@@ -444,14 +422,10 @@ async function openUpload() {
     return
   }
 
-  // 必须先在地图上选点，避免带着默认坐标创建菜品。
-  if (pickedLatitude.value == null || pickedLongitude.value == null) {
-    pickHint.value = t('home.pickCoordinateFirst')
-    return
-  }
-
-  // 地区识别只用于补充地址，不创建地区，也不阻止坐标上传。
-
+  // Location services are optional. Freeze enrichment before opening so a late
+  // address response cannot overwrite user edits or an in-flight submission.
+  stopGeolocation()
+  cancelLocationLookup()
   pickHint.value = ''
   uploadOpen.value = true
 }
@@ -478,6 +452,12 @@ function locateFromDock() {
 function uploadFromDock() {
   actionsOpen.value = false
   void openUpload()
+}
+
+function chooseUploadLocation(focus?: MapFocus) {
+  uploadOpen.value = false
+  pickHint.value = t('home.pickCoordinateFirst')
+  if (focus) mapFocus.value = focus
 }
 
 function closeActions(event: PointerEvent) {
@@ -548,6 +528,7 @@ function fallbackToOriginal(event: Event, original?: string) {
       <span v-else-if="geolocationErrorKey" class="error">
         {{ t(geolocationErrorKey) }}
         <button type="button" @click="locateUser">{{ t('home.retryLocation') }}</button>
+        <button type="button" @click="openUpload">{{ t('location.manualEntry') }}</button>
       </span>
       <span v-else-if="locationError" class="error">{{ locationError }}</span>
       <span v-else-if="pickedLatitude !== undefined">
@@ -718,5 +699,6 @@ function fallbackToOriginal(event: Event, original?: string) {
     :city="pickedCity"
     @close="uploadOpen = false"
     @saved="handleSaved"
+    @pick-on-map="chooseUploadLocation"
   />
 </template>
