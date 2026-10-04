@@ -638,12 +638,12 @@ export async function sendRegistrationCode(payload: SendRegistrationCodePayload)
   await api.post('/auth/registration-code', payload, { timeout: 30_000 })
 }
 
-export async function sendPasswordResetCode(payload: SendPasswordResetCodePayload): Promise<void> {
-  await api.post('/auth/password-reset-code', payload, { timeout: 30_000 })
+export async function sendPasswordResetCode(payload: SendPasswordResetCodePayload, signal?: AbortSignal): Promise<void> {
+  await api.post('/auth/password-reset-code', payload, { timeout: 30_000, signal })
 }
 
-export async function resetPassword(payload: PasswordResetPayload): Promise<void> {
-  await api.post('/auth/password-reset', payload)
+export async function resetPassword(payload: PasswordResetPayload, signal?: AbortSignal): Promise<void> {
+  await api.post('/auth/password-reset', payload, { signal })
 }
 export async function getCurrentUser(): Promise<AuthUser> {
   const response = await api.get<AuthUser>('/auth/me')

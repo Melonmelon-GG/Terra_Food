@@ -16,6 +16,7 @@ const auth = useAuth()
 const mode = computed(() => route.path === '/register' ? 'register' : 'login')
 const busy = ref(false)
 const error = ref('')
+const resetSucceeded = ref(false)
 const sendingCode = ref(false)
 const codeCooldown = ref(0)
 const captcha = ref<CaptchaChallenge>()
@@ -31,12 +32,20 @@ const registerForm = reactive<RegisterPayload & { confirmPassword: string }>({
 })
 
 function clearSecrets() {
+  resetSucceeded.value = false
   loginForm.password = ''
   registerForm.password = ''
   registerForm.confirmPassword = ''
   registerForm.verificationCode = ''
   captchaAnswer.value = ''
   error.value = ''
+}
+
+function handlePasswordReset(username: string) {
+  loginForm.username = username
+  loginForm.password = ''
+  error.value = ''
+  resetSucceeded.value = true
 }
 
 async function loadCaptcha() {
@@ -123,10 +132,11 @@ onUnmounted(() => window.clearInterval(timer))
           <label>{{ t('login.username') }}<input v-model.trim="loginForm.username" autocomplete="username" required autofocus></label>
           <label>{{ t('login.password') }}<input v-model="loginForm.password" type="password" autocomplete="current-password" required></label>
           <p v-if="route.query.registered === '1'" class="form-success">{{ t('login.registrationSuccess') }}</p>
+          <p v-if="resetSucceeded" class="form-success" role="status">{{ t('login.resetSuccess') }}</p>
           <p v-if="error" class="form-error" role="alert">{{ error }}</p>
           <button class="login-submit" :disabled="busy">{{ busy ? t('login.loggingIn') : t('login.submit') }}</button>
         </form>
-        <PasswordResetForm v-if="!auth.currentUser.value" @reset="(username) => loginForm.username = username" />
+        <PasswordResetForm v-if="!auth.currentUser.value" @reset="handlePasswordReset" />
       </div>
 
       <form v-else class="login-form register-compact-form" @submit.prevent="submitRegister">
