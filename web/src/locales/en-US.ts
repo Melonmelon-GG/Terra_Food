@@ -453,7 +453,7 @@ export default {
     resetCodeSent: 'Code sent. Complete the password reset within 10 minutes.',
     resetCodeError: 'Unable to send the code. Check your username and email and try again.',
     newPassword: 'New password',
-    resetPasswordHint: '8–16 characters, letters and numbers only, with at least one of each.',
+    resetPasswordHint: '8–16 characters using only A–Z, a–z and 0–9, with at least one letter and one digit. Spaces, symbols and full-width characters are not allowed.',
     confirmNewPassword: 'Confirm new password',
     resetPasswordMismatch: 'The two new passwords do not match.',
     resetError: 'Unable to reset the password. Check the code and form details.',
