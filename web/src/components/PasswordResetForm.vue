@@ -41,6 +41,12 @@ const cooldownTimer = window.setInterval(() => {
   for (const [key, until] of cooldowns) if (until <= now.value) cooldowns.delete(key)
 }, 1000)
 
+function setCooldown(key: string, seconds: number) {
+  const startedAt = Date.now()
+  now.value = startedAt
+  cooldowns.set(key, startedAt + seconds * 1000)
+}
+
 function invalidate() {
   generation++
   controller?.abort()
@@ -112,19 +118,19 @@ async function requestCode() {
   error.value = ''
   codeSent.value = false
   // Aborting a client request cannot undo mail already sent by the server.
-  cooldowns.set(key, Date.now() + 60_000)
+  setCooldown(key, 60)
   try {
     await sendPasswordResetCode(payload, controller.signal)
     if (!current(id)) return
     codeSent.value = true
-    cooldowns.set(key, Date.now() + 60_000)
+    setCooldown(key, 60)
   } catch (cause) {
     if (!current(id)) return
     const status = axios.isAxiosError(cause) ? cause.response?.status : undefined
     if (status && status < 500 && status !== 429) cooldowns.delete(key)
     if (status === 429 && axios.isAxiosError(cause)) {
       const seconds = Number(cause.response?.headers['retry-after'])
-      if (Number.isFinite(seconds) && seconds > 0) cooldowns.set(key, Date.now() + Math.min(seconds, 3600) * 1000)
+      if (Number.isFinite(seconds) && seconds > 0) setCooldown(key, Math.min(seconds, 3600))
     }
     error.value = !status || status >= 500 ? t('login.resetCodeUnknown') : serverMessage(cause, 'login.resetCodeError')
   } finally {

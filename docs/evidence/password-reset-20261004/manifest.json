@@ -1,0 +1,75 @@
+{
+  "containers": [
+    {
+      "name": "/terrafood-web",
+      "id": "f74d7df1a9106d41fa59de069840b826dde8a8b67cbb03c8a8f618ac9f056f54",
+      "image": "sha256:e8d38c60ad7dfa8a99a15cf12c90a3ec1951b0e6e4ac27b50f1ab74cb67b063f",
+      "startedAt": "2026-09-25T12:18:23.258688592Z"
+    },
+    {
+      "name": "/terrafood-backend",
+      "id": "8734853fff654aec1ea419f92642aa9977d8b0f695937beb8126e500d46c9704",
+      "image": "sha256:251bff271e7ec54ffac551627cfe929dacf98dc35d3014997e4bbc3d636a210d",
+      "startedAt": "2026-09-25T12:18:23.290515945Z"
+    },
+    {
+      "name": "/tf-reset-20261004-web-1",
+      "id": "61b0eca481294087ac8cfd3fe26d8d17310a1d9ef6ff1dbed592a4b95ea603be",
+      "image": "sha256:bf3201ab56f23e5954646379c775d511fc466e9f11376d9725361064ad07ed35",
+      "startedAt": "2026-10-04T15:35:32.068617252Z"
+    },
+    {
+      "name": "/tf-reset-20261004-backend-1",
+      "id": "d8efcd7000509faef57bb1dbf58b2ecae6ce301f62b445d0f488815aa4fda817",
+      "image": "sha256:7a65df4b22d2de92d4e04056e884f3b9122d70b21e2847fd66084278bd0ce037",
+      "startedAt": "2026-10-04T15:35:31.599595885Z"
+    },
+    {
+      "name": "/tf-reset-20261004-mysql-1",
+      "id": "5a9e3e4c11320f740058033e7f300f87b2342514fc5746cda11e4ac798ef8515",
+      "image": "sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb",
+      "startedAt": "2026-10-04T15:35:21.801549818Z"
+    },
+    {
+      "name": "/tf-reset-20261004-redis-1",
+      "id": "62e2eb156a01f367099b9206571c46dbe825f1fda87fa5b3f2e3cae3d21ba222",
+      "image": "sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf",
+      "startedAt": "2026-10-04T15:35:21.507540539Z"
+    },
+    {
+      "name": "/tf-reset-20261004-mail-1",
+      "id": "0033765e7eeb880f987f6c98f29c081dbf7ed072d80659ac57f7705e559c5609",
+      "image": "sha256:df6c2541907e1be6fac21f509927cf6ed771617a1f4b361ef66d97bd05593d2d",
+      "startedAt": "2026-10-04T15:35:21.040625471Z"
+    }
+  ],
+  "sourceFiles": {
+    "source": {
+      "src/api.ts": "4aec94a8973e8bee22bf59a8d3b9f1614f30ce80dd4c79c2fc73c3be1db5f62e",
+      "src/components/PasswordResetForm.vue": "da36fc35a2acf14336321ad74fcc41bbf172a666cdaf5febf0eca0575899fb3e",
+      "src/views/AuthView.vue": "e57a969fb644c6b9a46195f5ea504935fc8d87e36ef35e81e0f9a4da870211ce",
+      "src/views/LoginView.vue": "741ed412b44de01cec36acd46ffa2ee615d7b2c81c62cdc1e32a00ec520574bb",
+      "src/locales/en-US.ts": "79d1f782b4b64ce227e4fdf5a04acab914a570367ab1f9e279f342ea38159097",
+      "src/locales/zh-CN.ts": "1035b95849c583b4fc9234f59b52b650c1ccde309193e8bf4b38699829f9bf4b",
+      "package-lock.json": "7b379fc885ed75f353a24a7ce496fe6d1f5b7c86ee9d1be095406c2840f3a7a3"
+    },
+    "audit": {
+      "src/api.ts": "011909ea7b804ee4a6a624b0dafa6a899f90932546badbf0bac102522246999d",
+      "src/components/PasswordResetForm.vue": "da36fc35a2acf14336321ad74fcc41bbf172a666cdaf5febf0eca0575899fb3e",
+      "src/views/AuthView.vue": "ae41a82816f954d8370a6d72737dc141d6ce30a13675f0e8c561fa6b9e0d7f2d",
+      "src/views/LoginView.vue": "741ed412b44de01cec36acd46ffa2ee615d7b2c81c62cdc1e32a00ec520574bb",
+      "src/locales/en-US.ts": "fd3d259d49af162a0fdee2998fc9e8e33e918f642b0d895c02039aa9cd6717ed",
+      "src/locales/zh-CN.ts": "b19df1885ba489121aa5f8e22302e544d50cb0aa8a7eb951eef7980a403bef84",
+      "package-lock.json": "7b379fc885ed75f353a24a7ce496fe6d1f5b7c86ee9d1be095406c2840f3a7a3"
+    },
+    "legacy": {
+      "src/api.ts": "4aec94a8973e8bee22bf59a8d3b9f1614f30ce80dd4c79c2fc73c3be1db5f62e",
+      "src/components/PasswordResetForm.vue": "da36fc35a2acf14336321ad74fcc41bbf172a666cdaf5febf0eca0575899fb3e",
+      "src/views/AuthView.vue": "e57a969fb644c6b9a46195f5ea504935fc8d87e36ef35e81e0f9a4da870211ce",
+      "src/views/LoginView.vue": "741ed412b44de01cec36acd46ffa2ee615d7b2c81c62cdc1e32a00ec520574bb",
+      "src/locales/en-US.ts": "79d1f782b4b64ce227e4fdf5a04acab914a570367ab1f9e279f342ea38159097",
+      "src/locales/zh-CN.ts": "1035b95849c583b4fc9234f59b52b650c1ccde309193e8bf4b38699829f9bf4b",
+      "package-lock.json": "7b379fc885ed75f353a24a7ce496fe6d1f5b7c86ee9d1be095406c2840f3a7a3"
+    }
+  }
+}

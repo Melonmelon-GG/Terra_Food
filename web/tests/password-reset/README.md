@@ -24,6 +24,8 @@ tests at the existing deployment. No production SMTP or account is used.
    unique account through the normal registration API. Its 31-second wait tests the
    deliberately shortened **30-second** code lifetime configured only in this stack.
    These settings are not deployment recommendations.
+   `RESET_CASE=identity-change-and-cooldown-reopen` selects the cooldown regression
+   alone. An unmatched filter fails instead of reporting a zero-test success.
 4. For legacy compatibility, in a separate test copy route `/login` to `LoginView`
    instead of `AuthView`, build, serve on loopback and run the same smoke suite.
    Do not commit this temporary route change. Also build/test the audit branch after
