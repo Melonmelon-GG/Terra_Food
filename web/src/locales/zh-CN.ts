@@ -440,7 +440,7 @@ export default {
     resetCodeSent: '验证码已发送，请在 10 分钟内完成密码重置。',
     resetCodeError: '验证码发送失败，请检查用户名和邮箱后重试。',
     newPassword: '新密码',
-    resetPasswordHint: '8-16位，由字母和数字组成，且需同时包含字母与数字。',
+    resetPasswordHint: '8–16 位，仅半角英文字母（A–Z、a–z）和数字（0–9），至少各包含一个；不接受空格、符号或全角字符。',
     confirmNewPassword: '确认新密码',
     resetPasswordMismatch: '两次输入的新密码不一致。',
     resetError: '密码重置失败，请检查验证码和填写内容。',

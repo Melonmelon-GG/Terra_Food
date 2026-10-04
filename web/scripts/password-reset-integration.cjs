@@ -71,7 +71,13 @@ fs.mkdirSync(output, { recursive: true });
     await page.locator('.form-success').waitFor();
     assert.equal(await login(newPassword), 200); assert.equal(await login(oldPassword), 401);
     results.push({ case: 'real-browser-reset-new-login-old-rejected', status: 'PASS' });
-    assert.equal((await post(api, 'password-reset', { username, email, verificationCode: code, newPassword: oldPassword })).status(), 400);
+    // Use a fresh anonymous session: resetting the password may invalidate the
+    // previously authenticated context before verification-code validation runs.
+    stage = 'consumed-code-replay';
+    const replay = await request.newContext({ baseURL: base });
+    try {
+      assert.equal((await post(replay, 'password-reset', { username, email, verificationCode: code, newPassword: oldPassword })).status(), 400);
+    } finally { await replay.dispose(); }
     assert.equal(await login(newPassword), 200);
     results.push({ case: 'consumed-code-rejected-password-unchanged', status: 'PASS' });
     const oldSessionStatus = (await api.get('/api/auth/me')).status();
