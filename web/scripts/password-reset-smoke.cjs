@@ -41,6 +41,7 @@ fs.mkdirSync(output, { recursive: true });
     return { context, page, form, input, calls, pending, ready, fill, errors, send: form.locator('button[type=button]'), submit: form.locator('.login-submit') };
   }
   async function test(name, options, body) {
+    if (process.env.RESET_CASE && !name.includes(process.env.RESET_CASE)) return;
     const x = await setup(options);
     try { await body(x); assert.deepEqual(x.errors, []); results.push({ name, status: 'PASS' }); }
     catch (e) { results.push({ name, status: 'FAIL', error: e.message }); }
@@ -50,7 +51,11 @@ fs.mkdirSync(output, { recursive: true });
     await x.input('username').fill('reset@example.test'); await x.send.click();
     assert.equal(await x.page.evaluate(() => document.activeElement.name), 'username'); assert.equal(x.calls.length, 0);
     assert.match(await x.form.innerText(), /不是邮箱或昵称/);
-    await x.input('username').fill('reset_test'); await x.fill();
+    await x.input('username').fill('reset_test');
+    assert.equal(await x.input('username').getAttribute('aria-invalid'), 'false');
+    await x.input('email').fill('not-an-email'); await x.send.click();
+    assert.equal(await x.page.evaluate(() => document.activeElement.name), 'email'); assert.equal(x.calls.length, 0);
+    await x.input('email').fill('reset@example.test'); await x.fill();
     for (const password of ['Abc1234', 'Abc12345678901234', 'Abc1234!', '１２３４Ａｂｃｄ', '12345678', 'abcdefgh', ' Valid12']) {
       await x.fill(password); await x.submit.click(); assert.equal(x.calls.length, 0);
       assert.equal(await x.input('newPassword').getAttribute('aria-invalid'), 'true');
@@ -76,6 +81,8 @@ fs.mkdirSync(output, { recursive: true });
   }
   await test('identity-change-and-cooldown-reopen', {}, async x => {
     await x.send.click(); await x.form.locator('.verification-code-status').waitFor(); await x.fill();
+    const remaining = Number((await x.send.innerText()).match(/[0-9]+/)[0]);
+    assert(remaining > 0 && remaining <= 60, 'cooldown must not briefly show 61 seconds');
     await x.input('email').fill('other@example.test');
     assert.equal(await x.form.locator('.verification-code-status').count(), 0); assert.equal(await x.input('verificationCode').inputValue(), ''); assert.equal(await x.send.isDisabled(), false);
     await x.input('email').fill('reset@example.test'); assert(await x.send.isDisabled());
@@ -118,11 +125,13 @@ fs.mkdirSync(output, { recursive: true });
     assert.match(await x.form.locator('.form-error').innerText(), /验证码已失效/); assert.equal(await x.input('username').isDisabled(), false);
   });
   await test('unmount-drops-late-response', { delay: 'send' }, async x => {
-    await x.send.click(); await x.ready(); await x.page.goto(base + '/register'); x.pending.shift()(204);
-    await x.page.goto(base + '/login?role=ADMIN'); await x.page.locator('.password-reset-toggle').click();
+    await x.send.click(); await x.ready();
+    await x.page.locator('.auth-mode-tabs a[href="/register"]').click();
+    await x.form.waitFor({ state: 'detached' }); x.pending.shift()(204);
+    await x.page.goBack(); await x.page.locator('.password-reset-toggle').click();
     assert.equal(await x.input('verificationCode').inputValue(), ''); assert.equal(await x.form.locator('.verification-code-status').count(), 0);
   });
   await browser.close();
   fs.writeFileSync(output + '/browser.json', JSON.stringify({ base, results, apiMode: 'deterministic interception' }, null, 2));
-  console.log(JSON.stringify(results)); if (results.some(x => x.status !== 'PASS')) process.exitCode = 1;
+  console.log(JSON.stringify(results)); if (!results.length || results.some(x => x.status !== 'PASS')) process.exitCode = 1;
 })().catch(e => { console.error(e); process.exit(1); });

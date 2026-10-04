@@ -1,0 +1,15 @@
+{
+  "containers": "",
+  "volumes": "",
+  "networks": "",
+  "/terrafood-web": {
+    "id": "f74d7df1a9106d41fa59de069840b826dde8a8b67cbb03c8a8f618ac9f056f54",
+    "startedAt": "2026-09-25T12:18:23.258688592Z",
+    "unchanged": true
+  },
+  "/terrafood-backend": {
+    "id": "8734853fff654aec1ea419f92642aa9977d8b0f695937beb8126e500d46c9704",
+    "startedAt": "2026-09-25T12:18:23.290515945Z",
+    "unchanged": true
+  }
+}

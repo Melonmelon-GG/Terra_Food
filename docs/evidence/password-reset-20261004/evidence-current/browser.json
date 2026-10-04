@@ -1,0 +1,54 @@
+{
+  "base": "http://127.0.0.1:18481",
+  "results": [
+    {
+      "name": "validation-boundaries-and-focus",
+      "status": "PASS"
+    },
+    {
+      "name": "success-390-zh-CN",
+      "status": "PASS"
+    },
+    {
+      "name": "success-1366-en-US",
+      "status": "PASS"
+    },
+    {
+      "name": "identity-change-and-cooldown-reopen",
+      "status": "PASS"
+    },
+    {
+      "name": "late-send-204",
+      "status": "PASS"
+    },
+    {
+      "name": "late-send-400",
+      "status": "PASS"
+    },
+    {
+      "name": "cancel-send-reopen",
+      "status": "PASS"
+    },
+    {
+      "name": "frozen-reset-and-double-submit",
+      "status": "PASS"
+    },
+    {
+      "name": "cancel-reset-is-uncertain",
+      "status": "PASS"
+    },
+    {
+      "name": "reset-timeout-no-retry",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit-error-keeps-editable-form",
+      "status": "PASS"
+    },
+    {
+      "name": "unmount-drops-late-response",
+      "status": "PASS"
+    }
+  ],
+  "apiMode": "deterministic interception"
+}

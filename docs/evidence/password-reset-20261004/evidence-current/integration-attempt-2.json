@@ -1,0 +1,28 @@
+{
+  "mode": "real isolated MySQL/Redis/SMTP/browser",
+  "expirySeconds": 30,
+  "results": [
+    {
+      "case": "signup-real-mail-and-login",
+      "status": "PASS"
+    },
+    {
+      "case": "expired-code-no-password-change",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong-code-no-password-change",
+      "status": "PASS"
+    },
+    {
+      "case": "real-browser-reset-new-login-old-rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "integration",
+      "stage": "browser-submit-reset",
+      "status": "FAIL",
+      "error": "Expected values to be strictly equal:\n\n403 !== 400\n"
+    }
+  ]
+}

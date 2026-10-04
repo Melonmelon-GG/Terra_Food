@@ -1,0 +1,19 @@
+{
+  "mode": "real isolated MySQL/Redis/SMTP/browser",
+  "expirySeconds": 30,
+  "results": [
+    {
+      "case": "signup-real-mail-and-login",
+      "status": "PASS"
+    },
+    {
+      "case": "expired-code-no-password-change",
+      "status": "PASS"
+    },
+    {
+      "case": "integration",
+      "status": "FAIL",
+      "error": "TimeoutError"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "mode": "real isolated MySQL/Redis/SMTP/browser",
+  "expirySeconds": 30,
+  "results": [
+    {
+      "case": "signup-real-mail-and-login",
+      "status": "PASS"
+    },
+    {
+      "case": "expired-code-no-password-change",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong-code-no-password-change",
+      "status": "PASS"
+    },
+    {
+      "case": "real-browser-reset-new-login-old-rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "consumed-code-rejected-password-unchanged",
+      "status": "PASS"
+    },
+    {
+      "case": "old-session-observation",
+      "status": "PASS",
+      "httpStatus": 401
+    }
+  ]
+}
