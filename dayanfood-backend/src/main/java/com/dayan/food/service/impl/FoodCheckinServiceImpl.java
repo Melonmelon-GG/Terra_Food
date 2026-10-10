@@ -41,9 +41,10 @@ public class FoodCheckinServiceImpl implements FoodCheckinService {
     }
     @Override @Transactional
     public FoodCheckinVO create(Long foodId, FoodCheckinCreateDTO request, String username, String idempotencyKey) {
+        // The first database read locks the stable actor: no stale RR snapshot before admission.
+        var user = com.dayan.food.security.AuthenticatedActor.resolveForUpdate(users, username);
         var food = foods.findById(foodId);
         if (food == null || food.getReviewStatus() != com.dayan.food.entity.enums.FoodReviewStatus.APPROVED) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "美食不存在");
-        var user = users.findByUsername(username); if (user == null || !user.isActive()) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         String timezone = timezone(request.normalizedTimezone());
         if (request.eatenOn().isAfter(LocalDate.now(ZoneId.of(timezone)))) throw new IllegalArgumentException("打卡日期不能晚于今天");
         String note = request.note() == null ? null : request.note().trim();
@@ -51,16 +52,15 @@ public class FoodCheckinServiceImpl implements FoodCheckinService {
         String key = normalizeKey(idempotencyKey);
         String hash = requestHash(foodId, request.eatenOn(), note, visibility, timezone);
         if (key != null) {
-            users.findByUsernameForUpdate(username);
             String existingHash = mapper.findIdempotentHash(user.getId(), key);
             if (existingHash != null && !existingHash.equals(hash)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "同一幂等标识不能用于不同的打卡内容");
             }
             if (existingHash != null) {
                 Long resultId = mapper.findIdempotentResult(user.getId(), key, hash);
-                var existing = resultId == null ? null : mapper.findOwned(resultId, user.getId());
+                var existing = resultId == null ? null : mapper.findOwnedForUpdate(resultId, user.getId());
                 if (existing != null) return FoodCheckinVO.from(existing);
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "前一次打卡仍在处理中，请稍后重试");
+                throw new ResponseStatusException(HttpStatus.GONE, "原打卡已删除，此提交标识不能再次发布；请开始新的打卡");
             }
             mapper.deleteExpiredIdempotency(user.getId(), key);
             mapper.insertIdempotency(user.getId(), key, hash);
@@ -138,7 +138,7 @@ public class FoodCheckinServiceImpl implements FoodCheckinService {
     }
 
     private com.dayan.food.entity.po.AppUser requireUser(String username) {
-        var user = users.findByUsername(username);
+        var user = com.dayan.food.security.AuthenticatedActor.resolve(users, username);
         if (user == null || !user.isActive()) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         return user;
     }

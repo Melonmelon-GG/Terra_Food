@@ -1,0 +1,18 @@
+{
+  "maintenanceDryRun": "PASS",
+  "missingDirectoryNonzero": "PASS",
+  "authenticatedBackup": "PASS",
+  "isolatedDatabaseRestore": "PASS",
+  "restoredApplicationBoot": "PASS",
+  "tableCounts": {
+    "app_user": 25,
+    "food": 12,
+    "food_checkin": 1,
+    "image_asset": 4,
+    "flyway_schema_history": 31
+  },
+  "originalFilesVerified": 4,
+  "limitations": [
+    "Synthetic audit data only; no live backup or off-host retention installed."
+  ]
+}

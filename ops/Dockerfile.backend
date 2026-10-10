@@ -1,0 +1,17 @@
+FROM maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 AS build
+WORKDIR /source
+COPY dayanfood-backend/pom.xml .
+COPY dayanfood-backend/src ./src
+ARG MAVEN_OPTS
+RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package
+
+FROM eclipse-temurin:21-jre@sha256:7a65df4b22d2de92d4e04056e884f3b9122d70b21e2847fd66084278bd0ce037
+ARG SOURCE_REVISION=unknown
+LABEL org.opencontainers.image.revision=$SOURCE_REVISION
+ENV SOURCE_REVISION=$SOURCE_REVISION
+RUN groupadd --gid 10001 terra && useradd --uid 10001 --gid terra --create-home terra \
+    && mkdir -p /data/uploads && chown terra:terra /data/uploads
+WORKDIR /app
+COPY --from=build /source/target/dayanfood-backend-*.jar app.jar
+USER 10001:10001
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

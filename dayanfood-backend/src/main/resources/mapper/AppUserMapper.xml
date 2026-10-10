@@ -76,6 +76,14 @@
         FOR UPDATE
     </select>
 
+    <select id="findByIdForUpdate" resultMap="appUserResultMap">
+        SELECT <include refid="userColumns"/> FROM app_user WHERE id = #{id} FOR UPDATE
+    </select>
+
+    <update id="updateAvatarById">
+        UPDATE app_user SET avatar_url = #{avatarUrl} WHERE id = #{id} AND active = TRUE
+    </update>
+
     <!-- 公开页读侧：userColumns 之外的敏感列（如 password）不进入查询与内存。 -->
     <select id="findPublicById" resultMap="appUserResultMap">
         SELECT id, subject_id, username, display_name, avatar_url, signature, active, auth_version

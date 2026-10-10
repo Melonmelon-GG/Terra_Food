@@ -58,8 +58,12 @@ const api = axios.create({
 // 由 main.ts 注册的会话失效回调：统一清空登录态并跳转登录页，
 // 保持 api.ts 与 auth/router 解耦，避免循环依赖。
 type RevisionedRequest = { __sessionRevision?: number }
+type SessionSnapshot = { revision: number; userId?: number; confirmed: boolean }
 let onUnauthorized: ((requestRevision?: number) => void) | undefined
 let readSessionRevision: () => number = () => 0
+let readSessionSnapshot: () => SessionSnapshot = () => ({ revision: 0, confirmed: true })
+let csrfRequest: { revision: number; promise: Promise<{ token: string; headerName: string }> } | undefined
+export function registerSessionSnapshotProvider(provider: () => SessionSnapshot): void { readSessionSnapshot = provider }
 
 export function registerUnauthorizedHandler(handler: (requestRevision?: number) => void): void {
   onUnauthorized = handler
@@ -69,20 +73,34 @@ export function registerSessionRevisionProvider(provider: () => number): void {
   readSessionRevision = provider
 }
 
-api.interceptors.request.use((config) => {
-  ;(config as typeof config & RevisionedRequest).__sessionRevision = readSessionRevision()
+api.interceptors.request.use(async (config) => {
+  const snapshot = readSessionSnapshot()
+  ;(config as typeof config & RevisionedRequest).__sessionRevision = snapshot.revision
   const method = (config.method || 'get').toLowerCase()
   if (!['post', 'put', 'patch', 'delete'].includes(method)) return config
-  return api.get<{ token: string; headerName: string }>('/auth/csrf').then(({ data }) => {
-    config.headers.set(data.headerName, data.token)
-    return config
-  })
+  // Authentication endpoints establish a session; private writes must retain the
+  // caller's identity across token acquisition and cross-tab cookie changes.
+  const publicAuthWrite = /^\/auth\/(login|register|password-reset|registration-code|password-reset-code)(\/|$)/.test(config.url || '')
+  if (!publicAuthWrite && !snapshot.confirmed) throw new axios.CanceledError('Session confirmation pending')
+  if (!csrfRequest || csrfRequest.revision !== snapshot.revision) {
+    const promise = api.get<{ token: string; headerName: string }>('/auth/csrf').then(({ data }) => data)
+    csrfRequest = { revision: snapshot.revision, promise }
+    void promise.catch(() => { if (csrfRequest?.promise === promise) csrfRequest = undefined })
+  }
+  const data = await csrfRequest.promise
+  const current = readSessionSnapshot()
+  if (current.revision !== snapshot.revision || current.userId !== snapshot.userId
+      || (!publicAuthWrite && !current.confirmed)) throw new axios.CanceledError('Session changed before request')
+  config.headers.set(data.headerName, data.token)
+  if (!publicAuthWrite && snapshot.userId != null) config.headers.set('X-Expected-User-Id', String(snapshot.userId))
+  return config
 })
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
+    if (axios.isAxiosError(error) && [401, 403].includes(error.response?.status || 0)) csrfRequest = undefined
+    if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.data?.code === 'IDENTITY_CHANGED')) {
       const requestUrl = error.config?.url ?? ''
       // /auth/me 的 401 由 restoreSession 自行处理（静默）；登录失败 401 由登录表单展示，
       // 其余业务请求的 401 才触发统一登出跳转。
@@ -117,8 +135,7 @@ export async function getFoodMapClusters(params: FoodQuery & { zoom: number }, s
 
 export async function getFoodMapClusterMembers(cluster: FoodMapClusterItem, params: FoodQuery, page = 1, signal?: AbortSignal): Promise<PagedCatalog> {
   const response = await api.get<PagedCatalog>(`/foods/map-clusters/${cluster.id}/members`, {
-    params: { ...params, minLatitude: cluster.minLatitude, maxLatitude: cluster.maxLatitude,
-      minLongitude: cluster.minLongitude, maxLongitude: cluster.maxLongitude, page, pageSize: 20 }, signal,
+    params: { ...params, page, pageSize: 20 }, signal,
   })
   return response.data
 }
@@ -441,6 +458,12 @@ export async function getMyProfileStats(): Promise<ProfileStats> {
   return response.data
 }
 
+export async function getMyFoodsPage(page = 1, pageSize = 20): Promise<PagedFoods> {
+  const response = await api.get<PagedFoods>('/foods/mine/page', { params: { page, pageSize } })
+  if (!response.data || !Array.isArray(response.data.items)) throw new Error('Invalid foods page')
+  return response.data
+}
+
 export async function getMyFoods(): Promise<Food[]> {
   const response = await api.get<Food[]>('/profile/foods')
   if (!Array.isArray(response.data)) throw new Error('Invalid list response')
@@ -615,12 +638,12 @@ export async function sendRegistrationCode(payload: SendRegistrationCodePayload)
   await api.post('/auth/registration-code', payload, { timeout: 30_000 })
 }
 
-export async function sendPasswordResetCode(payload: SendPasswordResetCodePayload): Promise<void> {
-  await api.post('/auth/password-reset-code', payload, { timeout: 30_000 })
+export async function sendPasswordResetCode(payload: SendPasswordResetCodePayload, signal?: AbortSignal): Promise<void> {
+  await api.post('/auth/password-reset-code', payload, { timeout: 30_000, signal })
 }
 
-export async function resetPassword(payload: PasswordResetPayload): Promise<void> {
-  await api.post('/auth/password-reset', payload)
+export async function resetPassword(payload: PasswordResetPayload, signal?: AbortSignal): Promise<void> {
+  await api.post('/auth/password-reset', payload, { signal })
 }
 export async function getCurrentUser(): Promise<AuthUser> {
   const response = await api.get<AuthUser>('/auth/me')

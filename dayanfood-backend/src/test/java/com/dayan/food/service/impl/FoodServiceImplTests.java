@@ -42,16 +42,19 @@ class FoodServiceImplTests {
 
     @BeforeEach
     void setUp() {
+        com.dayan.food.support.TestActors.bind(appUserMapper,"reader",1L,com.dayan.food.entity.enums.UserRole.USER);
         service = new FoodServiceImpl(foodMapper, regionMapper, appUserMapper, cacheManager, cacheInvalidator);
     }
 
+    @org.junit.jupiter.api.AfterEach void cleanup(){com.dayan.food.support.TestActors.clear();}
+
     @Test
     void repeatedDailyVisitRefreshesFootprintWithoutIncreasingHeat() {
-        when(foodMapper.insertDailyVisit(7L, "reader")).thenReturn(0);
+        when(foodMapper.insertDailyVisit(7L, 1L)).thenReturn(0);
 
         service.recordVisit(7L, "reader");
 
-        verify(foodMapper).touchDailyVisit(7L, "reader");
+        verify(foodMapper).touchDailyVisit(7L, 1L);
         verify(foodMapper, never()).incrementHeat(7L);
     }
 
@@ -60,7 +63,7 @@ class FoodServiceImplTests {
         var reader = new com.dayan.food.entity.po.AppUser("reader", "unused", "Reader",
                 com.dayan.food.entity.enums.UserRole.USER);
         org.springframework.test.util.ReflectionTestUtils.setField(reader, "id", 1L);
-        when(appUserMapper.findByUsername("reader")).thenReturn(reader);
+
         var result = service.create("Dish", null, java.math.BigDecimal.ONE,
                 java.math.BigDecimal.TEN, "Address", "Summary", "Story", "Ingredients",
                 null, null, "reader");
@@ -76,7 +79,7 @@ class FoodServiceImplTests {
         var reader = new com.dayan.food.entity.po.AppUser("reader", "unused", "Reader",
                 com.dayan.food.entity.enums.UserRole.USER);
         org.springframework.test.util.ReflectionTestUtils.setField(reader, "id", 1L);
-        when(appUserMapper.findByUsername("reader")).thenReturn(reader);
+
         var saved = new com.dayan.food.entity.po.Food("Dish", null,
                 java.math.BigDecimal.ONE, java.math.BigDecimal.TEN, "", "Summary",
                 "Story", "Ingredients", null, null, "reader",
@@ -95,19 +98,19 @@ class FoodServiceImplTests {
 
     @Test
     void firstDailyVisitIncreasesHeatWithoutTouchingExistingFootprint() {
-        when(foodMapper.insertDailyVisit(7L, "reader")).thenReturn(1);
+        when(foodMapper.insertDailyVisit(7L, 1L)).thenReturn(1);
         when(foodMapper.incrementHeat(7L)).thenReturn(1);
         when(cacheManager.getCache("foodDetails")).thenReturn(detailCache);
 
         service.recordVisit(7L, "reader");
 
         verify(foodMapper).incrementHeat(7L);
-        verify(foodMapper, never()).touchDailyVisit(7L, "reader");
+        verify(foodMapper, never()).touchDailyVisit(7L, 1L);
     }
 
     @Test
     void recordVisitEvictsOnlyDetailCacheNotListCache() {
-        when(foodMapper.insertDailyVisit(7L, "reader")).thenReturn(1);
+        when(foodMapper.insertDailyVisit(7L, 1L)).thenReturn(1);
         when(foodMapper.incrementHeat(7L)).thenReturn(1);
         when(cacheManager.getCache("foodDetails")).thenReturn(detailCache);
 
@@ -120,12 +123,12 @@ class FoodServiceImplTests {
 
     @Test
     void recommendationNormalizesLocationAndCapsLimit() {
-        when(foodMapper.findAgentRecommendations("reader", "四川", "成都", true, 10))
+        when(foodMapper.findAgentRecommendations(1L, "四川", "成都", true, 10))
                 .thenReturn(List.of());
 
         service.recommend("reader", " 四川 ", " 成都 ", true, 99);
 
-        verify(foodMapper).findAgentRecommendations("reader", "四川", "成都", true, 10);
+        verify(foodMapper).findAgentRecommendations(1L, "四川", "成都", true, 10);
     }
 
     @Test

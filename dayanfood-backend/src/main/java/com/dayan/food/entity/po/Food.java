@@ -50,6 +50,8 @@ public class Food {
 
     private Long createdByUserId;
 
+    private String ownershipStatus;
+
     private LocalDateTime createdAt;
 
     public Food(
@@ -93,6 +95,7 @@ public class Food {
         }
         this.createdBy = createdBy;
         this.createdByUserId = createdByUserId;
+        this.ownershipStatus = "VERIFIED";
         this.createdAt = LocalDateTime.now();
     }
 }

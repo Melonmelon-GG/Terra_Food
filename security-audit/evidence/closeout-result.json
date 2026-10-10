@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "liveDeploymentUnchanged": true,
+  "ownedContainerVolumeNetworkResiduals": {
+    "container": "",
+    "volume": "",
+    "network": ""
+  },
+  "privateCredentialTextFilesChecked": 482,
+  "applicationComponentsUnchanged": 349,
+  "retained": "Private run logs, source and recovery drill artifacts remain under the owned run directory; shared build caches and live data untouched."
+}

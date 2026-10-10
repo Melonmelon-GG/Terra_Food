@@ -11,7 +11,8 @@
     "test:archive": "node scripts/archive-redesign-smoke.cjs",
     "test:food-edit-review": "node scripts/food-edit-review-smoke.cjs",
     "test:collections": "node scripts/collection-etching-smoke.cjs",
-    "test:home-actions": "node scripts/home-action-dock-smoke.cjs"
+    "test:home-actions": "node scripts/home-action-dock-smoke.cjs",
+    "test:audit": "node scripts/audit-remediation-smoke.cjs"
   },
   "dependencies": {
     "axios": "^1.8.4",

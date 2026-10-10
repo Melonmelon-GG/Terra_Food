@@ -20,7 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AchievementServiceImplTests {
+class AchievementServiceImplTests extends com.dayan.food.security.ActorTestSupport {
 
     @Mock
     private AchievementMapper achievementMapper;
@@ -30,7 +30,6 @@ class AchievementServiceImplTests {
     @Mock
     private EtchingDesignMapper etchingDesignMapper;
 
-    @Mock
     private AppUser user;
 
     @Mock
@@ -40,13 +39,14 @@ class AchievementServiceImplTests {
 
     @BeforeEach
     void setUp() {
+        user = new AppUser("reader", "encoded", "reader", com.dayan.food.entity.enums.UserRole.USER);
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "id", 7L);
+        actor(appUserMapper, "reader", user);
         service = new AchievementServiceImpl(achievementMapper, appUserMapper, etchingDesignMapper);
     }
 
     @Test
     void awardFirstLoginUnlocksConfiguredAchievementForUser() {
-        when(appUserMapper.findByUsername("reader")).thenReturn(user);
-        when(user.getId()).thenReturn(7L);
         when(achievementMapper.findByCode("FIRST_LOGIN")).thenReturn(achievement);
         when(achievement.getId()).thenReturn(3L);
 
@@ -57,8 +57,9 @@ class AchievementServiceImplTests {
 
     @Test
     void listUnnotifiedReturnsPublicAchievementView() {
+        when(achievementMapper.findByCode("FIRST_LOGIN")).thenReturn(achievement);
         LocalDateTime unlockedAt = LocalDateTime.of(2026, 8, 25, 20, 0);
-        when(achievementMapper.findUnnotifiedByUsername("reader")).thenReturn(List.of(achievement));
+        when(achievementMapper.findUnnotifiedByUserId(7L)).thenReturn(List.of(achievement));
         when(achievement.getId()).thenReturn(3L);
         when(achievement.getCode()).thenReturn("FIRST_LOGIN");
         when(achievement.getName()).thenReturn("初入炎境");

@@ -10,6 +10,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 public interface FoodMapper {
+    List<Food> findMinePage(@Param("userId") Long userId,@Param("offset") int offset,@Param("limit") int limit);
+    int countMine(@Param("userId") Long userId);
+    List<Food> findClusterMembers(java.util.Map<String,Object> query);
+    int countClusterMembers(java.util.Map<String,Object> query);
+    List<Food> findApprovedByIds(@Param("ids") List<Long> ids);
+
 
     int updateLocationLabels(@Param("id") Long id,
             @Param("province") String province, @Param("city") String city);
@@ -162,14 +168,14 @@ public interface FoodMapper {
             @Param("address") String address
     );
 
-    int insertDailyVisit(@Param("foodId") Long foodId, @Param("username") String username);
+    int insertDailyVisit(@Param("foodId") Long foodId, @Param("userId") Long userId);
 
-    int touchDailyVisit(@Param("foodId") Long foodId, @Param("username") String username);
+    int touchDailyVisit(@Param("foodId") Long foodId, @Param("userId") Long userId);
 
-    List<FoodFootprint> findRecentVisits(@Param("username") String username, @Param("limit") int limit);
+    List<FoodFootprint> findRecentVisits(@Param("userId") Long userId, @Param("limit") int limit);
 
     List<Food> findAgentRecommendations(
-            @Param("username") String username,
+            @Param("userId") Long userId,
             @Param("province") String province,
             @Param("city") String city,
             @Param("personalized") boolean personalized,

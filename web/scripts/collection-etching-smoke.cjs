@@ -16,6 +16,8 @@ const base = process.env.SHARE_TEST_URL || 'http://127.0.0.1:5173'
   await page.route('**/api/**',async route=>{
    const p=new URL(route.request().url()).pathname, method=route.request().method()
    if(p==='/api/auth/me')return route.fulfill({json:user})
+   if(p==='/api/auth/csrf')return route.fulfill({json:{token:'test-token',headerName:'X-CSRF-TOKEN'}})
+   if(p==='/api/foods/mine/page')return route.fulfill({json:{items:[],total:0,page:1,pageSize:20}})
    if(p==='/api/profile/favorites/page' || p==='/api/profile/wishlist/page' || p==='/api/profile/check-ins' || p.endsWith('/comments/page'))return route.fulfill({json:{items:[],total:0,page:1,pageSize:20}})
    if(p==='/api/foods/1'){oldStarted();await oldResponse;return route.fulfill({json:dish(1)})}
    if(/^\/api\/foods\/\d+$/.test(p))return route.fulfill({json:dish(Number(p.split('/').pop()))})

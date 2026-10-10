@@ -1,0 +1,52 @@
+
+> dayan-food-web@0.1.0 build
+> vue-tsc -b && vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 225 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                      1.38 kB │ gzip:   0.87 kB
+dist/assets/LandmarkBackdrop-Bos9byBc.css            0.25 kB │ gzip:   0.20 kB
+dist/assets/HexEtching-BwTuSRM0.css                  0.33 kB │ gzip:   0.19 kB
+dist/assets/NotFoundView-CMqDW218.css                0.50 kB │ gzip:   0.27 kB
+dist/assets/AboutView-Br67OyuI.css                   0.85 kB │ gzip:   0.43 kB
+dist/assets/FoodTagPicker-CGl8vR3x.css               0.89 kB │ gzip:   0.33 kB
+dist/assets/AuthView-DB3SSL0q.css                    1.03 kB │ gzip:   0.44 kB
+dist/assets/AchievementToast-CWKBjhTS.css            2.09 kB │ gzip:   0.81 kB
+dist/assets/BackgroundMusic-DZ11De1g.css             2.66 kB │ gzip:   0.88 kB
+dist/assets/EtchingStudio-BxqKl1qt.css               2.87 kB │ gzip:   0.93 kB
+dist/assets/UserPublicView-X5FeTspC.css              3.16 kB │ gzip:   1.04 kB
+dist/assets/FoodShareModal-kwD4JDS-.css              7.33 kB │ gzip:   1.96 kB
+dist/assets/HomeView-CIGW-MKW.css                   15.61 kB │ gzip:   6.46 kB
+dist/assets/archive-JYuZB9qE.css                    29.29 kB │ gzip:   5.37 kB
+dist/assets/index-DEDgpGgH.css                      90.74 kB │ gzip:  19.04 kB
+dist/assets/_plugin-vue_export-helper-DlAUqK2U.js    0.09 kB │ gzip:   0.10 kB
+dist/assets/_commonjsHelpers-CqkleIqs.js             0.12 kB │ gzip:   0.13 kB
+dist/assets/apiError-D38EU2LN.js                     0.53 kB │ gzip:   0.41 kB
+dist/assets/NotFoundView-BXvOjnno.js                 0.70 kB │ gzip:   0.46 kB
+dist/assets/AboutView-CAJ7tt7i.js                    1.20 kB │ gzip:   0.64 kB
+dist/assets/AchievementToast-DdVPJZjc.js             1.25 kB │ gzip:   0.70 kB
+dist/assets/HexEtching-Fo0kv8B6.js                   1.44 kB │ gzip:   0.84 kB
+dist/assets/LandmarkBackdrop-DN6mN7eL.js             2.47 kB │ gzip:   1.08 kB
+dist/assets/FoodTagPicker-B6AfQFx7.js                2.49 kB │ gzip:   1.25 kB
+dist/assets/UserPublicView-Dgs1xDyp.js               3.04 kB │ gzip:   1.37 kB
+dist/assets/EtchingStudio-CqSE-P0l.js                3.26 kB │ gzip:   1.55 kB
+dist/assets/AgentPanel-C8_RzAb3.js                   5.11 kB │ gzip:   2.18 kB
+dist/assets/BackgroundMusic-D25995ge.js              6.30 kB │ gzip:   2.65 kB
+dist/assets/FoodUploadModal-BkAp23ET.js              7.32 kB │ gzip:   2.68 kB
+dist/assets/FoodEditModal-D8UPOKnQ.js               11.02 kB │ gzip:   3.75 kB
+dist/assets/FoodDetailView-Dp-P99KM.js              15.05 kB │ gzip:   5.10 kB
+dist/assets/AuthView-Nu2YmBVZ.js                    15.13 kB │ gzip:   4.65 kB
+dist/assets/AdminView-WORjnfk_.js                   24.44 kB │ gzip:   6.09 kB
+dist/assets/ProfileView-B3aVY_qe.js                 26.36 kB │ gzip:   7.83 kB
+dist/assets/FoodShareModal-BVjvrMC7.js              46.83 kB │ gzip:  18.01 kB
+dist/assets/HomeView-j2jtlJtF.js                   170.85 kB │ gzip:  50.91 kB
+dist/assets/index-DhULqOU2.js                      285.56 kB │ gzip: 103.72 kB
+✓ built in 3.70s
+npm notice
+npm notice New major version of npm available! 10.9.8 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

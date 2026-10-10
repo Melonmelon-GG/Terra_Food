@@ -1,5 +1,7 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.security.AuthenticatedActor;
+
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.entity.po.ProfileStats;
 import com.dayan.food.entity.vo.ProfileStatsVO;
@@ -24,7 +26,7 @@ public class ProfileStatsServiceImpl implements ProfileStatsService {
     @Override
     @Transactional(readOnly = true)
     public ProfileStatsVO getMine(String username) {
-        AppUser user = userMapper.findByUsername(username);
+        AppUser user = AuthenticatedActor.resolve(userMapper, username);
         if (user == null || !user.isActive()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         }

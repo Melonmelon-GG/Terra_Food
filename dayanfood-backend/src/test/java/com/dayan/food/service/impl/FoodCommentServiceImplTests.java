@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class FoodCommentServiceImplTests {
+class FoodCommentServiceImplTests extends com.dayan.food.security.ActorTestSupport {
 
     @Mock
     private FoodCommentMapper foodCommentMapper;
@@ -49,7 +49,7 @@ class FoodCommentServiceImplTests {
     void createTrimsContentAndReturnsPublicAuthorInformation() {
         AppUser author = user();
         when(foodMapper.findById(1L)).thenReturn(food());
-        when(appUserMapper.findByUsername("reader")).thenReturn(author);
+        actor(appUserMapper, "reader", author);
         when(foodCommentMapper.insert(org.mockito.ArgumentMatchers.any(FoodComment.class))).thenReturn(1);
 
         var result = service.create(1L, "  很有地方特色  ", "reader");

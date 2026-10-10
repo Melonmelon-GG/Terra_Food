@@ -11,28 +11,30 @@ export interface DraftImageMeta {
 }
 
 const sessionImages = new Map<string, File>()
+const sessionDrafts = new Map<string, string>()
 
-export function saveDraft(key: string, value: object): void {
+export function saveDraft(key: string, value: object): boolean {
+  const serialized = JSON.stringify(value)
+  if (serialized.length > MAX_DRAFT_LENGTH) return false
+  sessionDrafts.set(key, serialized)
   try {
-    const serialized = JSON.stringify(value)
-    if (serialized.length <= MAX_DRAFT_LENGTH) {
-      localStorage.setItem(DRAFT_PREFIX + key, serialized)
-    }
-  } catch {
-    // 隐私模式或配额不足时静默降级：草稿仅保留在会话内
-  }
+    localStorage.setItem(DRAFT_PREFIX + key, serialized)
+    return true
+  } catch { return false }
 }
 
 export function readDraft<T>(key: string): T | undefined {
   try {
-    const serialized = localStorage.getItem(DRAFT_PREFIX + key)
+    const serialized = sessionDrafts.get(key) ?? localStorage.getItem(DRAFT_PREFIX + key)
     return serialized == null ? undefined : (JSON.parse(serialized) as T)
   } catch {
-    return undefined
+    const serialized = sessionDrafts.get(key)
+    return serialized ? JSON.parse(serialized) as T : undefined
   }
 }
 
 export function clearDraft(key: string): void {
+  sessionDrafts.delete(key)
   try {
     localStorage.removeItem(DRAFT_PREFIX + key)
   } catch {
@@ -53,18 +55,19 @@ export function forgetDraftImage(key: string): void {
 }
 
 export function clearDraftsForUser(userId: number): void {
-  const markers = [`foodUpload.v2.${userId}`, `foodEdit.v2:${userId}:`]
+  const owns = (key: string) => key === `foodUpload.v2.${userId}` || key.startsWith(`foodEdit.v2:${userId}:`)
   try {
     const removals: string[] = []
     for (let index = 0; index < localStorage.length; index++) {
       const storageKey = localStorage.key(index)
-      if (storageKey && markers.some((marker) => storageKey.startsWith(DRAFT_PREFIX + marker))) removals.push(storageKey)
+      if (storageKey && storageKey.startsWith(DRAFT_PREFIX) && owns(storageKey.slice(DRAFT_PREFIX.length))) removals.push(storageKey)
     }
     removals.forEach((key) => localStorage.removeItem(key))
   } catch {
     // Storage-restricted contexts still clear the in-memory File references below.
   }
+  for (const key of sessionDrafts.keys()) { if (owns(key)) sessionDrafts.delete(key) }
   for (const key of sessionImages.keys()) {
-    if (markers.some((marker) => key.startsWith(marker))) sessionImages.delete(key)
+    if (owns(key)) sessionImages.delete(key)
   }
 }

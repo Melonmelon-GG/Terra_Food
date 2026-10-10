@@ -51,6 +51,7 @@ let resizeFrame: number | undefined
 let mountFrame: number | undefined
 let primaryLoadTimer: ReturnType<typeof setTimeout> | undefined
 let tileLoadGeneration = 0
+let memberController: AbortController | undefined
 let activeTileProvider: 'tianditu' | 'osm' = 'tianditu'
 
 const tiandituKey = import.meta.env.VITE_TIANDITU_KEY?.trim()
@@ -91,6 +92,10 @@ function createClusterIcon(count: number) {
 }
 
 function createClusterPopup(item: FoodMapClusterItem) {
+  memberController?.abort()
+  const controller = new AbortController()
+  memberController = controller
+  const filters = { ...props.filters }
   const popup = document.createElement('div')
   popup.className = 'map-popup map-cluster-popup'
 
@@ -108,9 +113,10 @@ function createClusterPopup(item: FoodMapClusterItem) {
   let currentPage = 0
   const load = async () => {
     more.disabled = true
-    const page = await getFoodMapClusterMembers(item, props.filters, currentPage + 1)
+    const page = await getFoodMapClusterMembers(item, filters, currentPage + 1, controller.signal)
+    if (controller.signal.aborted) return
     currentPage = page.page
-    status.remove()
+    status.textContent = ''
     page.items.forEach((food) => {
       const row = document.createElement('li')
       const link = document.createElement('a')
@@ -122,8 +128,9 @@ function createClusterPopup(item: FoodMapClusterItem) {
     more.hidden = list.children.length >= page.total
     more.disabled = false
   }
-  more.addEventListener('click', () => { void load().catch(() => { more.disabled = false }) })
-  void load().catch(() => { status.textContent = t('home.loadError'); more.hidden = true })
+  const failed = () => { if (!controller.signal.aborted) { status.textContent = t('home.loadError'); more.disabled = false; more.hidden = false; more.textContent = t('share.retry') } }
+  more.addEventListener('click', () => { void load().catch(failed) })
+  void load().catch(failed)
   return popup
 }
 
@@ -325,6 +332,7 @@ function initializeMap() {
     }
   })
   map.on('moveend', emitCurrentBounds)
+  map.on('popupclose', () => memberController?.abort())
 
   renderMarkers()
   emitCurrentBounds()
@@ -349,6 +357,7 @@ onMounted(async () => {
   mountFrame = requestAnimationFrame(initializeMap)
 })
 
+watch(() => props.filters, () => { memberController?.abort(); map?.closePopup() }, { deep: true })
 watch(() => props.items, renderMarkers)
 watch(locale, () => {
   renderedMarkers.forEach((entry) => entry.marker.remove())
@@ -372,6 +381,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  memberController?.abort()
   // 主动释放地图事件和 DOM 引用，避免路由往返时重复初始化。
   resizeObserver?.disconnect()
   window.visualViewport?.removeEventListener('resize', invalidateMapSize)

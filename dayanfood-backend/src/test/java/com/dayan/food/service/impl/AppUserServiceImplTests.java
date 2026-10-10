@@ -24,7 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AppUserServiceImplTests {
+class AppUserServiceImplTests extends com.dayan.food.security.ActorTestSupport {
 
     @Mock
     private AppUserMapper appUserMapper;
@@ -49,7 +49,7 @@ class AppUserServiceImplTests {
 
     @Test
     void updateSignatureUpsertsPendingItemWithCurrentValue() {
-        when(appUserMapper.findByUsername("tester")).thenReturn(user(1L, "tester", UserRole.USER));
+        actor(appUserMapper, "tester", user(1L, "tester", UserRole.USER));
 
         service.updateSignature("tester", "  有些滋味，值得反复回味。  ");
 
@@ -58,7 +58,7 @@ class AppUserServiceImplTests {
 
     @Test
     void submitDisplayNameUpsertsPendingItem() {
-        when(appUserMapper.findByUsername("tester")).thenReturn(user(1L, "tester", UserRole.USER));
+        actor(appUserMapper, "tester", user(1L, "tester", UserRole.USER));
 
         service.submitDisplayName("tester", " 小饕 ");
 
@@ -67,7 +67,7 @@ class AppUserServiceImplTests {
 
     @Test
     void approveSignatureAppliesPendingText() {
-        when(appUserMapper.findByUsername("admin")).thenReturn(user(9L, "admin", UserRole.ADMIN));
+        actor(appUserMapper, "admin", user(9L, "admin", UserRole.ADMIN));
         when(appUserMapper.findById(2L)).thenReturn(user(2L, "user", UserRole.USER));
         when(userReviewItemMapper.findPendingByUserAndField(2L, ReviewField.SIGNATURE))
                 .thenReturn(item(5L, ReviewField.SIGNATURE, "", "新签名"));
@@ -82,7 +82,7 @@ class AppUserServiceImplTests {
 
     @Test
     void approveDisplayNameRejectsWhenTakenByAnotherUser() {
-        when(appUserMapper.findByUsername("admin")).thenReturn(user(9L, "admin", UserRole.ADMIN));
+        actor(appUserMapper, "admin", user(9L, "admin", UserRole.ADMIN));
         when(appUserMapper.findById(2L)).thenReturn(user(2L, "user", UserRole.USER));
         when(userReviewItemMapper.findPendingByUserAndField(2L, ReviewField.DISPLAY_NAME))
                 .thenReturn(item(6L, ReviewField.DISPLAY_NAME, "user", "美食家"));
@@ -100,7 +100,7 @@ class AppUserServiceImplTests {
 
     @Test
     void approveDisplayNameAppliesWhenNameIsFree() {
-        when(appUserMapper.findByUsername("admin")).thenReturn(user(9L, "admin", UserRole.ADMIN));
+        actor(appUserMapper, "admin", user(9L, "admin", UserRole.ADMIN));
         when(appUserMapper.findById(2L)).thenReturn(user(2L, "user", UserRole.USER));
         when(userReviewItemMapper.findPendingByUserAndField(2L, ReviewField.DISPLAY_NAME))
                 .thenReturn(item(6L, ReviewField.DISPLAY_NAME, "user", "美食家"));
@@ -115,7 +115,7 @@ class AppUserServiceImplTests {
 
     @Test
     void rejectItemKeepsCurrentValue() {
-        when(appUserMapper.findByUsername("admin")).thenReturn(user(9L, "admin", UserRole.ADMIN));
+        actor(appUserMapper, "admin", user(9L, "admin", UserRole.ADMIN));
         when(appUserMapper.findById(2L)).thenReturn(user(2L, "user", UserRole.USER));
         when(userReviewItemMapper.findPendingByUserAndField(2L, ReviewField.SIGNATURE))
                 .thenReturn(item(5L, ReviewField.SIGNATURE, "旧签名", "新签名"));
@@ -140,7 +140,7 @@ class AppUserServiceImplTests {
 
     @Test
     void reviewItemAlreadyHandledThrows() {
-        when(appUserMapper.findByUsername("admin")).thenReturn(user(9L, "admin", UserRole.ADMIN));
+        actor(appUserMapper, "admin", user(9L, "admin", UserRole.ADMIN));
         when(appUserMapper.findById(2L)).thenReturn(user(2L, "user", UserRole.USER));
         when(userReviewItemMapper.findPendingByUserAndField(2L, ReviewField.SIGNATURE))
                 .thenReturn(item(5L, ReviewField.SIGNATURE, "", "新签名"));
@@ -155,7 +155,7 @@ class AppUserServiceImplTests {
 
     @Test
     void sealReviewNotOpenYet() {
-        when(appUserMapper.findByUsername("admin")).thenReturn(user(9L, "admin", UserRole.ADMIN));
+        actor(appUserMapper, "admin", user(9L, "admin", UserRole.ADMIN));
         when(appUserMapper.findById(2L)).thenReturn(user(2L, "user", UserRole.USER));
         when(userReviewItemMapper.findPendingByUserAndField(2L, ReviewField.SEAL))
                 .thenReturn(item(8L, ReviewField.SEAL, "", "自定义章"));
@@ -170,7 +170,7 @@ class AppUserServiceImplTests {
 
     @Test
     void primaryAdminCanPromoteUserToSubAdmin() {
-        when(appUserMapper.findByUsername("admin")).thenReturn(user(9L, "admin", UserRole.ADMIN));
+        actor(appUserMapper, "admin", user(9L, "admin", UserRole.ADMIN));
         when(appUserMapper.findById(2L)).thenReturn(user(2L, "user", UserRole.USER));
         when(appUserMapper.updateRole(2L, UserRole.SUB_ADMIN)).thenReturn(1);
 
@@ -181,7 +181,7 @@ class AppUserServiceImplTests {
 
     @Test
     void subAdminCannotGrantRoles() {
-        when(appUserMapper.findByUsername("helper")).thenReturn(user(4L, "helper", UserRole.SUB_ADMIN));
+        actor(appUserMapper, "helper", user(4L, "helper", UserRole.SUB_ADMIN));
 
         assertThrows(
                 IllegalArgumentException.class,
@@ -193,7 +193,7 @@ class AppUserServiceImplTests {
 
     @Test
     void subAdminCannotDeletePrimaryAdmin() {
-        when(appUserMapper.findByUsername("helper")).thenReturn(user(4L, "helper", UserRole.SUB_ADMIN));
+        actor(appUserMapper, "helper", user(4L, "helper", UserRole.SUB_ADMIN));
         when(appUserMapper.findById(1L)).thenReturn(user(1L, "admin", UserRole.ADMIN));
 
         assertThrows(IllegalArgumentException.class, () -> service.deleteById(1L, "helper"));
@@ -203,6 +203,7 @@ class AppUserServiceImplTests {
 
     @Test
     void listUsersClampsExtremePageToAvoidOffsetOverflow() {
+        actor(appUserMapper, "admin", user(9L, "admin", UserRole.ADMIN));
         when(appUserMapper.findPage(199_990, 10)).thenReturn(List.of());
 
         service.listUsers(Integer.MAX_VALUE, 10);

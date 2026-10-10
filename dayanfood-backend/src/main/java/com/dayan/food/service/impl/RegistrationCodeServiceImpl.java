@@ -1,6 +1,7 @@
 package com.dayan.food.service.impl;
 
 import com.dayan.food.mapper.AppUserMapper;
+import com.dayan.food.service.AtomicChallengeStore;
 import com.dayan.food.service.CaptchaService;
 import com.dayan.food.service.RegistrationCodeDeliveryException;
 import com.dayan.food.service.RegistrationCodeService;
@@ -16,7 +17,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -28,6 +28,7 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
     private final JavaMailSender mailSender;
     private final StringRedisTemplate redisTemplate;
     private final AppUserMapper appUserMapper;
+    private final AtomicChallengeStore challenges;
     private final CaptchaService captchaService;
     private final String from;
     private final Duration expiration;
@@ -38,6 +39,7 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
             JavaMailSender mailSender,
             StringRedisTemplate redisTemplate,
             AppUserMapper appUserMapper,
+            AtomicChallengeStore challenges,
             CaptchaService captchaService,
             @Value("${app.registration-code.from:}") String from,
             @Value("${app.registration-code.expiration:10m}") Duration expiration,
@@ -47,6 +49,7 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
         this.mailSender = mailSender;
         this.redisTemplate = redisTemplate;
         this.appUserMapper = appUserMapper;
+        this.challenges = challenges;
         this.captchaService = captchaService;
         this.from = from;
         this.expiration = expiration;
@@ -67,15 +70,15 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
         String identity = keyIdentity(normalizedEmail);
         String cooldownKey = KEY_PREFIX + "cooldown:" + identity;
         // 原子冷却键保证并发请求中只有一个请求能够真正触发邮件发送。
-        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(cooldownKey, "1", resendInterval);
+        String cooldownLease = java.util.UUID.randomUUID().toString();
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(cooldownKey, cooldownLease, resendInterval);
         if (!Boolean.TRUE.equals(acquired)) {
             throw new IllegalArgumentException("验证码发送过于频繁，请稍后再试");
         }
 
         String code = "%06d".formatted(SECURE_RANDOM.nextInt(1_000_000));
-        String codeKey = KEY_PREFIX + "code:" + identity;
         // Redis 键不包含明文邮箱，值也只保留验证码摘要，减少缓存泄露时的敏感信息暴露。
-        redisTemplate.opsForValue().set(codeKey, digest(normalizedEmail, code), expiration);
+        String generation = challenges.issue("registration", normalizedEmail, code, expiration);
 
         try {
             if (from.isBlank()) {
@@ -89,7 +92,8 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
                     + expiration.toMinutes() + " 分钟后失效。若非本人操作，请忽略此邮件。");
             mailSender.send(message);
         } catch (MailException | RegistrationCodeDeliveryException exception) {
-            redisTemplate.delete(List.of(codeKey, cooldownKey));
+            challenges.revoke("registration", normalizedEmail, generation);
+            challenges.releaseCooldown(cooldownKey, cooldownLease);
             if (exception instanceof RegistrationCodeDeliveryException deliveryException) {
                 throw deliveryException;
             }
@@ -100,39 +104,13 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
     @Override
     public String verify(String email, String code) {
         String normalizedEmail = normalize(email);
-        String identity = keyIdentity(normalizedEmail);
-        String codeKey = KEY_PREFIX + "code:" + identity;
-        String attemptKey = KEY_PREFIX + "attempt:" + identity;
-        String expectedDigest = redisTemplate.opsForValue().get(codeKey);
-        if (expectedDigest == null) {
-            throw new IllegalArgumentException("验证码已失效，请重新获取");
-        }
-
-        Long attempts = redisTemplate.opsForValue().increment(attemptKey);
-        if (attempts != null && attempts == 1) {
-            redisTemplate.expire(attemptKey, expiration);
-        }
-        if (attempts != null && attempts > maxAttempts) {
-            redisTemplate.delete(List.of(codeKey, attemptKey));
-            throw new IllegalArgumentException("验证码尝试次数过多，请重新获取");
-        }
-
-        byte[] expected = expectedDigest.getBytes(StandardCharsets.UTF_8);
-        byte[] actual = digest(normalizedEmail, code).getBytes(StandardCharsets.UTF_8);
-        // 使用恒定时间比较，避免摘要比较过程泄露有效验证码的前缀信息。
-        if (!MessageDigest.isEqual(expected, actual)) {
-            throw new IllegalArgumentException("邮箱验证码不正确");
-        }
+        challenges.claim("registration", normalizedEmail, code, maxAttempts, true);
         return normalizedEmail;
     }
 
     @Override
     public void consume(String normalizedEmail) {
-        String identity = keyIdentity(normalizedEmail);
-        redisTemplate.delete(List.of(
-                KEY_PREFIX + "code:" + identity,
-                KEY_PREFIX + "attempt:" + identity
-        ));
+        // Already atomically claimed by verify. Never delete a newer generation here.
     }
 
     private String normalize(String email) {
@@ -141,10 +119,6 @@ public class RegistrationCodeServiceImpl implements RegistrationCodeService {
 
     private String keyIdentity(String email) {
         return sha256(email);
-    }
-
-    private String digest(String email, String code) {
-        return sha256(email + ":" + code);
     }
 
     private String sha256(String value) {

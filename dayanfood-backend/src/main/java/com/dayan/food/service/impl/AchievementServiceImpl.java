@@ -6,6 +6,7 @@ import com.dayan.food.mapper.AchievementMapper;
 import com.dayan.food.mapper.AppUserMapper;
 import com.dayan.food.mapper.EtchingDesignMapper;
 import com.dayan.food.service.AchievementService;
+import com.dayan.food.security.AuthenticatedActor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +31,7 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     @Transactional
     public void awardFirstLogin(String username) {
-        var user = appUserMapper.findByUsername(username);
+        var user = AuthenticatedActor.resolveForUpdate(appUserMapper, username);
         Achievement achievement = achievementMapper.findByCode(FIRST_LOGIN_CODE);
         if (user == null || achievement == null) {
             throw new IllegalStateException("首次登录成就配置不存在");
@@ -42,15 +43,18 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     @Transactional(readOnly = true)
     public List<AchievementVO> listUnlocked(String username) {
-        return achievementMapper.findUnlockedByUsername(username).stream()
+        var user = AuthenticatedActor.resolve(appUserMapper, username);
+        return achievementMapper.findUnlockedByUserId(user.getId()).stream()
                 .map(AchievementVO::from)
                 .toList();
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<AchievementVO> listUnnotified(String username) {
-        return achievementMapper.findUnnotifiedByUsername(username).stream()
+        var user = AuthenticatedActor.resolveForUpdate(appUserMapper, username);
+        awardFirstLogin(username);
+        return achievementMapper.findUnnotifiedByUserId(user.getId()).stream()
                 .map(AchievementVO::from)
                 .toList();
     }
@@ -58,13 +62,15 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     @Transactional
     public void markNotified(String username, Long achievementId) {
+        AuthenticatedActor.resolveForUpdate(appUserMapper, username);
         achievementMapper.markNotified(username, achievementId);
     }
 
     @Override
     @Transactional
     public AchievementVO select(String username, Long achievementId) {
-        etchingDesignMapper.clearSelection(username);
+        var actor = AuthenticatedActor.resolveForUpdate(appUserMapper, username);
+        etchingDesignMapper.clearSelection(actor.getId());
         achievementMapper.clearSelection(username);
         if (achievementMapper.select(username, achievementId) != 1) {
             throw new IllegalArgumentException("只能选择已经获得的蚀刻章");

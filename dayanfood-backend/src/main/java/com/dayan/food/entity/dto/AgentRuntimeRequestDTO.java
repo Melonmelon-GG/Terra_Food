@@ -4,6 +4,7 @@ import java.util.List;
 
 public record AgentRuntimeRequestDTO(
         String subjectId,
+        String serviceContext,
         String username,
         String displayName,
         String message,

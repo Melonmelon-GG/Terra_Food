@@ -1,0 +1,98 @@
+services:
+  mysql:
+    image: mysql:8.4
+    cgroup_parent: ${AUDIT_CGROUP:?set isolated cgroup}
+    mem_limit: 768m
+    environment:
+      MYSQL_ROOT_PASSWORD: ${AUDIT_DB_PASSWORD:?set isolated credential}
+      MYSQL_DATABASE: terra_audit_20260922
+      MYSQL_USER: audit_app
+      MYSQL_PASSWORD: ${AUDIT_DB_PASSWORD:?set isolated credential}
+    command: ["--innodb-buffer-pool-size=134217728", "--max-connections=30", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports: ["127.0.0.1:18306:3306"]
+    volumes: ["audit-db:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h127.0.0.1 -uaudit_app -e 'SELECT 1' $$MYSQL_DATABASE"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  redis:
+    image: redis:7-alpine
+    cgroup_parent: ${AUDIT_CGROUP:?set isolated cgroup}
+    mem_limit: 96m
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["127.0.0.1:18379:6379"]
+  mail:
+    image: axllent/mailpit:v1.27.4
+    cgroup_parent: ${AUDIT_CGROUP:?set isolated cgroup}
+    mem_limit: 64m
+    ports: ["127.0.0.1:18325:8025"]
+  backend:
+    build: {context: .., dockerfile: ops/Dockerfile.backend}
+    cgroup_parent: ${AUDIT_CGROUP:?set isolated cgroup}
+    mem_limit: 640m
+    pids_limit: 128
+    security_opt: ["no-new-privileges:${AUDIT_NO_NEW_PRIVILEGES:-true}"]
+    cap_drop: ["ALL"]
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms96m -Xmx384m -XX:+UseSerialGC
+      DB_URL: jdbc:mysql://mysql:3306/terra_audit_20260922?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Shanghai
+      DB_USERNAME: audit_app
+      DB_PASSWORD: ${AUDIT_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ""
+      SESSION_COOKIE_SECURE: "false"
+      INITIAL_ADMIN_ENABLED: "true"
+      INITIAL_ADMIN_USERNAME: audit_admin
+      INITIAL_ADMIN_PASSWORD: ${AUDIT_ADMIN_PASSWORD}
+      MAIL_HOST: mail
+      MAIL_PORT: 1025
+      MAIL_SMTP_AUTH: "false"
+      MAIL_STARTTLS_ENABLED: "false"
+      MAIL_STARTTLS_REQUIRED: "false"
+      MAIL_FROM: audit@example.test
+      UPLOAD_DIRECTORY: /data/uploads
+      UPLOAD_VARIANT_PROCESSING_ENABLED: "true"
+      APP_UPLOAD_DAILY_FILES: "3"
+      AGENT_SERVICE_URL: http://agent-api:8090
+      AGENT_INTERNAL_TOKEN: ${AGENT_INTERNAL_TOKEN}
+      MCP_BACKEND_TOKEN: ${MCP_BACKEND_TOKEN}
+      AGENT_CONTEXT_SECRET: ${AGENT_CONTEXT_SECRET}
+    volumes: ["audit-uploads:/data/uploads"]
+    ports: ["127.0.0.1:18380:8080"]
+    depends_on:
+      mysql: {condition: service_healthy}
+  web:
+    build: {context: .., dockerfile: performance/Dockerfile.web}
+    cgroup_parent: ${AUDIT_CGROUP:?set isolated cgroup}
+    mem_limit: 48m
+    ports: ["127.0.0.1:18381:80"]
+    depends_on: [backend]
+  agent-api:
+    build: ../agent-service
+    cgroup_parent: ${AUDIT_CGROUP:?set isolated cgroup}
+    mem_limit: 160m
+    pids_limit: 64
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:${AUDIT_NO_NEW_PRIVILEGES:-true}"]
+    environment:
+      AGENT_INTERNAL_TOKEN: ${AGENT_INTERNAL_TOKEN}
+      MCP_INTERNAL_TOKEN: ${MCP_INTERNAL_TOKEN}
+      MCP_SERVER_URL: http://agent-mcp:8091/mcp
+    ports: ["127.0.0.1:18390:8090"]
+  agent-mcp:
+    build: ../agent-service
+    command: ["python", "-m", "app.mcp_server"]
+    cgroup_parent: ${AUDIT_CGROUP:?set isolated cgroup}
+    mem_limit: 160m
+    pids_limit: 64
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:${AUDIT_NO_NEW_PRIVILEGES:-true}"]
+    environment:
+      MCP_BACKEND_TOKEN: ${MCP_BACKEND_TOKEN}
+      MCP_INTERNAL_TOKEN: ${MCP_INTERNAL_TOKEN}
+      BACKEND_INTERNAL_URL: http://backend:8080
+    ports: ["127.0.0.1:18391:8091"]
+volumes:
+  audit-db:
+  audit-uploads:

@@ -1,0 +1,112 @@
+{
+  "runId": "aud162135b0e881",
+  "scope": "isolated synthetic HTTP/MySQL/Redis Session/SMTP",
+  "base": "http://127.0.0.1:18381",
+  "project": "terra-audit-20260922",
+  "passed": 8,
+  "failed": 0,
+  "requiredCaseCount": 8,
+  "executedCaseCount": 8,
+  "cases": [
+    {
+      "caseId": "PREFLIGHT-01",
+      "status": "PASS",
+      "seconds": 0.998,
+      "evidence": {
+        "anonymousMe": 401,
+        "schemaV28": true,
+        "database": "terra_audit_20260922"
+      }
+    },
+    {
+      "caseId": "AUTH-01",
+      "status": "PASS",
+      "seconds": 0.929,
+      "evidence": {
+        "oldCookieStatuses": [
+          401,
+          401,
+          401
+        ],
+        "replacementEdit": 404,
+        "ownerNullRows": 1
+      }
+    },
+    {
+      "caseId": "AUTH-02-RESET",
+      "status": "PASS",
+      "seconds": 0.703,
+      "evidence": {
+        "concurrentResetStatuses": [
+          400,
+          204
+        ],
+        "authVersionDelta": 1,
+        "oldSessionsRejected": 2,
+        "newPasswordLogin": 200
+      }
+    },
+    {
+      "caseId": "AUTH-02-RECOVER",
+      "status": "PASS",
+      "seconds": 0.38,
+      "evidence": {
+        "heldOldSession": 401,
+        "authVersionDelta": 2,
+        "freshLogin": 200
+      }
+    },
+    {
+      "caseId": "AUTH-03",
+      "status": "PASS",
+      "seconds": 0.214,
+      "evidence": {
+        "status": 409,
+        "reviewRowsDelta": 0,
+        "currentSessionIntact": true
+      }
+    },
+    {
+      "caseId": "UPLOAD-QUOTA",
+      "status": "PASS",
+      "seconds": 0.969,
+      "evidence": {
+        "invalidStatus": 400,
+        "parallelStatuses": [
+          429,
+          201,
+          201
+        ],
+        "databaseAssetCount": 3,
+        "newOriginalFiles": 3
+      }
+    },
+    {
+      "caseId": "UPLOAD-ROLLBACK",
+      "status": "PASS",
+      "seconds": 0.681,
+      "evidence": {
+        "faultStatus": 500,
+        "metadataDeltaDuringFailure": 0,
+        "fileDeltaDuringFailure": 0,
+        "recovery": 201,
+        "fixture": "transient isolated SQL trigger"
+      }
+    },
+    {
+      "caseId": "CAPTCHA-BUDGET",
+      "status": "PASS",
+      "seconds": 0.207,
+      "evidence": {
+        "issuedBeforeRejection": 10,
+        "rejectedStatus": 429,
+        "retryAfterPresent": true
+      }
+    }
+  ],
+  "limitations": [
+    "In-flight filter-to-service interleaving is covered separately; AUTH-01 tests old Cookies across account replacement.",
+    "Captcha arithmetic is intentionally solved in the isolated test; this is not evidence of bot resistance.",
+    "No real deployment or production data was tested."
+  ]
+}

@@ -30,6 +30,9 @@ public class WishlistServiceImpl implements WishlistService {
     private static final Set<String> STOP_WORDS =
             Set.of("想吃", "想尝", "尝尝", "一道", "当地", "特色", "菜品", "美食", "的", "菜");
 
+    @org.springframework.beans.factory.annotation.Autowired(required=false) private com.dayan.food.cache.DiscoveryVersion versions;
+    private final java.util.Map<String,MatchEntry> matchCache=new java.util.LinkedHashMap<>(256,0.75f,true);
+    private record MatchEntry(long expires,List<WishlistMatchVO> matches){}
     private final WishlistMapper wishlistMapper;
     private final AppUserMapper appUserMapper;
     private final FoodMapper foodMapper;
@@ -45,24 +48,20 @@ public class WishlistServiceImpl implements WishlistService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<WishlistItemVO> list(String username) {
         AppUser user = requireUser(username);
-        return wishlistMapper.findByUserId(user.getId()).stream()
-                .map(this::toVO)
-                .toList();
+        // Compatibility endpoint has a fixed budget; clients needing more use /page.
+        return convertPage(wishlistMapper.findPageByUserId(user.getId(),0,50));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public WishlistPageVO page(String username, int page, int pageSize) {
         AppUser user = requireUser(username);
         int size = Math.min(Math.max(pageSize, 1), 50);
         int total = wishlistMapper.countByUserId(user.getId());
         int pages = Math.max(1, (int) Math.ceil((double) total / size));
         int normalizedPage = Math.min(Math.max(page, 1), pages);
-        var items = wishlistMapper.findPageByUserId(user.getId(), (normalizedPage - 1) * size, size)
-                .stream().map(this::toVO).toList();
+        var items = convertPage(wishlistMapper.findPageByUserId(user.getId(), (normalizedPage - 1) * size, size));
         return new WishlistPageVO(items, total, normalizedPage, size);
     }
 
@@ -108,25 +107,36 @@ public class WishlistServiceImpl implements WishlistService {
         }
     }
 
+    private List<WishlistItemVO> convertPage(List<WishlistItem> items){
+        var ids=items.stream().map(WishlistItem::getSourceFoodId).filter(java.util.Objects::nonNull).distinct().toList();
+        var direct=ids.isEmpty()?java.util.Map.<Long,FoodVO>of():foodMapper.findApprovedByIds(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(com.dayan.food.entity.po.Food::getId,FoodVO::from));
+        return items.stream().map(item -> item.getSourceFoodId()==null ? toVO(item) : toVO(item,
+                direct.containsKey(item.getSourceFoodId()) ? List.of(new WishlistMatchVO(direct.get(item.getSourceFoodId()),1000,List.of("DIRECT"))) : List.of())).toList();
+    }
     private WishlistItemVO toVO(WishlistItem item) {
-        if (item.getSourceFoodId() != null) {
-            var direct = foodMapper.findById(item.getSourceFoodId());
-            List<WishlistMatchVO> matches = direct == null ? List.of()
-                    : List.of(new WishlistMatchVO(FoodVO.from(direct), 1000, List.of("DIRECT")));
-            return toVO(item, matches);
+        if(item.getSourceFoodId()!=null)return convertPage(List.of(item)).getFirst();
+        Set<String> itemTokens=tokens(item.getContent());
+        if(itemTokens.isEmpty())return toVO(item,List.of());
+        // Do not acquire a second connection while a write owns the actor row.
+        boolean useCache=versions!=null&&!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive();
+        long version=useCache?versions.current():0;
+        String key=item.getUserId()+":"+item.getId()+":"+version+":"+item.getNormalizedContent();
+        if(useCache){synchronized(matchCache){var hit=matchCache.get(key);if(hit!=null&&hit.expires()>System.nanoTime())return toVO(item,hit.matches());}}
+        String wish=compact(item.getContent());
+        var best=new java.util.ArrayList<WishlistMatchVO>(MAX_MATCHES+1);
+        Comparator<WishlistMatchVO> ordering=Comparator.comparingInt(WishlistMatchVO::score).reversed()
+                .thenComparing(match->match.food().id(),Comparator.reverseOrder());
+        for(var row:foodMapper.findMatchingCandidates(itemTokens.stream().limit(8).toList(),MAX_CANDIDATES)){
+            var match=score(wish,itemTokens,FoodVO.from(row));
+            if(match.score()<8)continue;best.add(match);best.sort(ordering);if(best.size()>MAX_MATCHES)best.removeLast();
         }
-        Set<String> itemTokens = tokens(item.getContent());
-        List<FoodVO> candidates = foodMapper.findMatchingCandidates(
-                        itemTokens.stream().limit(8).toList(), MAX_CANDIDATES)
-                .stream().map(FoodVO::from).toList();
-        List<WishlistMatchVO> matches = candidates.stream()
-                .map(food -> score(item, itemTokens, food))
-                .filter(match -> match.score() >= 8)
-                .sorted(Comparator.comparingInt(WishlistMatchVO::score).reversed()
-                        .thenComparing(match -> match.food().id(), Comparator.reverseOrder()))
-                .limit(MAX_MATCHES)
-                .toList();
-        return toVO(item, matches);
+        var matches=List.copyOf(best);
+        if(useCache&&versions.current()!=version)throw new ResponseStatusException(HttpStatus.CONFLICT,"公开数据已变化，请刷新想吃清单");
+        if(useCache){synchronized(matchCache){
+            matchCache.put(key,new MatchEntry(System.nanoTime()+java.util.concurrent.TimeUnit.MINUTES.toNanos(5),matches));
+            while(matchCache.size()>256)matchCache.remove(matchCache.keySet().iterator().next());}}
+        return toVO(item,matches);
     }
 
     private WishlistItemVO toVO(WishlistItem item, List<WishlistMatchVO> matches) {
@@ -139,15 +149,14 @@ public class WishlistServiceImpl implements WishlistService {
         );
     }
 
-    private WishlistMatchVO score(WishlistItem item, Set<String> itemTokens, FoodVO food) {
-        String wish = compact(item.getContent());
+    private WishlistMatchVO score(String wish, Set<String> itemTokens, FoodVO food) {
         String name = compact(food.name());
         String ingredients = compact(food.ingredients());
         String summary = compact(food.summary());
         String story = compact(food.story());
         String address = compact(food.address());
         String region = compact(food.region().province() + food.region().name());
-        int score = item.getSourceFoodId() != null && item.getSourceFoodId().equals(food.id()) ? 1000 : 0;
+        int score = 0;
         Set<String> fields = new LinkedHashSet<>();
         if (wish.equals(name)) {
             score += 120;
@@ -201,7 +210,7 @@ public class WishlistServiceImpl implements WishlistService {
     }
 
     private AppUser requireUser(String username) {
-        AppUser user = appUserMapper.findByUsername(username);
+        AppUser user = com.dayan.food.security.AuthenticatedActor.resolve(appUserMapper,username);
         if (user == null || !user.isActive()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         }

@@ -12,10 +12,10 @@
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
     <sql id="columns">d.id, d.user_id, d.name, d.layer_one_json, d.layer_two_json, d.selected, d.created_at, d.updated_at</sql>
-    <select id="findByUsername" resultMap="etchingResultMap">
+    <select id="findByUserId" resultMap="etchingResultMap">
         SELECT <include refid="columns"/> FROM user_etching_design d
         INNER JOIN app_user u ON u.id = d.user_id
-        WHERE u.username = #{username}
+        WHERE d.user_id = #{userId}
         ORDER BY d.selected DESC, d.updated_at DESC, d.id DESC
     </select>
     <select id="findSelectedByUserId" resultMap="etchingResultMap">
@@ -25,11 +25,11 @@
     <select id="findOwnedById" resultMap="etchingResultMap">
         SELECT <include refid="columns"/> FROM user_etching_design d
         INNER JOIN app_user u ON u.id = d.user_id
-        WHERE d.id = #{id} AND u.username = #{username}
+        WHERE d.id = #{id} AND d.user_id = #{userId}
     </select>
-    <select id="countByUsername" resultType="int">
+    <select id="countByUserId" resultType="int">
         SELECT COUNT(*) FROM user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
-        WHERE u.username = #{username}
+        WHERE d.user_id = #{userId}
     </select>
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO user_etching_design (user_id, name, layer_one_json, layer_two_json, selected, created_at, updated_at)
@@ -38,18 +38,18 @@
     <update id="updateOwned">
         UPDATE user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
         SET d.name = #{name}, d.layer_one_json = #{layerOneJson}
-        WHERE d.id = #{id} AND u.username = #{username}
+        WHERE d.id = #{id} AND d.user_id = #{userId}
     </update>
     <delete id="deleteOwned">
         DELETE d FROM user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
-        WHERE d.id = #{id} AND u.username = #{username}
+        WHERE d.id = #{id} AND d.user_id = #{userId}
     </delete>
     <update id="clearSelection">
         UPDATE user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
-        SET d.selected = FALSE WHERE u.username = #{username} AND d.selected = TRUE
+        SET d.selected = FALSE WHERE d.user_id = #{userId} AND d.selected = TRUE
     </update>
     <update id="selectOwned">
         UPDATE user_etching_design d INNER JOIN app_user u ON u.id = d.user_id
-        SET d.selected = TRUE WHERE d.id = #{id} AND u.username = #{username}
+        SET d.selected = TRUE WHERE d.id = #{id} AND d.user_id = #{userId}
     </update>
 </mapper>

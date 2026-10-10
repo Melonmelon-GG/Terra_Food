@@ -53,9 +53,9 @@ function localDateInputValue(date = new Date()) {
 const checkinDate = ref(localDateInputValue())
 const checkinVisibility = ref<'PUBLIC' | 'PRIVATE'>('PUBLIC')
 const checkinIdempotencyKey = ref(crypto.randomUUID())
-watch([checkinDate, checkinVisibility, commentContent], () => {
+watch([checkinDate, checkinVisibility, commentContent, checkinMode], () => {
   if (checkinMode.value && !submittingComment.value) checkinIdempotencyKey.value = crypto.randomUUID()
-})
+}, { flush: 'sync' })
 const error = ref('')
 const commentError = ref('')
 const commentsLoading = ref(false)
@@ -105,6 +105,7 @@ async function loadComments(foodIdValue: number, append = false) {
 }
 
 async function submitComment() {
+  if (submittingComment.value) return
   const content = commentContent.value.trim()
   if (!content) {
     commentError.value = t('detail.commentRequired')
@@ -132,20 +133,25 @@ async function submitComment() {
 
 async function submitCheckin() {
   if (!currentUser.value || submittingComment.value) return
+  const expectedFoodId = Number(route.params.id)
+  const expectedUserId = currentUser.value.id
+  const revision = auth.getSessionRevision()
+  const signal = foodLoadController?.signal
+  const stillCurrent = () => !signal?.aborted && revision === auth.getSessionRevision() && Number(route.params.id) === expectedFoodId && currentUser.value?.id === expectedUserId
+  const payload = { eatenOn: checkinDate.value, note: commentContent.value.trim() || undefined, visibility: checkinVisibility.value, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai' }
+  const key = checkinIdempotencyKey.value
   submittingComment.value = true
   commentError.value = ''
   try {
-    const expectedFoodId = Number(route.params.id)
-    const expectedUserId = currentUser.value.id
-    await createFoodCheckin(expectedFoodId, { eatenOn: checkinDate.value, note: commentContent.value.trim() || undefined, visibility: checkinVisibility.value, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai' }, checkinIdempotencyKey.value)
-    if (Number(route.params.id) !== expectedFoodId || currentUser.value?.id !== expectedUserId) return
+    await createFoodCheckin(expectedFoodId, payload, key)
+    if (!stillCurrent()) return
     commentContent.value = ''
     checkinMode.value = false
     checkinIdempotencyKey.value = crypto.randomUUID()
-    await loadComments(Number(route.params.id))
+    await loadComments(expectedFoodId)
   } catch (requestError) {
-    commentError.value = apiErrorMessage(requestError, '打卡保存失败，请稍后重试。')
-  } finally { submittingComment.value = false }
+    if (stillCurrent()) commentError.value = apiErrorMessage(requestError, t('audit.checkinSaveError'))
+  } finally { if (stillCurrent()) submittingComment.value = false }
 }
 
 function handleAgentCommentPublished(event: Event) {
@@ -423,17 +429,18 @@ onBeforeUnmount(() => {
         </div>
         <div>
           <div class="comment-mode-switch">
-            <button type="button" :class="{ active: !checkinMode }" @click="checkinMode = false">{{ t('detail.commentMode') }}</button>
-            <button type="button" :class="{ active: checkinMode }" @click="checkinMode = true">{{ t('detail.checkinMode') }}</button>
+            <button type="button" :disabled="submittingComment" :class="{ active: !checkinMode }" @click="checkinMode = false">{{ t('detail.commentMode') }}</button>
+            <button type="button" :disabled="submittingComment" :class="{ active: checkinMode }" @click="checkinMode = true">{{ t('detail.checkinMode') }}</button>
           </div>
           <label for="food-comment">{{ checkinMode ? t('detail.checkinAs', { name: currentUser.displayName }) : t('detail.commentAs', { name: currentUser.displayName }) }}</label>
           <div v-if="checkinMode" class="checkin-options">
-            <label>{{ t('detail.checkinDate') }} <input v-model="checkinDate" type="date" :max="localDateInputValue()" required></label>
-            <label>{{ t('detail.checkinVisibility') }} <select v-model="checkinVisibility"><option value="PUBLIC">{{ t('detail.checkinPublic') }}</option><option value="PRIVATE">{{ t('detail.checkinPrivate') }}</option></select></label>
+            <label>{{ t('detail.checkinDate') }} <input :disabled="submittingComment" v-model="checkinDate" type="date" :max="localDateInputValue()" required></label>
+            <label>{{ t('detail.checkinVisibility') }} <select :disabled="submittingComment" v-model="checkinVisibility"><option value="PUBLIC">{{ t('detail.checkinPublic') }}</option><option value="PRIVATE">{{ t('detail.checkinPrivate') }}</option></select></label>
           </div>
           <textarea
             id="food-comment"
             v-model="commentContent"
+            :disabled="submittingComment"
             maxlength="500"
             :placeholder="t('detail.commentPlaceholder')"
             :required="!checkinMode"

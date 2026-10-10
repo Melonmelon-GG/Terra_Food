@@ -1,0 +1,122 @@
+{
+  "source": "https://api.osv.dev/v1/querybatch",
+  "checked": 349,
+  "required": 349,
+  "findings": [
+    {
+      "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.4",
+      "advisories": [
+        {
+          "id": "GHSA-5gvw-p9qm-jgwh",
+          "modified": "2026-09-10T03:51:10.658074Z"
+        },
+        {
+          "id": "GHSA-5jmj-h7xm-6q6v",
+          "modified": "2026-09-10T03:51:08.069993Z"
+        },
+        {
+          "id": "GHSA-mhm7-754m-9p8w",
+          "modified": "2026-09-10T03:50:52.852212Z"
+        }
+      ]
+    },
+    {
+      "purl": "pkg:maven/io.netty/netty-handler@4.1.135.Final",
+      "advisories": [
+        {
+          "id": "GHSA-c4c3-7fpv-j4q5",
+          "modified": "2026-09-08T18:27:48.571082Z"
+        },
+        {
+          "id": "GHSA-fccg-mwvh-qqg4",
+          "modified": "2026-09-08T18:27:48.113951Z"
+        }
+      ]
+    },
+    {
+      "purl": "pkg:maven/io.netty/netty-codec@4.1.135.Final",
+      "advisories": [
+        {
+          "id": "GHSA-558v-64gr-wgg4",
+          "modified": "2026-09-10T03:50:12.358146Z"
+        }
+      ]
+    },
+    {
+      "purl": "pkg:maven/org.apache.commons/commons-lang3@3.17.0",
+      "advisories": [
+        {
+          "id": "GHSA-j288-q9x7-2f5v",
+          "modified": "2026-09-10T03:50:26.176912Z"
+        }
+      ]
+    },
+    {
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-api@2.24.3",
+      "advisories": [
+        {
+          "id": "GHSA-qv9r-c865-cp47",
+          "modified": "2026-09-10T03:50:52.972700Z"
+        }
+      ]
+    },
+    {
+      "purl": "pkg:pypi/pip@25.0.1",
+      "advisories": [
+        {
+          "id": "GHSA-4xh5-x5gv-qwph",
+          "modified": "2026-09-10T03:50:27.949321Z"
+        },
+        {
+          "id": "GHSA-58qw-9mgm-455v",
+          "modified": "2026-09-10T03:50:42.838011Z"
+        },
+        {
+          "id": "GHSA-6vgw-5pg2-w6jp",
+          "modified": "2026-09-10T03:50:34.266257Z"
+        },
+        {
+          "id": "GHSA-jp4c-xjxw-mgf9",
+          "modified": "2026-09-10T03:50:44.656580Z"
+        },
+        {
+          "id": "GHSA-qwm4-qh6w-59xr",
+          "modified": "2026-09-10T03:50:52.923367Z"
+        },
+        {
+          "id": "GHSA-wf93-45jw-7689",
+          "modified": "2026-09-10T03:51:09.636289Z"
+        },
+        {
+          "id": "PYSEC-2026-1795",
+          "modified": "2026-07-07T17:48:06.199964Z"
+        },
+        {
+          "id": "PYSEC-2026-1796",
+          "modified": "2026-07-07T17:48:06.240646Z"
+        },
+        {
+          "id": "PYSEC-2026-196",
+          "modified": "2026-07-13T16:45:04.859457Z"
+        },
+        {
+          "id": "PYSEC-2026-2875",
+          "modified": "2026-07-13T16:31:33.455648Z"
+        },
+        {
+          "id": "PYSEC-2026-2876",
+          "modified": "2026-07-13T16:32:57.447552Z"
+        },
+        {
+          "id": "PYSEC-2026-3721",
+          "modified": "2026-09-10T11:15:08.939447Z"
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Package matching is not exploitability analysis.",
+    "OS packages and Java entries without resolvable Maven coordinates require separate review."
+  ]
+}

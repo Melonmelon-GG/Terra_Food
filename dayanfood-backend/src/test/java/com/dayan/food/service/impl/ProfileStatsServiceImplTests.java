@@ -13,7 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-class ProfileStatsServiceImplTests {
+class ProfileStatsServiceImplTests extends com.dayan.food.security.ActorTestSupport {
     private final AppUserMapper users = mock(AppUserMapper.class);
     private final ProfileStatsMapper stats = mock(ProfileStatsMapper.class);
     private final ProfileStatsServiceImpl service = new ProfileStatsServiceImpl(users, stats);
@@ -23,7 +23,7 @@ class ProfileStatsServiceImplTests {
         AppUser user = mock(AppUser.class);
         when(user.isActive()).thenReturn(true);
         when(user.getId()).thenReturn(42L);
-        when(users.findByUsername("explorer")).thenReturn(user);
+        actor(users, "explorer", user);
         ProfileStats counts = new ProfileStats();
         counts.setViewedFoodCount(1234);
         counts.setFavoriteCount(87);
@@ -45,7 +45,7 @@ class ProfileStatsServiceImplTests {
 
     @Test
     void disabledUserCannotReadStatistics() {
-        when(users.findByUsername("disabled")).thenReturn(mock(AppUser.class));
+        actor(users, "disabled", mock(AppUser.class));
         var error = assertThrows(ResponseStatusException.class, () -> service.getMine("disabled"));
         assertEquals(401, error.getStatusCode().value());
         verifyNoInteractions(stats);

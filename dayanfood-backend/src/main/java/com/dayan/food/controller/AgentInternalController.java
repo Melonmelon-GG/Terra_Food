@@ -21,26 +21,38 @@ public class AgentInternalController {
 
     private final FoodService foodService;
     private final String internalToken;
+    private final com.dayan.food.security.AgentServiceContext contexts;
 
     public AgentInternalController(
             FoodService foodService,
-            @Value("${app.agent.internal-token:}") String internalToken
+            @Value("${app.agent.mcp-backend-token:}") String internalToken,
+            com.dayan.food.security.AgentServiceContext contexts
     ) {
         this.foodService = foodService;
         this.internalToken = internalToken;
+        this.contexts = contexts;
     }
 
     @GetMapping("/recommendations")
     public List<FoodVO> recommendations(
-            @RequestHeader("X-Agent-Internal-Token") String token,
-            @RequestParam String username,
+            @RequestHeader("X-MCP-Backend-Token") String token,
+            @RequestParam String subjectId,
+            @RequestParam String context,
             @RequestParam(required = false) String province,
             @RequestParam(required = false) String city,
             @RequestParam(defaultValue = "false") boolean personalized,
             @RequestParam(defaultValue = "5") int limit
     ) {
         requireInternalToken(token);
-        return foodService.recommend(username, province, city, personalized, limit);
+        var user=contexts.verify(context,subjectId);
+        var previous=org.springframework.security.core.context.SecurityContextHolder.getContext();
+        var delegated=org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
+        var principal=com.dayan.food.security.AppUserPrincipal.from(user);
+        delegated.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(principal,null,principal.getAuthorities()));
+        try {
+            org.springframework.security.core.context.SecurityContextHolder.setContext(delegated);
+            return foodService.recommend(user.getUsername(), province, city, personalized, limit);
+        } finally { org.springframework.security.core.context.SecurityContextHolder.setContext(previous); }
     }
 
     private void requireInternalToken(String providedToken) {

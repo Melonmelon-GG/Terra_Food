@@ -5,6 +5,7 @@ import com.dayan.food.entity.vo.FoodTagPageVO;
 import com.dayan.food.entity.dto.FoodTagAdminUpdateDTO;
 import java.util.List;
 public interface FoodTagService {
+    List<Long> canonicalIds(List<Long> ids);
     List<FoodTagVO> list(String type, String keyword);
     FoodTagVO create(FoodTagCreateDTO request, String username);
     List<FoodTagVO> forFood(Long foodId, String username);

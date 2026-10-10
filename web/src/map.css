@@ -184,7 +184,10 @@
 
 .map-loading {
   position: absolute;
-  inset: 0;
+  top: 12px;
+  right: 12px;
+  max-width: min(320px, calc(100% - 72px));
+  pointer-events: none;
   z-index: 600;
   display: grid;
   place-content: center;
@@ -200,6 +203,7 @@
 }
 
 .map-loading button {
+  pointer-events: auto;
   min-height: 42px;
   padding: 8px 18px;
   color: #fff;

@@ -5,14 +5,11 @@ import json
 import secrets
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from langchain.agents import create_agent
-from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain_milvus import Milvus
-from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
@@ -20,15 +17,15 @@ from .config import settings
 
 
 app = FastAPI(title="Terra Food Agent", version="0.1.0")
-_memory_store: Milvus | None = None
-_memory_lock = asyncio.Lock()
 _agent_slots = asyncio.Semaphore(4)
 _active_subjects: set[str] = set()
 _active_subjects_lock = asyncio.Lock()
+_waiting_count = 0
 
 
 class ChatRequest(BaseModel):
     subjectId: str = Field(min_length=36, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
+    serviceContext: str = Field(min_length=32, max_length=512)
     username: str = Field(min_length=1, max_length=50)
     displayName: str = Field(min_length=1, max_length=50)
     message: str = Field(min_length=1, max_length=1000)
@@ -65,60 +62,10 @@ def require_internal_token(x_agent_internal_token: str = Header(default="")) -> 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="invalid internal token")
 
 
-async def get_memory_store() -> Milvus | None:
-    global _memory_store
-    if _memory_store is not None:
-        return _memory_store
-    async with _memory_lock:
-        if _memory_store is None:
-            try:
-                embeddings = FastEmbedEmbeddings(
-                    model_name=settings.embedding_model,
-                    cache_dir="/home/terra/.cache/fastembed",
-                )
-                _memory_store = Milvus(
-                    embedding_function=embeddings,
-                    connection_args={"uri": settings.milvus_uri},
-                    collection_name=settings.memory_collection,
-                    auto_id=True,
-                    enable_dynamic_field=True,
-                    index_params={"index_type": "AUTOINDEX", "metric_type": "COSINE"},
-                )
-            except Exception:
-                # Milvus暂不可用时对话仍可继续，只是不读取长期记忆。
-                return None
-    return _memory_store
-
-
+# Long-term memory is deliberately isolated until deletion fencing is verified.
+# No model initialization, external read, or late background write occurs in chat.
 async def recall_memories(subject_id: str, query: str) -> str:
-    store = await get_memory_store()
-    if store is None:
-        return "暂无可用的长期对话记忆。"
-    safe_subject = subject_id.replace("\\", "\\\\").replace("'", "\\'")
-    try:
-        documents = await asyncio.to_thread(
-            store.similarity_search,
-            query,
-            4,
-            expr=f"subject_id == '{safe_subject}'",
-        )
-    except Exception:
-        return "长期记忆暂时不可用。"
-    return "\n".join(f"- {document.page_content}" for document in documents) or "暂无相关记忆。"
-
-
-async def remember_exchange(subject_id: str, user_message: str, reply: str) -> None:
-    store = await get_memory_store()
-    if store is None:
-        return
-    document = Document(
-        page_content=f"用户：{user_message}\n余：{reply}",
-        metadata={"subject_id": subject_id, "kind": "conversation"},
-    )
-    try:
-        await asyncio.to_thread(store.add_documents, [document])
-    except Exception:
-        pass
+    return "长期记忆未启用，本次对话不会被保存为长期记忆。"
 
 
 def message_text(message: AIMessage) -> str:
@@ -232,24 +179,36 @@ async def build_tools(request: ChatRequest):
         }}
     )
     raw_tools = {item.name: item for item in await client.get_tools()}
+    tool_count = 0
+
+    def count_tool():
+        nonlocal tool_count
+        tool_count += 1
+        if tool_count > 6:
+            raise ValueError("tool call budget exhausted")
+
+    async def invoke(name: str, arguments: dict[str, Any]):
+        count_tool()
+        return await asyncio.wait_for(raw_tools[name].ainvoke(arguments), timeout=10.0)
 
     @tool
     async def recommend_local_foods(province: str = "", city: str = "", limit: int = 5) -> Any:
         """按用户指定的省份或城市，依据点击热度推荐当地菜。"""
-        return await raw_tools["recommend_local_foods"].ainvoke(
-            {"username": request.username, "province": province, "city": city, "limit": limit}
+        return await invoke("recommend_local_foods",
+            {"subject_id": request.subjectId, "context": request.serviceContext, "province": province, "city": city, "limit": limit}
         )
 
     @tool
     async def recommend_from_recent_history(province: str = "", city: str = "", limit: int = 5) -> Any:
         """依据当前用户最近30天足迹与热度推荐尚未浏览的菜。"""
-        return await raw_tools["recommend_from_recent_history"].ainvoke(
-            {"username": request.username, "province": province, "city": city, "limit": limit}
+        return await invoke("recommend_from_recent_history",
+            {"subject_id": request.subjectId, "context": request.serviceContext, "province": province, "city": city, "limit": limit}
         )
 
     @tool
     async def prepare_food_comment(content: str) -> Any:
         """为当前菜品生成可由用户一键发布的评论草稿；此工具不会直接发布评论。"""
+        count_tool()
         if request.currentFoodId is None or not request.currentFoodName:
             return {"prepared": False, "reason": "请先打开要评论的菜品详情页"}
         normalized_content = content.strip()
@@ -269,7 +228,7 @@ async def build_tools(request: ChatRequest):
     @tool
     async def switch_background_music(track_query: str) -> Any:
         """按歌曲名或歌手请求网页切换背景音乐。"""
-        return await raw_tools["switch_background_music"].ainvoke(
+        return await invoke("switch_background_music",
             {"track_query": track_query, "available_tracks": request.availableTracks}
         )
 
@@ -283,26 +242,48 @@ async def build_tools(request: ChatRequest):
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "memory": "disabled", "revision": __import__("os").getenv("SOURCE_REVISION", "unknown")}
 
 
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_internal_token)])
-async def chat(request: ChatRequest) -> ChatResponse:
+async def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
+    global _waiting_count
     async with _active_subjects_lock:
-        if request.subjectId in _active_subjects:
-            raise HTTPException(status_code=429, detail="only one active Agent request is allowed per user")
+        if request.subjectId in _active_subjects or _waiting_count >= 8:
+            raise HTTPException(status_code=429, detail="Agent request budget exceeded", headers={"Retry-After": "2"})
         _active_subjects.add(request.subjectId)
+        _waiting_count += 1
     acquired = False
+    waiting = True
     try:
         await asyncio.wait_for(_agent_slots.acquire(), timeout=2.0)
         acquired = True
-        return await asyncio.wait_for(_run_chat(request), timeout=50.0)
+        async with _active_subjects_lock:
+            _waiting_count -= 1
+            waiting = False
+        task = asyncio.create_task(_run_chat(request))
+        async def disconnected():
+            while not await http_request.is_disconnected():
+                await asyncio.sleep(.2)
+        disconnect = asyncio.create_task(disconnected())
+        try:
+            done, _ = await asyncio.wait({task, disconnect}, timeout=48.0, return_when=asyncio.FIRST_COMPLETED)
+            if task in done:
+                return await task
+            if disconnect in done:
+                raise HTTPException(status_code=499, detail="client disconnected")
+            raise TimeoutError()
+        finally:
+            task.cancel(); disconnect.cancel()
+            await asyncio.gather(task, disconnect, return_exceptions=True)
     except TimeoutError as error:
-        raise HTTPException(status_code=503, detail="Agent is busy or timed out") from error
+        raise HTTPException(status_code=503, detail="Agent is busy or timed out", headers={"Retry-After": "2"}) from error
     finally:
         if acquired:
             _agent_slots.release()
         async with _active_subjects_lock:
+            if waiting:
+                _waiting_count -= 1
             _active_subjects.discard(request.subjectId)
 
 
@@ -317,6 +298,9 @@ async def _run_chat(request: ChatRequest) -> ChatResponse:
         api_key=settings.openai_api_key,
         base_url=settings.openai_base_url,
         temperature=0.7,
+        max_tokens=1500,
+        timeout=35.0,
+        max_retries=0,
     )
     current_food_context = (
         f"当前页面菜品：{request.currentFoodName}（ID {request.currentFoodId}）。"
@@ -372,7 +356,6 @@ async def _run_chat(request: ChatRequest) -> ChatResponse:
             if comment_draft:
                 break
 
-    await remember_exchange(request.subjectId, request.message, reply)
     return ChatResponse(
         reply=reply,
         clientAction=action,

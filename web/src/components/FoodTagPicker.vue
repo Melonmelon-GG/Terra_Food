@@ -32,7 +32,7 @@ function toggle(tag: FoodTag) {
 }
 
 async function add(type: FoodTag['type']) {
-  if (props.disabled || loading.value) return
+  if (props.disabled || loading.value || creating.value) return
   const name = draftNames.value[type].trim()
   if (!name) return
   creating.value = type
@@ -61,7 +61,7 @@ onMounted(async () => {
       <strong>{{ t(`home.tagType${type}`) }}</strong>
       <div class="tag-options">
         <button v-for="tag in tagsFor(type)" :key="tag.id" type="button"
-          :class="{ selected: selected.has(tag.id), pending: tag.status === 'PENDING' }" @click="toggle(tag)">
+          :disabled="disabled || loading" :class="{ selected: selected.has(tag.id), pending: tag.status === 'PENDING' }" @click="toggle(tag)">
           {{ tag.name }}<small v-if="tag.status === 'PENDING'">{{ t('tagPicker.pending') }}</small>
         </button>
       </div>

@@ -34,6 +34,20 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/internal/agent/**"))
                 .cors(Customizer.withDefaults())
+                .exceptionHandling(errors -> errors
+                        .authenticationEntryPoint((request, response, exception) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setHeader("Cache-Control", "private, no-store");
+                            response.getWriter().write("{\"code\":\"AUTHENTICATION_REQUIRED\",\"message\":\"请先登录\"}");
+                        })
+                        .accessDeniedHandler((request, response, exception) -> {
+                            response.setStatus(403);
+                            response.setContentType("application/json;charset=UTF-8");
+                            String code = exception instanceof org.springframework.security.web.csrf.CsrfException
+                                    ? "CSRF_INVALID" : "ACCESS_DENIED";
+                            response.getWriter().write("{\"code\":\"" + code + "\",\"message\":\"请求校验失败或没有操作权限\"}");
+                        }))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/api/auth/login",
@@ -48,6 +62,7 @@ public class SecurityConfig {
                                 "/error"
                         )
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/foods/mine/page").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/foods/**", "/api/regions/**", "/api/users/**", "/api/food-tags/**").permitAll()
                         // 角色授予只能由主管理员执行，必须放在后台通配规则之前。
                         .requestMatchers(HttpMethod.PATCH, "/api/admin/users/*/role").hasRole("ADMIN")

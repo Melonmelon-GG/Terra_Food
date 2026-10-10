@@ -56,6 +56,7 @@ class FoodImportServiceImplTests {
 
     @BeforeEach
     void setUp() {
+        com.dayan.food.support.TestActors.bind(appUserMapper,"admin",9001L,com.dayan.food.entity.enums.UserRole.ADMIN);
         service = new FoodImportServiceImpl(
                 foodMapper,
                 regionMapper,
@@ -65,6 +66,8 @@ class FoodImportServiceImplTests {
                 new CacheInvalidator()
         );
     }
+
+    @org.junit.jupiter.api.AfterEach void cleanup(){com.dayan.food.support.TestActors.clear();}
 
     @Test
     void importRejectsRegionsOutsideWhitelist() throws Exception {

@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "realMysqlLease": true,
+  "external": "deterministic local HTTP substitute",
+  "completed": 3,
+  "deleteAndStrongVerifyRequests": 6,
+  "limitations": [
+    "Actual Milvus version and legacy username-only records not validated."
+  ]
+}

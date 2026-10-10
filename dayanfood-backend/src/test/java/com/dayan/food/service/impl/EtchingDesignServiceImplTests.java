@@ -32,13 +32,16 @@ class EtchingDesignServiceImplTests {
     private EtchingDesignServiceImpl service;
 
     @BeforeEach void setUp() {
+        com.dayan.food.support.TestActors.bind(appUserMapper,"reader",7L,UserRole.USER);
         service = new EtchingDesignServiceImpl(etchingDesignMapper, appUserMapper, achievementMapper, new ObjectMapper());
     }
+
+    @org.junit.jupiter.api.AfterEach void cleanup(){com.dayan.food.support.TestActors.clear();}
 
     @Test void createPersistsOneHundredSixtyNineCellCanvas() {
         AppUser user = new AppUser("reader", "encoded", "食客", UserRole.USER);
         ReflectionTestUtils.setField(user, "id", 7L);
-        when(appUserMapper.findByUsername("reader")).thenReturn(user);
+
         when(etchingDesignMapper.insert(any(EtchingDesign.class))).thenReturn(1);
 
         var result = service.create("reader", paintedRequest());
@@ -49,7 +52,7 @@ class EtchingDesignServiceImplTests {
 
     @Test void createRejectsCompletelyEmptyCanvas() {
         AppUser user = new AppUser("reader", "encoded", "食客", UserRole.USER);
-        when(appUserMapper.findByUsername("reader")).thenReturn(user);
+
         var empty = new ArrayList<String>();
         for (int index = 0; index < 169; index++) empty.add("");
 
@@ -62,19 +65,19 @@ class EtchingDesignServiceImplTests {
         EtchingDesign design = new EtchingDesign(7L, "双层章", jsonLayer(), jsonEmptyLayer());
         ReflectionTestUtils.setField(design, "id", 3L);
         ReflectionTestUtils.setField(design, "selected", true);
-        when(etchingDesignMapper.selectOwned(3L, "reader")).thenReturn(1);
-        when(etchingDesignMapper.findOwnedById(3L, "reader")).thenReturn(design);
+        when(etchingDesignMapper.selectOwned(3L, 7L)).thenReturn(1);
+        when(etchingDesignMapper.findOwnedById(3L, 7L)).thenReturn(design);
 
         service.select("reader", 3L);
 
-        verify(etchingDesignMapper).clearSelection("reader");
+        verify(etchingDesignMapper).clearSelection(7L);
         verify(achievementMapper).clearSelection("reader");
     }
 
     @Test void identicalUpdateDoesNotTreatZeroChangedRowsAsMissing() {
         EtchingDesign design = new EtchingDesign(7L, "单层章", jsonLayer(), "[]");
         ReflectionTestUtils.setField(design, "id", 3L);
-        when(etchingDesignMapper.findOwnedById(3L, "reader")).thenReturn(design);
+        when(etchingDesignMapper.findOwnedById(3L, 7L)).thenReturn(design);
         assertEquals(3L, service.update("reader", 3L, paintedRequest()).id());
     }
 
@@ -83,12 +86,12 @@ class EtchingDesignServiceImplTests {
         colors.set(0, null);
         assertThrows(IllegalArgumentException.class,
                 () -> service.update("reader", 3L, new EtchingDesignDTO("Invalid", colors)));
-        verify(etchingDesignMapper, never()).findOwnedById(3L, "reader");
+        verify(etchingDesignMapper, never()).findOwnedById(3L, 7L);
     }
 
     @Test void selectingSomeoneElsesDesignDoesNotClearCurrentSelection() {
         assertThrows(IllegalArgumentException.class, () -> service.select("reader", 99L));
-        verify(etchingDesignMapper, never()).clearSelection("reader");
+        verify(etchingDesignMapper, never()).clearSelection(7L);
         verify(achievementMapper, never()).clearSelection("reader");
     }
 

@@ -74,10 +74,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: agent-service/requirements.txt
+          cache-dependency-path: agent-service/requirements.lock
 
       - name: Install dependencies
-        run: python -m pip install --requirement agent-service/requirements.txt
+        run: python -m pip install --require-hashes --requirement agent-service/requirements.lock
 
       - name: Check Python syntax
         run: python -m compileall -q agent-service/app
@@ -85,6 +85,10 @@ jobs:
       - name: Verify service imports
         working-directory: agent-service
         run: python -c "import app.main; import app.mcp_server"
+
+      - name: Agent budget and cancellation contracts
+        working-directory: agent-service
+        run: python -m unittest discover -s tests -v
 
   compose:
     name: Docker Compose
@@ -98,6 +102,7 @@ jobs:
       REDIS_PASSWORD: ci-dummy-redis-password
       AGENT_INTERNAL_TOKEN: ci-dummy-agent-token-at-least-32-characters
       MCP_INTERNAL_TOKEN: ci-dummy-mcp-token-at-least-32-characters
+      MCP_BACKEND_TOKEN: ci-dummy-mcp-backend-token-at-least-32-characters
       MINIO_ROOT_USER: ci-dummy-minio-user
       MINIO_ROOT_PASSWORD: ci-dummy-minio-password
       OPENAI_API_KEY: ci-dummy-model-key

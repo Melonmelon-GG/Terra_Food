@@ -43,6 +43,8 @@ const regions = ref<Region[]>([])
 const users = ref<AuthUser[]>([])
 const foodTags = ref<FoodTag[]>([])
 const foodTagsTotal = ref(0)
+const foodTagsPage = ref(1)
+let tagsSequence = 0
 const foodTagsLoading = ref(false)
 const tagStatus = ref('PENDING')
 const foodsTotal = ref(0)
@@ -110,15 +112,18 @@ function switchTab(tab: AdminTab) {
   }
 }
 
-async function loadFoodTags() {
+async function loadFoodTags(page = foodTagsPage.value) {
+  const sequence = ++tagsSequence
   foodTagsLoading.value = true
   error.value = ''
   try {
-    const result = await getAdminFoodTags({ status: tagStatus.value || undefined, pageSize: 50 })
+    const result = await getAdminFoodTags({ status: tagStatus.value || undefined, page, pageSize: 50 })
+    if (sequence !== tagsSequence) return
+    foodTagsPage.value = result.page
     foodTags.value = result.items
     foodTagsTotal.value = result.total
-  } catch { error.value = t('admin.tagLoadError') }
-  finally { foodTagsLoading.value = false }
+  } catch { if (sequence === tagsSequence) error.value = t('admin.tagLoadError') }
+  finally { if (sequence === tagsSequence) foodTagsLoading.value = false }
 }
 
 async function setTagStatus(tag: FoodTag, status: FoodTag['status']) {
@@ -625,7 +630,7 @@ onMounted(loadFoodsAndMeta)
         <div class="admin-table-title">
           <div><h2>{{ t('admin.tagManagement') }}</h2><span>{{ t('admin.recordCount', { count: foodTagsTotal }) }}</span></div>
           <label>{{ t('admin.status') }}
-            <select v-model="tagStatus" @change="loadFoodTags"><option value="">{{ t('admin.all') }}</option><option value="PENDING">{{ t('admin.pending') }}</option><option value="APPROVED">{{ t('admin.approved') }}</option><option value="REJECTED">{{ t('admin.rejected') }}</option><option value="DISABLED">{{ t('admin.disabled') }}</option></select>
+            <select v-model="tagStatus" @change="loadFoodTags(1)"><option value="">{{ t('admin.all') }}</option><option value="PENDING">{{ t('admin.pending') }}</option><option value="APPROVED">{{ t('admin.approved') }}</option><option value="REJECTED">{{ t('admin.rejected') }}</option><option value="DISABLED">{{ t('admin.disabled') }}</option></select>
           </label>
         </div>
         <p v-if="foodTagsLoading" class="state">{{ t('admin.loading') }}</p>
@@ -633,6 +638,7 @@ onMounted(loadFoodsAndMeta)
         <div v-else class="admin-table-wrap"><table><thead><tr><th>ID</th><th>{{ t('admin.tagName') }}</th><th>{{ t('admin.tagType') }}</th><th>{{ t('admin.status') }}</th><th>{{ t('admin.createdAt') }}</th><th>{{ t('admin.actions') }}</th></tr></thead>
           <tbody><tr v-for="tag in foodTags" :key="tag.id"><td>{{ tag.id }}</td><td><strong>{{ tag.name }}</strong></td><td>{{ t(`home.tagType${tag.type}`) }}</td><td>{{ tag.status }}</td><td>{{ formatDateTime(tag.createdAt) }}</td><td><div class="admin-user-actions"><button v-if="tag.status === 'PENDING'" class="admin-user-action" @click="setTagStatus(tag, 'APPROVED')">{{ t('admin.approve') }}</button><button v-if="tag.status === 'PENDING'" class="danger-button" @click="setTagStatus(tag, 'REJECTED')">{{ t('admin.reject') }}</button><button class="admin-user-action" @click="renameTag(tag)">{{ t('admin.rename') }}</button><button v-if="tag.status !== 'MERGED'" class="admin-user-action" @click="mergeTag(tag)">{{ t('admin.merge') }}</button><button v-if="canManageRoles && tag.status !== 'DISABLED'" class="danger-button" @click="setTagStatus(tag, 'DISABLED')">{{ t('admin.disable') }}</button></div></td></tr></tbody>
         </table></div>
+        <div class="admin-pagination"><button type="button" :disabled="foodTagsLoading || foodTagsPage <= 1" @click="loadFoodTags(foodTagsPage - 1)">{{ t('home.prevPage') }}</button><span>{{ foodTagsPage }} / {{ Math.max(1, Math.ceil(foodTagsTotal / 50)) }}</span><button type="button" :disabled="foodTagsLoading || foodTagsPage * 50 >= foodTagsTotal" @click="loadFoodTags(foodTagsPage + 1)">{{ t('home.nextPage') }}</button></div>
       </template>
 
       <template v-else>

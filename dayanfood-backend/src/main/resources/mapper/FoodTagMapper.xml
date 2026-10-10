@@ -15,16 +15,21 @@
   </constructor>
  </resultMap>
  <sql id="tagColumns">t.id,t.type,t.name,t.status,t.merged_into_id,t.version,t.created_by,t.created_at,t.reviewed_at</sql>
+ <select id="lockGovernance" resultType="int">SELECT id FROM food_tag_governance WHERE id=1 FOR UPDATE</select>
+ <select id="canAccessFood" resultType="int">SELECT COUNT(*) FROM food WHERE id=#{foodId} AND (review_status='APPROVED' OR (created_by_user_id=#{userId} AND ownership_status='VERIFIED') OR #{admin})</select>
+ <update id="migrateAliases">UPDATE food_tag_alias SET tag_id=#{targetId} WHERE tag_id=#{sourceId}</update>
+ <insert id="recordMergeRelations">INSERT INTO food_tag_merge_relation(source_tag_id,target_tag_id,food_id,actor_id,target_existed) SELECT #{sourceId},#{targetId},s.food_id,#{actorId},EXISTS(SELECT 1 FROM food_tag_link t WHERE t.food_id=s.food_id AND t.tag_id=#{targetId}) FROM food_tag_link s WHERE s.tag_id=#{sourceId}</insert>
  <select id="findApproved" resultMap="tag">SELECT DISTINCT <include refid="tagColumns"/> FROM food_tag t LEFT JOIN food_tag_alias a ON a.tag_id=t.id WHERE t.status='APPROVED' <if test="type != null and type != ''">AND t.type=#{type}</if> <if test="keyword != null and keyword != ''">AND (LOCATE(LOWER(#{keyword}),LOWER(t.name))&gt;0 OR LOCATE(LOWER(#{keyword}),LOWER(a.alias))&gt;0)</if> ORDER BY t.name LIMIT 100</select>
  <insert id="insert">INSERT INTO food_tag(type,name,normalized_name,created_by) VALUES(#{type},#{name},#{normalized},#{userId})</insert>
  <select id="findById" resultMap="tag">SELECT <include refid="tagColumns"/> FROM food_tag t WHERE t.id=#{id}</select>
+ <select id="findByIdForUpdate" resultMap="tag">SELECT <include refid="tagColumns"/> FROM food_tag t WHERE t.id=#{id} FOR UPDATE</select>
  <select id="findByName" resultMap="tag">SELECT <include refid="tagColumns"/> FROM food_tag t WHERE t.type=#{type} AND t.normalized_name=#{normalized}</select>
  <select id="countCreatedToday" resultType="int">SELECT COUNT(*) FROM food_tag WHERE created_by=#{userId} AND created_at&gt;=CURRENT_DATE</select>
  <select id="countUsable" resultType="int">SELECT COUNT(*) FROM food_tag WHERE id IN <foreach collection="tagIds" item="id" open="(" separator="," close=")">#{id}</foreach> AND (status='APPROVED' OR (status='PENDING' AND created_by=#{userId}))</select>
  <select id="countTypeForIds" resultType="int">SELECT COUNT(*) FROM food_tag WHERE type=#{type} AND id IN <foreach collection="tagIds" item="id" open="(" separator="," close=")">#{id}</foreach></select>
  <delete id="deleteLinks">DELETE FROM food_tag_link WHERE food_id=#{foodId}</delete>
  <insert id="insertLinks">INSERT IGNORE INTO food_tag_link(food_id,tag_id) VALUES <foreach collection="tagIds" item="id" separator=",">(#{foodId},#{id})</foreach></insert>
- <select id="findForFood" resultMap="tag">SELECT <include refid="tagColumns"/> FROM food_tag_link l INNER JOIN food_tag t ON t.id=l.tag_id WHERE l.food_id=#{foodId} AND (t.status='APPROVED' <if test="includePendingForUser != null">OR (t.status='PENDING' AND t.created_by=#{includePendingForUser})</if>) ORDER BY t.type,t.name</select>
+ <select id="findForFood" resultMap="tag">SELECT <include refid="tagColumns"/> FROM food_tag_link l INNER JOIN food_tag t ON t.id=l.tag_id WHERE l.food_id=#{foodId} AND (t.status='APPROVED' OR (#{admin} AND t.status='PENDING') <if test="includePendingForUser != null">OR (t.status='PENDING' AND t.created_by=#{includePendingForUser})</if>) ORDER BY t.type,t.name</select>
  <sql id="adminFilters">1=1 <if test="status != null and status != ''">AND t.status=#{status}</if><if test="type != null and type != ''">AND t.type=#{type}</if><if test="keyword != null and keyword != ''">AND LOCATE(LOWER(#{keyword}),LOWER(t.name))&gt;0</if></sql>
  <select id="findAdmin" resultMap="tag">SELECT <include refid="tagColumns"/> FROM food_tag t WHERE <include refid="adminFilters"/> ORDER BY FIELD(t.status,'PENDING','APPROVED','REJECTED','MERGED','DISABLED'),t.id DESC LIMIT #{pageSize} OFFSET #{offset}</select>
  <select id="countAdmin" resultType="int">SELECT COUNT(*) FROM food_tag t WHERE <include refid="adminFilters"/></select>

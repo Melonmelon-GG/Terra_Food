@@ -21,7 +21,8 @@ const base = process.env.SHARE_TEST_URL || 'http://127.0.0.1:5173'
      const payload=route.request().postDataJSON();assert.equal(payload.name,'已纠错菜品');assert.equal(payload.address,'新地址')
      food={...food,...payload,reviewStatus:'PENDING'};return route.fulfill({json:food})
     }
-    if(path==='/api/profile/foods')return route.fulfill({json:[food]})
+    if(path==='/api/foods/mine/page')return route.fulfill({json:{items:[food],total:1,page:1,pageSize:20}})
+    if(path==='/api/auth/csrf')return route.fulfill({json:{token:'test-token',headerName:'X-CSRF-TOKEN'}})
     if(path==='/api/profile/check-ins')return route.fulfill({json:{items:[],total:0,page:1,pageSize:20}})
     if(path==='/api/profile/favorites/page' || path==='/api/profile/wishlist/page')return route.fulfill({json:{items:[],total:0,page:1,pageSize:20}})
     if(path==='/api/regions')return route.fulfill({json:[food.region]})
