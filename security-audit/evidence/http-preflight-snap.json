@@ -1,0 +1,23 @@
+{
+  "runId": "aud1547083787ec",
+  "scope": "isolated synthetic HTTP/MySQL/Redis Session/SMTP",
+  "base": "http://127.0.0.1:18380",
+  "project": "terra-audit-20260922",
+  "passed": 0,
+  "failed": 1,
+  "requiredCaseCount": 8,
+  "executedCaseCount": 1,
+  "cases": [
+    {
+      "caseId": "PREFLIGHT-01",
+      "status": "FAIL",
+      "seconds": 0.199,
+      "reason": "URLError"
+    }
+  ],
+  "limitations": [
+    "In-flight filter-to-service interleaving is covered separately; AUTH-01 tests old Cookies across account replacement.",
+    "Captcha arithmetic is intentionally solved in the isolated test; this is not evidence of bot resistance.",
+    "No real deployment or production data was tested."
+  ]
+}

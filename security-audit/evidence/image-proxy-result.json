@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "assets": 8,
+  "originalAndVariantRequests": 32,
+  "proxy": "actual isolated Nginx",
+  "limitations": [
+    "Synthetic 2x2 transparent PNGs; format/timeout/export boundary cases covered by separate Java tests."
+  ]
+}

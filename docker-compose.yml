@@ -1,4 +1,5 @@
-# Terra Food 本地依赖：MySQL + Redis；Agent profile 额外启动 Milvus、MCP 与 LangChain。
+# Terra Food 本地依赖：MySQL + Redis；Agent profile 启动 MCP 与 LangChain。
+# 长期记忆已隔离；旧 Milvus 仅使用 memory-maintenance profile 做受控维护。
 # 基础服务：docker compose up -d
 # Agent 全栈：docker compose --profile agent up -d
 services:
@@ -43,7 +44,7 @@ services:
       retries: 5
 
   milvus-etcd:
-    profiles: ["agent"]
+    profiles: ["memory-maintenance"]
     image: quay.io/coreos/etcd:v3.5.18
     container_name: dayan-food-milvus-etcd
     environment:
@@ -59,7 +60,7 @@ services:
       - milvus-etcd-data:/etcd
 
   milvus-minio:
-    profiles: ["agent"]
+    profiles: ["memory-maintenance"]
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     container_name: dayan-food-milvus-minio
     environment:
@@ -70,7 +71,7 @@ services:
       - milvus-minio-data:/minio_data
 
   milvus:
-    profiles: ["agent"]
+    profiles: ["memory-maintenance"]
     image: milvusdb/milvus:v3.0.0
     container_name: dayan-food-milvus
     command: ["milvus", "run", "standalone"]
@@ -92,11 +93,15 @@ services:
     command: ["python", "-m", "app.mcp_server"]
     environment:
       AGENT_INTERNAL_TOKEN: ${AGENT_INTERNAL_TOKEN:?set AGENT_INTERNAL_TOKEN}
+      MCP_BACKEND_TOKEN: ${MCP_BACKEND_TOKEN:?set MCP_BACKEND_TOKEN}
       MCP_INTERNAL_TOKEN: ${MCP_INTERNAL_TOKEN:?set MCP_INTERNAL_TOKEN}
       BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://host.docker.internal:8080}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 384m
 
   agent-api:
     profiles: ["agent"]
@@ -104,22 +109,23 @@ services:
     container_name: dayan-food-agent-api
     environment:
       AGENT_INTERNAL_TOKEN: ${AGENT_INTERNAL_TOKEN:?set AGENT_INTERNAL_TOKEN}
+      MCP_BACKEND_TOKEN: ${MCP_BACKEND_TOKEN:?set MCP_BACKEND_TOKEN}
       MCP_INTERNAL_TOKEN: ${MCP_INTERNAL_TOKEN:?set MCP_INTERNAL_TOKEN}
       MCP_SERVER_URL: http://agent-mcp:8091/mcp
-      MILVUS_URI: http://milvus:19530
       OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
       AGENT_MODEL: ${AGENT_MODEL:-deepseek-v4-flash}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-zh-v1.5}
       AGENT_PERSONA: ${AGENT_PERSONA:-}
     volumes:
       - agent-model-cache:/home/terra/.cache
     ports:
       - "127.0.0.1:8090:8090"
     depends_on:
-      - agent-mcp
-      - milvus
+        - agent-mcp
     cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 384m
 
 volumes:
   mysql-data:

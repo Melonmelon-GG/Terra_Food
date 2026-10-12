@@ -42,9 +42,10 @@ class WishlistServiceImplTests {
     @BeforeEach
     void setUp() {
         service = new WishlistServiceImpl(wishlistMapper, appUserMapper, foodMapper);
-        AppUser user = activeUser();
-        when(appUserMapper.findByUsername(USERNAME)).thenReturn(user);
+        com.dayan.food.support.TestActors.bind(appUserMapper,USERNAME,USER_ID,com.dayan.food.entity.enums.UserRole.USER);
     }
+
+    @org.junit.jupiter.api.AfterEach void cleanup(){com.dayan.food.support.TestActors.clear();}
 
     @Test
     void listFindsSimilarApprovedDishesFromChineseKeywords() {
@@ -53,7 +54,7 @@ class WishlistServiceImplTests {
         when(item.getContent()).thenReturn("想吃酸汤鱼");
         when(item.getSourceFoodId()).thenReturn(null);
         when(item.getCreatedAt()).thenReturn(LocalDateTime.now());
-        when(wishlistMapper.findByUserId(USER_ID)).thenReturn(List.of(item));
+        when(wishlistMapper.findPageByUserId(USER_ID,0,50)).thenReturn(List.of(item));
         List<Food> candidates = List.of(
                 food(21L, "凯里酸汤鱼", "鱼、番茄、辣椒", "贵州", "凯里"),
                 food(22L, "北京烤鸭", "鸭肉", "北京", "北京")
@@ -71,7 +72,7 @@ class WishlistServiceImplTests {
 
     @Test
     void emptyListDoesNotQueryFoodCandidates() {
-        when(wishlistMapper.findByUserId(USER_ID)).thenReturn(List.of());
+        when(wishlistMapper.findPageByUserId(USER_ID,0,50)).thenReturn(List.of());
 
         assertTrue(service.list(USERNAME).isEmpty());
 
@@ -92,6 +93,16 @@ class WishlistServiceImplTests {
         service.delete(9L, USERNAME);
 
         verify(wishlistMapper).deleteByIdAndUserId(9L, USER_ID);
+    }
+
+    @Test
+    void createDoesNotAcquireSecondConnectionForVersionCache() {
+        var versions=mock(com.dayan.food.cache.DiscoveryVersion.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(service,"versions",versions);
+        when(wishlistMapper.insertIgnore(org.mockito.ArgumentMatchers.any(WishlistItem.class))).thenReturn(1);
+        when(foodMapper.findMatchingCandidates(org.mockito.ArgumentMatchers.anyList(),org.mockito.ArgumentMatchers.eq(200))).thenReturn(List.of());
+        assertTrue(service.create("酸汤鱼",null,USERNAME).matches().isEmpty());
+        verifyNoInteractions(versions);
     }
 
     private static AppUser activeUser() {

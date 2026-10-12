@@ -1,5 +1,7 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.security.AuthenticatedActor;
+
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.entity.po.FoodComment;
 import com.dayan.food.entity.vo.FoodCommentVO;
@@ -54,7 +56,7 @@ public class FoodCommentServiceImpl implements FoodCommentService {
     @Transactional
     public FoodCommentVO create(Long foodId, String content, String username) {
         requireApprovedFood(foodId);
-        AppUser author = appUserMapper.findByUsername(username);
+        AppUser author = AuthenticatedActor.resolve(appUserMapper, username);
         if (author == null || !author.isActive()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         }

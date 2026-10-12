@@ -113,7 +113,8 @@ async function exportTicket(page, name) {
     if (/\/favorites\/\d+/.test(p)) { if(method==='POST')favorite=true; if(method==='DELETE')favorite=false; return route.fulfill({json:{favorited:favorite}}) }
     if (p.endsWith('/status')) return route.fulfill({json:{favorited:favorite,listed:false}})
     if (p.endsWith('/comments/page')) return route.fulfill({json:pageData([{id:1,foodId:123,author:user,content:'看着就好香，记到下一次的旅途里。',createdAt:'2026-09-13'}])})
-    if (p === '/api/profile/foods') return route.fulfill({json:[dish,{...dish,id:124,name:'兰州牛肉面',reviewStatus:'PENDING'},{...dish,id:125,name:'南翔小笼',reviewStatus:'REJECTED'}]})
+    if (p === '/api/foods/mine/page') return route.fulfill({json:pageData([dish,{...dish,id:124,name:'兰州牛肉面',reviewStatus:'PENDING'},{...dish,id:125,name:'南翔小笼',reviewStatus:'REJECTED'}])})
+    if (p === '/api/auth/csrf') return route.fulfill({json:{token:'test-token',headerName:'X-CSRF-TOKEN'}})
     if (p === '/api/profile/favorites/page') {
      if (holdFavorites) { favoritesStarted(); await favoritesBlocked }
      return route.fulfill({json:pageData([dish])})
@@ -202,6 +203,8 @@ async function exportTicket(page, name) {
     await page.locator('.archive-tabs button').filter({hasText:'想吃清单'}).click()
     await page.locator('.wishlist-form').waitFor()
     if(width===1440) {
+     await page.reload()
+     await page.locator('.profile-food-card').first().waitFor()
      holdFavorites=true
      await page.locator('.archive-tabs button').filter({hasText:'收藏夹'}).click()
      await favoritesRequested

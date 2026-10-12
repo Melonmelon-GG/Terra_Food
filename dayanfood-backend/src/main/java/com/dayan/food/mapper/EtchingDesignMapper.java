@@ -6,14 +6,14 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 public interface EtchingDesignMapper {
-    List<EtchingDesign> findByUsername(String username);
+    List<EtchingDesign> findByUserId(Long userId);
     EtchingDesign findSelectedByUserId(Long userId);
-    EtchingDesign findOwnedById(@Param("id") Long id, @Param("username") String username);
-    int countByUsername(String username);
+    EtchingDesign findOwnedById(@Param("id") Long id, @Param("userId") Long userId);
+    int countByUserId(Long userId);
     int insert(EtchingDesign design);
-    int updateOwned(@Param("id") Long id, @Param("username") String username,
+    int updateOwned(@Param("id") Long id, @Param("userId") Long userId,
                     @Param("name") String name, @Param("layerOneJson") String layerOneJson);
-    int deleteOwned(@Param("id") Long id, @Param("username") String username);
-    int clearSelection(String username);
-    int selectOwned(@Param("id") Long id, @Param("username") String username);
+    int deleteOwned(@Param("id") Long id, @Param("userId") Long userId);
+    int clearSelection(Long userId);
+    int selectOwned(@Param("id") Long id, @Param("userId") Long userId);
 }

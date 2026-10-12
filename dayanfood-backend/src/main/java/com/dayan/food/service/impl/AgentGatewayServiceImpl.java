@@ -26,13 +26,16 @@ public class AgentGatewayServiceImpl implements AgentGatewayService {
     private final RestClient restClient;
     private final String agentServiceUrl;
     private final String internalToken;
+    private final com.dayan.food.security.AgentServiceContext serviceContext;
+    private final java.util.concurrent.Semaphore slots = new java.util.concurrent.Semaphore(12);
 
     public AgentGatewayServiceImpl(
             AppUserMapper appUserMapper,
             FoodService foodService,
             RestClient.Builder restClientBuilder,
             @Value("${app.agent.service-url:http://localhost:8090}") String agentServiceUrl,
-            @Value("${app.agent.internal-token:}") String internalToken
+            @Value("${app.agent.internal-token:}") String internalToken,
+            com.dayan.food.security.AgentServiceContext serviceContext
     ) {
         this.appUserMapper = appUserMapper;
         this.foodService = foodService;
@@ -42,6 +45,7 @@ public class AgentGatewayServiceImpl implements AgentGatewayService {
         this.restClient = restClientBuilder.requestFactory(requestFactory).build();
         this.agentServiceUrl = agentServiceUrl;
         this.internalToken = internalToken;
+        this.serviceContext = serviceContext;
     }
 
     @Override
@@ -49,19 +53,21 @@ public class AgentGatewayServiceImpl implements AgentGatewayService {
         if (internalToken.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Agent 尚未配置");
         }
-        AppUser user = appUserMapper.findByUsername(username);
+        AppUser user = com.dayan.food.security.AuthenticatedActor.resolve(appUserMapper, username);
         if (user == null || !user.isActive()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         }
 
         FoodVO currentFood = currentFoodId == null ? null : foodService.detail(currentFoodId);
 
+        if (!slots.tryAcquire()) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Agent 请求繁忙，请稍后重试");
         try {
             AgentChatVO response = restClient.post()
                     .uri(agentServiceUrl + "/chat")
                     .header("X-Agent-Internal-Token", internalToken)
                     .body(new AgentRuntimeRequestDTO(
                             user.getSubjectId(),
+                            serviceContext.issue(user),
                             username,
                             user.getDisplayName(),
                             message.trim(),
@@ -75,8 +81,12 @@ public class AgentGatewayServiceImpl implements AgentGatewayService {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Agent 返回了空响应");
             }
             return response;
+        } catch (org.springframework.web.client.RestClientResponseException exception) {
+            if (exception.getStatusCode().value()==429 || exception.getStatusCode().value()==503)
+                throw new ResponseStatusException(exception.getStatusCode(), "Agent 请求繁忙，请稍后重试");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"Agent 服务暂时不可用");
         } catch (RestClientException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Agent 服务暂时不可用", exception);
-        }
+        } finally { slots.release(); }
     }
 }

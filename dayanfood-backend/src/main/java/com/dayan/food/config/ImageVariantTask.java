@@ -3,7 +3,8 @@ package com.dayan.food.config;
 import com.dayan.food.entity.po.ImageAsset;
 import com.dayan.food.mapper.ImageAssetMapper;
 import com.dayan.food.image.ImageDimensions;
-import net.coobird.thumbnailator.Thumbnails;
+import com.dayan.food.image.ImageSubprocess;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +29,8 @@ public class ImageVariantTask {
     private final ImageAssetMapper mapper;
     private final Path uploadDirectory;
     private final AtomicBoolean ready = new AtomicBoolean();
+    private final AtomicBoolean processing = new AtomicBoolean();
+    private final String owner = UUID.randomUUID().toString();
 
     public ImageVariantTask(ImageAssetMapper mapper,
                             @Value("${app.upload-directory:uploads}") String uploadDirectory) {
@@ -37,72 +40,52 @@ public class ImageVariantTask {
 
     @EventListener(ApplicationReadyEvent.class)
     void recoverInterruptedWork() {
-        mapper.resetProcessing();
+        mapper.recoverExpired();
         ready.set(true);
     }
 
     @Scheduled(fixedDelayString = "${app.upload.variant-delay:1000}")
     public void processNext() {
-        if (!ready.get()) return;
-        for (ImageAsset asset : mapper.findPending(1)) {
-            if (mapper.markProcessing(asset.getId()) != 1) continue;
-            try {
-                process(asset);
-            } catch (Exception exception) {
-                deletePartialVariants(asset);
-                mapper.markFailed(asset.getId(), "PROCESSING_FAILED");
-                LOGGER.warn("图片派生处理失败：assetId={}", asset.getId());
+        if (!ready.get() || !processing.compareAndSet(false, true)) return;
+        try {
+            mapper.recoverExpired();
+            for (ImageAsset asset : mapper.findPending(1)) {
+                if (mapper.claim(asset.getId(), owner) != 1) continue;
+                try { process(asset); }
+                catch (Exception exception) {
+                    mapper.failOwned(asset.getId(), owner, exception instanceof IllegalStateException
+                            && "DECODE_TIMEOUT".equals(exception.getMessage()) ? "DECODE_TIMEOUT" : "PROCESSING_FAILED");
+                    LOGGER.warn("image_variant_failed assetId={} category={}", asset.getId(), exception.getClass().getSimpleName());
+                }
             }
-        }
+        } finally { processing.set(false); }
     }
 
     private void process(ImageAsset asset) throws Exception {
         Path original = resolveUrl(asset.getOriginalUrl());
-        ImageDimensions dimensions = ImageDimensions.read(original);
-        if (dimensions.pixels() > 24_000_000L) {
-            mapper.markFailed(asset.getId(), "PIXEL_LIMIT");
-            return;
+        if (ImageDimensions.read(original).pixels() > 24_000_000L) {
+            mapper.failOwned(asset.getId(), owner, "PIXEL_LIMIT"); return;
         }
-        BufferedImage image = ImageIO.read(original.toFile());
-        if (image == null) {
-            mapper.markFailed(asset.getId(), "DECODE_FAILED");
-            return;
-        }
-        String format = image.getColorModel().hasAlpha() ? "png" : "jpg";
-        String base = original.getFileName().toString().replaceFirst("\\.[^.]+$", "");
-        String[] urls = new String[SIZES.length];
         Path variants = uploadDirectory.resolve("variants");
         Files.createDirectories(variants);
-        for (int i = 0; i < SIZES.length; i++) {
-            int size = SIZES[i];
-            String filename = base + "-" + size + "." + format;
-            Path destination = variants.resolve(filename);
-            Path temporary = Files.createTempFile(variants, ".variant-", ".tmp");
-            try {
-                double scale = Math.min(1d, size / (double) Math.max(image.getWidth(), image.getHeight()));
-                var builder = Thumbnails.of(image).scale(scale).outputFormat(format);
-                if ("jpg".equals(format)) builder.outputQuality(0.82d);
-                builder.toFile(temporary.toFile());
-                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } finally {
-                Files.deleteIfExists(temporary);
-            }
-            urls[i] = "/uploads/variants/" + filename;
-        }
-        mapper.markReady(asset.getId(), urls[0], urls[1], urls[2]);
-    }
-
-    private void deletePartialVariants(ImageAsset asset) {
+        Path work = Files.createTempDirectory(variants, ".worker-");
+        String[] urls = new String[3];
         try {
-            Path original = resolveUrl(asset.getOriginalUrl());
-            String base = original.getFileName().toString().replaceFirst("\\.[^.]+$", "");
-            Path variants = uploadDirectory.resolve("variants");
-            for (int size : SIZES) {
-                Files.deleteIfExists(variants.resolve(base + "-" + size + ".jpg"));
-                Files.deleteIfExists(variants.resolve(base + "-" + size + ".png"));
+            ImageSubprocess.decode(original, work);
+            String format = Files.exists(work.resolve("320.png")) ? "png" : "jpg";
+            for (int i=0; i<SIZES.length; i++) {
+                // Unique worker-owned names prevent a late worker overwriting a replacement task.
+                String filename = asset.getId()+"-"+owner+"-"+SIZES[i]+"."+format;
+                Files.move(work.resolve(SIZES[i]+"."+format), variants.resolve(filename), StandardCopyOption.ATOMIC_MOVE);
+                urls[i] = "/uploads/variants/"+filename;
             }
-        } catch (Exception ignored) {
-            LOGGER.warn("图片派生残留清理失败：assetId={}", asset.getId());
+            if (mapper.readyOwned(asset.getId(), owner, urls[0], urls[1], urls[2]) != 1)
+                throw new IllegalStateException("LEASE_LOST");
+            urls = null; // The committed asset owns the files now.
+        } finally {
+            if (urls != null) for (String url : urls) if (url != null) Files.deleteIfExists(resolveUrl(url));
+            try (var files=Files.list(work)) { for (Path path : files.toList()) Files.deleteIfExists(path); }
+            Files.deleteIfExists(work);
         }
     }
 

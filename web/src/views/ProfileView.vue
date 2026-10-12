@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
-import { addWishlistItem, deleteEtching, deleteMyCheckin, deleteWishlistItem, getAchievements, getMyEtchings, getMyFavoritesPage, getMyFoods, getMyFootprints, getMyCheckins, getMyWishlistPage, getRegions, removeFavorite, selectAchievement, selectEtching, updateAvatar, updateMyCheckin, updateMyDisplayName, updateMySignature, uploadImage } from '../api'
+import { addWishlistItem, deleteEtching, deleteMyCheckin, deleteWishlistItem, getAchievements, getMyEtchings, getMyFavoritesPage, getMyFoodsPage, getMyFootprints, getMyCheckins, getMyWishlistPage, getRegions, removeFavorite, selectAchievement, selectEtching, updateAvatar, updateMyCheckin, updateMyDisplayName, updateMySignature, uploadImage } from '../api'
 import { useAuth } from '../auth'
 import { apiErrorMessage } from '../apiError'
 const FoodEditModal = defineAsyncComponent(() => import('../components/FoodEditModal.vue'))
@@ -18,9 +18,16 @@ const { locale, t } = useI18n()
 const route = useRoute()
 const auth = useAuth()
 const foods = ref<Food[]>([])
+const foodsPage = ref(1)
+const foodsTotal = ref(0)
+const sectionLoading = reactive<Record<string, boolean>>({})
+const sectionsLoaded = reactive<Record<string, boolean>>({})
+let active = true
+onBeforeUnmount(() => { active = false; collectionSequences.favorites++; collectionSequences.wishlist++ })
 const footprints = ref<FoodFootprint[]>([])
 const checkins = ref<FoodCheckin[]>([])
 const checkinPage = ref(1)
+let checkinSequence = 0
 const checkinTotal = ref(0)
 const checkinLoadingMore = ref(false)
 const checkinEditing = ref<number>()
@@ -33,11 +40,13 @@ const favoritesTotal = ref(0)
 const wishlistTotal = ref(0)
 const favoritesPage = ref(1)
 const wishlistPage = ref(1)
-const collectionsLoading = ref(false)
+const collectionBusy = reactive({ favorites: false, wishlist: false })
+const collectionErrors = reactive({ favorites: '', wishlist: '' })
+const collectionsLoading = computed(() => collectionBusy[collectionTab.value])
 const collectionTab = ref<'favorites' | 'wishlist'>(route.query.tab === 'wishlist' ? 'wishlist' : 'favorites')
 type ArchiveTab = 'records' | 'favorites' | 'wishlist' | 'diary' | 'seals' | 'footprints'
 const archiveTabs: ArchiveTab[] = ['records', 'favorites', 'wishlist', 'diary', 'seals', 'footprints']
-const archiveTab = ref<ArchiveTab>(route.query.tab === 'wishlist' ? 'wishlist' : 'records')
+const archiveTab = ref<ArchiveTab>(archiveTabs.includes(route.query.tab as ArchiveTab) ? route.query.tab as ArchiveTab : 'records')
 function selectArchiveTab(tab: ArchiveTab) {
   archiveTab.value = tab
   if (tab === 'favorites' || tab === 'wishlist') collectionTab.value = tab
@@ -48,7 +57,7 @@ watch(() => route.query.tab, value => {
 const wishlistDraft = ref('')
 const wishlistSaving = ref(false)
 const collectionRemoving = ref<string>()
-const collectionError = ref('')
+const collectionError = computed({ get: () => collectionErrors[collectionTab.value], set: (value: string) => { collectionErrors[collectionTab.value] = value } })
 const regions = ref<Region[]>([])
 const achievements = ref<Achievement[]>([])
 const etchings = ref<EtchingDesign[]>([])
@@ -56,10 +65,10 @@ const studioOpen = ref(false)
 const editingEtching = ref<EtchingDesign>()
 const selectedFood = ref<Food>()
 const editSubmitted = ref(false)
-const loading = ref(true)
+const loading = computed(() => Boolean(sectionLoading[archiveTab.value]))
 const error = ref('')
 const loadFailures = ref<string[]>([])
-const sealLoadFailed = computed(() => loadFailures.value.includes('achievements') || loadFailures.value.includes('etchings'))
+const sealLoadFailed = computed(() => loadFailures.value.includes('seals'))
 const avatarInput = ref<HTMLInputElement>()
 const avatarSaving = ref(false)
 const avatarError = ref('')
@@ -81,7 +90,7 @@ const selectedAchievement = computed(() => achievements.value.find((achievement)
 const selectedEtching = computed(() => etchings.value.find((etching) => etching.selected))
 const avatarText = computed(() => (user.value?.displayName || user.value?.username || '食').trim().slice(0, 1).toUpperCase())
 const statusCounts = computed(() => ({
-  total: foods.value.length,
+  total: foodsTotal.value,
   pending: foods.value.filter((food) => food.reviewStatus === 'PENDING').length,
   approved: foods.value.filter((food) => food.reviewStatus === 'APPROVED').length,
   rejected: foods.value.filter((food) => food.reviewStatus === 'REJECTED').length,
@@ -116,35 +125,51 @@ function editCheckin(item: FoodCheckin) {
 }
 
 async function saveCheckin(item: FoodCheckin) {
+  ++checkinSequence
   checkinSaving.value = item.id
   checkinError.value = ''
   try {
-    const updated = await updateMyCheckin(item.id, { ...checkinDraft.value, note: checkinDraft.value.note.trim() || undefined, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai' })
-    checkins.value = checkins.value.map((candidate) => candidate.id === updated.id ? updated : candidate)
+    await updateMyCheckin(item.id, { ...checkinDraft.value, note: checkinDraft.value.note.trim() || undefined, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai' })
     checkinEditing.value = undefined
-  } catch (cause) { checkinError.value = apiErrorMessage(cause, '打卡修改失败，请刷新后重试。') }
+    await refreshCheckins()
+  } catch (cause) { checkinError.value = apiErrorMessage(cause, t('audit.checkinUpdateError')) }
   finally { checkinSaving.value = undefined }
 }
 
 async function removeCheckin(item: FoodCheckin) {
-  if (!window.confirm(`删除“${item.foodName}”的这次打卡？`)) return
+  if (!window.confirm(t('audit.deleteCheckinConfirm', { name: item.foodName }))) return
+  ++checkinSequence
   checkinSaving.value = item.id
   checkinError.value = ''
-  try { await deleteMyCheckin(item.id, item.version); checkins.value = checkins.value.filter((candidate) => candidate.id !== item.id) }
-  catch (cause) { checkinError.value = apiErrorMessage(cause, '打卡删除失败，请重试。') }
+  try { await deleteMyCheckin(item.id, item.version); await refreshCheckins() }
+  catch (cause) { checkinError.value = apiErrorMessage(cause, t('audit.checkinDeleteError')) }
   finally { checkinSaving.value = undefined }
 }
 
+async function refreshCheckins() {
+  // Offset pages shift after deletion or a date edit. Restart from page one so
+  // the previous page's last row cannot silently disappear from management.
+  const sequence = ++checkinSequence
+  const result = await getMyCheckins(1)
+  if (!active || sequence !== checkinSequence) return
+  checkins.value = result.items
+  checkinPage.value = result.page
+  checkinTotal.value = result.total
+}
+
 async function loadMoreCheckins() {
-  if (checkinLoadingMore.value || checkins.value.length >= checkinTotal.value) return
+  if (checkinSaving.value || checkinLoadingMore.value || checkins.value.length >= checkinTotal.value) return
+  const sequence = ++checkinSequence
   checkinLoadingMore.value = true
   checkinError.value = ''
   try {
     const result = await getMyCheckins(checkinPage.value + 1)
+    if (!active || sequence !== checkinSequence) return
+    if (!result.items.length) { await refreshCheckins(); return }
     checkinPage.value = result.page
     checkinTotal.value = result.total
     checkins.value.push(...result.items.filter((item) => !checkins.value.some((existing) => existing.id === item.id)))
-  } catch (cause) { checkinError.value = apiErrorMessage(cause, '打卡加载失败，请重试。') }
+  } catch (cause) { if (sequence === checkinSequence) checkinError.value = apiErrorMessage(cause, t('audit.checkinLoadError')) }
   finally { checkinLoadingMore.value = false }
 }
 
@@ -176,8 +201,7 @@ async function removeFavoriteItem(food: Food) {
   collectionError.value = ''
   try {
     await removeFavorite(food.id)
-    favorites.value = favorites.value.filter((item) => item.id !== food.id)
-    favoritesTotal.value = Math.max(0, favoritesTotal.value - 1)
+    await loadCurrentCollection(true)
   } catch {
     collectionError.value = t('profile.collectionError')
   } finally {
@@ -191,8 +215,7 @@ async function removeWishlistItem(item: WishlistItem) {
   collectionError.value = ''
   try {
     await deleteWishlistItem(item.id)
-    wishlist.value = wishlist.value.filter((candidate) => candidate.id !== item.id)
-    wishlistTotal.value = Math.max(0, wishlistTotal.value - 1)
+    await loadCurrentCollection(true)
   } catch {
     collectionError.value = t('profile.collectionError')
   } finally {
@@ -340,76 +363,85 @@ async function changeAvatar(event: Event) {
   }
 }
 
-let profileRequestRunning = false
-async function loadProfile() {
-  if (profileRequestRunning) return
-  profileRequestRunning = true
-  loading.value = true
-  error.value = ''
-  loadFailures.value = []
-  // Each section commits independently; a missing optional endpoint must not hide
-  // successfully fetched etchings, foods, or favorites.
-  async function section(key: string, request: () => Promise<void>) {
-    try {
-      await request()
-    } catch {
-      loadFailures.value.push(key)
-      if (key === 'foods') error.value = t('profile.loadError')
-    }
-  }
-  try {
-    await Promise.all([
-      section('foods', async () => { foods.value = await getMyFoods() }),
-      section('footprints', async () => { footprints.value = await getMyFootprints() }),
-      section('checkins', async () => {
-        const result = await getMyCheckins()
-        checkins.value = result.items
-        checkinPage.value = result.page
-        checkinTotal.value = result.total
-      }),
-      section('regions', async () => { regions.value = await getRegions() }),
-      section('achievements', async () => { achievements.value = await getAchievements() }),
-      section('etchings', async () => { etchings.value = await getMyEtchings() }),
-    ])
-  } finally {
-    loading.value = false
-    profileRequestRunning = false
-  }
+async function loadFoods(append = false) {
+  const result = await getMyFoodsPage(append ? foodsPage.value + 1 : 1, 20)
+  if (!active) return
+  foods.value = append ? [...foods.value, ...result.items] : result.items
+  foodsPage.value = result.page
+  foodsTotal.value = result.total
 }
-onMounted(loadProfile)
+async function loadMoreFoods() {
+  if (sectionLoading.records) return
+  sectionLoading.records = true
+  try { await loadFoods(true) }
+  catch { error.value = t('profile.loadError') }
+  finally { sectionLoading.records = false }
+}
+async function openFoodEditor(food: Food) {
+  editSubmitted.value = false
+  if (!regions.value.length) {
+    try { regions.value = await getRegions() }
+    catch { error.value = t('profile.loadError'); return }
+  }
+  if (active) selectedFood.value = food
+}
+async function loadProfile(force = true) {
+  const tab = archiveTab.value
+  if (sectionLoading[tab] || (!force && sectionsLoaded[tab])) return
+  sectionLoading[tab] = true
+  loadFailures.value = loadFailures.value.filter((key) => key !== tab)
+  error.value = ''
+  try {
+    if (tab === 'records') await loadFoods()
+    else if (tab === 'footprints') footprints.value = await getMyFootprints()
+    else if (tab === 'diary') await refreshCheckins()
+    else if (tab === 'seals') {
+      const [earned, designs] = await Promise.all([getAchievements(), getMyEtchings()])
+      if (!active) return
+      achievements.value = earned
+      etchings.value = designs
+    } else {
+      collectionTab.value = tab
+      const loaded = await loadCurrentCollection(true)
+      if (!loaded) return
+      if (collectionError.value) throw new Error('Collection failed')
+    }
+    if (active) sectionsLoaded[tab] = true
+  } catch {
+    if (!active) return
+    loadFailures.value.push(tab)
+    error.value = t('profile.loadError')
+  } finally { sectionLoading[tab] = false }
+}
 
-let collectionLoadSequence = 0
-async function loadCurrentCollection(reset = true) {
-  if (!reset && collectionsLoading.value) return
-  const sequence = ++collectionLoadSequence
+const collectionSequences = { favorites: 0, wishlist: 0 }
+async function loadCurrentCollection(reset = true): Promise<boolean> {
   const requestedTab = collectionTab.value
-  collectionsLoading.value = true
-  collectionError.value = ''
+  if (!reset && collectionBusy[requestedTab]) return false
+  const sequence = ++collectionSequences[requestedTab]
+  collectionBusy[requestedTab] = true
+  collectionErrors[requestedTab] = ''
   try {
     if (requestedTab === 'favorites') {
-      const page = reset ? 1 : favoritesPage.value + 1
-      const result = await getMyFavoritesPage(page, 20)
-      if (sequence !== collectionLoadSequence) return
-      if (!result || !Array.isArray(result.items)) throw new Error('Invalid favorites page')
+      const result = await getMyFavoritesPage(reset ? 1 : favoritesPage.value + 1, 20)
+      if (!active || sequence !== collectionSequences[requestedTab]) return false
       favorites.value = reset ? result.items : [...favorites.value, ...result.items]
-      favoritesPage.value = result.page
-      favoritesTotal.value = result.total
+      favoritesPage.value = result.page; favoritesTotal.value = result.total
     } else {
-      const page = reset ? 1 : wishlistPage.value + 1
-      const result = await getMyWishlistPage(page, 20)
-      if (sequence !== collectionLoadSequence) return
+      const result = await getMyWishlistPage(reset ? 1 : wishlistPage.value + 1, 20)
+      if (!active || sequence !== collectionSequences[requestedTab]) return false
       wishlist.value = reset ? result.items : [...wishlist.value, ...result.items]
-      wishlistPage.value = result.page
-      wishlistTotal.value = result.total
+      wishlistPage.value = result.page; wishlistTotal.value = result.total
     }
+    return true
   } catch (cause) {
-    if (sequence === collectionLoadSequence) collectionError.value = apiErrorMessage(cause, t('profile.loadError'))
-  } finally {
-    if (sequence === collectionLoadSequence) collectionsLoading.value = false
-  }
+    if (active && sequence === collectionSequences[requestedTab]) collectionErrors[requestedTab] = apiErrorMessage(cause, t('profile.loadError'))
+    return false
+  } finally { if (sequence === collectionSequences[requestedTab]) collectionBusy[requestedTab] = false }
 }
 
-watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: true })
+watch(collectionTab, (tab) => { if (archiveTab.value !== tab) selectArchiveTab(tab) })
+watch(archiveTab, () => { void loadProfile(false) }, { immediate: true })
 
 </script>
 
@@ -417,7 +449,7 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
   <div class="profile-page archive-profile">
     <p v-if="loadFailures.length" class="form-error" role="status">
       {{ t('profile.partialLoadError') }}
-      <button type="button" :disabled="loading" @click="loadProfile">{{ t('share.retry') }}</button>
+      <button type="button" :disabled="loading" @click="loadProfile()">{{ t('share.retry') }}</button>
     </p>
     <section class="profile-hero">
       <LandmarkBackdrop />
@@ -514,11 +546,11 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
         </div>
       </div>
 
-      <div class="profile-stats">
+      <div v-if="sectionsLoaded.records" class="profile-stats" :aria-label="t('audit.loadedStatuses')">
         <article><strong>{{ statusCounts.total }}</strong><span>{{ t('profile.total') }}</span></article>
-        <article><strong>{{ statusCounts.pending }}</strong><span>{{ t('profile.status.pending') }}</span></article>
-        <article><strong>{{ statusCounts.approved }}</strong><span>{{ t('profile.status.approved') }}</span></article>
-        <article><strong>{{ statusCounts.rejected }}</strong><span>{{ t('profile.status.rejected') }}</span></article>
+        <article><strong>{{ statusCounts.pending }}</strong><span>{{ t('profile.status.pending') }} · {{ t('audit.loaded') }}</span></article>
+        <article><strong>{{ statusCounts.approved }}</strong><span>{{ t('profile.status.approved') }} · {{ t('audit.loaded') }}</span></article>
+        <article><strong>{{ statusCounts.rejected }}</strong><span>{{ t('profile.status.rejected') }} · {{ t('audit.loaded') }}</span></article>
       </div>
       <div class="archive-featured-seal">
         <small>{{ t('archive.seals') }}</small>
@@ -529,7 +561,7 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
           <img v-else-if="selectedAchievement" :src="selectedAchievement.imageUrl" :alt="selectedAchievement.name">
           <strong>{{ selectedEtching?.name || selectedAchievement?.name }}</strong>
         </template>
-        <p v-else>{{ t('archive.noSeal') }}</p>
+        <p v-else-if="sectionsLoaded.seals">{{ t('archive.noSeal') }}</p>
         <button type="button" @click="selectArchiveTab('seals')">{{ t('archive.manageSeal') }} ↗</button>
       </div>
     </section>
@@ -570,7 +602,7 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
         </button>
       </div>
 
-      <p v-if="collectionError" class="collection-error" aria-live="polite">{{ collectionError }}</p>
+      <p v-if="collectionError" class="collection-error" aria-live="polite">{{ collectionError }} <button type="button" :disabled="collectionsLoading" @click="loadCurrentCollection(true)">{{ t('share.retry') }}</button></p>
       <template v-if="collectionTab === 'favorites'">
         <div v-if="favorites.length" class="favorite-grid">
           <article v-for="food in favorites" :key="food.id" class="favorite-card">
@@ -589,7 +621,7 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
             </div>
           </article>
         </div>
-        <div v-else-if="!loading && !loadFailures.includes('favorites')" class="collection-empty">
+        <div v-else-if="!collectionsLoading && !collectionError && sectionsLoaded.favorites" class="collection-empty">
           <p>{{ t('profile.favoriteEmpty') }}</p>
           <RouterLink to="/">{{ t('profile.browseFoods') }}</RouterLink>
         </div>
@@ -640,30 +672,30 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
             <p v-else class="wishlist-no-match">{{ t('profile.wishlistNoMatch') }}</p>
           </article>
         </div>
-        <div v-else-if="!loading && !loadFailures.includes('wishlist')" class="collection-empty"><p>{{ t('profile.wishlistEmpty') }}</p></div>
+        <div v-else-if="!collectionsLoading && !collectionError && sectionsLoaded.wishlist" class="collection-empty"><p>{{ t('profile.wishlistEmpty') }}</p></div>
         <button v-if="wishlist.length < wishlistTotal" type="button" :disabled="collectionsLoading" @click="loadCurrentCollection(false)">{{ t('home.loadMoreFavorites') }}</button>
       </template>
     </section>
 
     <section v-show="archiveTab === 'diary'" class="collection-panel checkin-panel">
-      <div class="collection-heading"><div><small>味觉日记</small><h2>我的打卡</h2></div><p>记录真正吃过的珍馐，公开或仅自己可见。</p></div>
+      <div class="collection-heading"><div><small>{{ t('archive.diary') }}</small><h2>{{ t('audit.diaryTitle') }}</h2></div><p>{{ t('audit.diaryHint') }}</p></div>
       <div v-if="checkins.length" class="checkin-list">
         <article v-for="item in checkins" :key="item.id" class="wishlist-card">
-          <header><div><h3>{{ item.foodName }}</h3><time>{{ item.eatenOn }}</time></div><span>{{ item.visibility === 'PRIVATE' ? '仅自己可见' : '公开' }}</span></header>
+          <header><div><h3>{{ item.foodName }}</h3><time>{{ item.eatenOn }}</time></div><span>{{ item.visibility === 'PRIVATE' ? t('detail.checkinPrivate') : t('detail.checkinPublic') }}</span></header>
           <form v-if="checkinEditing === item.id" class="checkin-edit-form" @submit.prevent="saveCheckin(item)">
-            <input v-model="checkinDraft.eatenOn" type="date" required>
-            <select v-model="checkinDraft.visibility"><option value="PUBLIC">公开</option><option value="PRIVATE">仅自己可见</option></select>
-            <textarea v-model="checkinDraft.note" maxlength="500" placeholder="这次有什么新的味觉记忆？"></textarea>
-            <div><button :disabled="checkinSaving === item.id">保存</button><button type="button" @click="checkinEditing = undefined">取消</button></div>
+            <input :disabled="checkinSaving === item.id" v-model="checkinDraft.eatenOn" type="date" required>
+            <select :disabled="checkinSaving === item.id" v-model="checkinDraft.visibility"><option value="PUBLIC">{{ t('detail.checkinPublic') }}</option><option value="PRIVATE">{{ t('detail.checkinPrivate') }}</option></select>
+            <textarea :disabled="checkinSaving === item.id" v-model="checkinDraft.note" maxlength="500" :placeholder="t('audit.diaryPlaceholder')"></textarea>
+            <div><button :disabled="checkinSaving === item.id">{{ t('audit.save') }}</button><button type="button" @click="checkinEditing = undefined">{{ t('common.cancel') }}</button></div>
           </form>
-          <template v-else><p v-if="item.note">{{ item.note }}</p><div class="checkin-actions"><button type="button" @click="editCheckin(item)">编辑</button><button type="button" :disabled="checkinSaving === item.id" @click="removeCheckin(item)">删除</button></div></template>
+          <template v-else><p v-if="item.note">{{ item.note }}</p><div class="checkin-actions"><button type="button" @click="editCheckin(item)">{{ t('audit.edit') }}</button><button type="button" :disabled="checkinSaving === item.id" @click="removeCheckin(item)">{{ t('audit.delete') }}</button></div></template>
         </article>
       </div>
       <p v-if="checkinError" class="collection-error">{{ checkinError }}</p>
-      <button v-if="checkins.length < checkinTotal" type="button" :disabled="checkinLoadingMore" @click="loadMoreCheckins">
-        {{ checkinLoadingMore ? '加载中…' : '加载更多' }}
+      <button v-if="checkins.length < checkinTotal" type="button" :disabled="checkinLoadingMore || !!checkinSaving" @click="loadMoreCheckins">
+        {{ checkinLoadingMore ? t('common.loading') : t('audit.loadMore') }}
       </button>
-      <p v-else-if="!checkins.length && !loading && !loadFailures.includes('checkins')" class="collection-empty">还没有打卡，去菜品详情记录第一次体验吧。</p>
+      <p v-else-if="!checkins.length && !loading && !checkinError && sectionsLoaded.diary" class="collection-empty">{{ t('audit.emptyDiary') }}</p>
     </section>
 
     <section v-show="archiveTab === 'records' || archiveTab === 'seals'" class="profile-layout">
@@ -708,13 +740,14 @@ watch(collectionTab, () => { void loadCurrentCollection(true) }, { immediate: tr
                   <RouterLink v-if="food.reviewStatus === 'APPROVED'" :to="`/foods/${food.id}`">
                     {{ t('profile.view') }}
                   </RouterLink>
-                  <button type="button" @click="editSubmitted = false; selectedFood = food">{{ t('profile.complete') }}</button>
+                  <button type="button" @click="openFoodEditor(food)">{{ t('profile.complete') }}</button>
                 </div>
               </footer>
             </div>
           </article>
         </div>
-        <div v-else class="profile-empty">
+        <button v-if="foods.length < foodsTotal" type="button" :disabled="sectionLoading.records" @click="loadMoreFoods">{{ t('home.loadMoreFavorites') }}</button>
+        <div v-if="!foods.length && !loading && !error" class="profile-empty">
           <span>味</span>
           <h3>{{ t('profile.emptyTitle') }}</h3>
           <p>{{ t('profile.emptyDescription') }}</p>

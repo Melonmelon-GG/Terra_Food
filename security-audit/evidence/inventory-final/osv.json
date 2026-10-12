@@ -1,0 +1,11 @@
+{
+  "source": "https://api.osv.dev/v1/querybatch",
+  "checked": 349,
+  "required": 349,
+  "findings": [],
+  "errors": [],
+  "limitations": [
+    "Package matching is not exploitability analysis.",
+    "OS packages and Java entries without resolvable Maven coordinates require separate review."
+  ]
+}

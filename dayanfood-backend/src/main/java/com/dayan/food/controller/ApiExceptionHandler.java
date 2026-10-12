@@ -107,7 +107,7 @@ public class ApiExceptionHandler {
             default -> "REQUEST_FAILED";
         };
         String message = exception.getReason() == null ? "请求处理失败" : exception.getReason();
-        return ResponseEntity.status(exception.getStatusCode()).body(error(code, message, request));
+        return ResponseEntity.status(exception.getStatusCode()).headers(exception.getHeaders()).body(error(code, message, request));
     }
 
     @ExceptionHandler(Exception.class)

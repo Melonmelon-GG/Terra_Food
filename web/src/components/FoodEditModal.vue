@@ -42,7 +42,14 @@ const previewUrl = ref('')
 const coverInput = ref<HTMLInputElement>()
 const saving = ref(false)
 const error = ref('')
+const draftStored = ref(true)
 const regionDrawerOpen = ref(false)
+const imageMode = ref<'keep' | 'replace'>('keep')
+const tagsReady = ref(false)
+const tagsError = ref(false)
+const accountId = auth.currentUser.value?.id
+let active = true
+let uploadController: AbortController | undefined
 const selectedRegion = computed(() => props.regions.find((region) => region.id === form.regionId))
 
 // 草稿缓存：按菜品区分，误关弹窗再打开不丢失填写内容；地区/坐标始终以菜品档案为准。
@@ -56,6 +63,7 @@ interface EditDraft {
   remark: string
   image?: DraftImageMeta
   imageUrl?: string
+  imageMode?: 'keep' | 'replace'
   tagIds?: number[]
   expiresAt: number
 }
@@ -71,7 +79,8 @@ if (draft) {
   form.ingredients = draft.ingredients
   form.story = draft.story
   form.remark = draft.remark
-  form.imageUrl = draft.imageUrl || form.imageUrl
+  imageMode.value = draft.imageMode || (draft.image ? 'replace' : 'keep')
+  form.imageUrl = imageMode.value === 'replace' ? draft.imageUrl : (draft.imageUrl ?? form.imageUrl)
   form.tagIds = draft.tagIds
   if (draft.image) {
     imageMeta.value = draft.image
@@ -84,7 +93,7 @@ if (draft) {
 }
 
 function persistDraft() {
-  saveDraft(DRAFT_KEY, {
+  draftStored.value = saveDraft(DRAFT_KEY, {
     name: form.name,
     summary: form.summary,
     ingredients: form.ingredients,
@@ -92,17 +101,20 @@ function persistDraft() {
     remark: form.remark,
     image: imageMeta.value,
     imageUrl: form.imageUrl,
+    imageMode: imageMode.value,
     tagIds: form.tagIds,
     expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
   })
 }
 
 watch(
-  () => [form.name, form.summary, form.ingredients, form.story, form.remark, form.tagIds, imageMeta.value],
+  () => [{ ...form }, imageMeta.value, imageMode.value],
   persistDraft,
 )
 
 onBeforeUnmount(() => {
+  active = false
+  uploadController?.abort()
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
 })
 
@@ -118,6 +130,7 @@ function selectImage(event: Event) {
 
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   image.value = file
+  imageMode.value = 'replace'
   form.imageUrl = undefined
   imageMeta.value = { name: file.name, type: file.type, size: file.size }
   previewUrl.value = URL.createObjectURL(file)
@@ -127,14 +140,28 @@ function selectImage(event: Event) {
 async function submit() {
   if (saving.value) return
   error.value = ''
+  if (imageMode.value === 'replace' && !image.value && !form.imageUrl) { error.value = t('upload.imageNeedsReselect'); return }
+  const revision = auth.getSessionRevision()
+  const stillCurrent = () => active && revision === auth.getSessionRevision() && accountId === auth.currentUser.value?.id
+  const payload = { ...form, tagIds: form.tagIds?.slice() }
+  const selectedImage = image.value
   saving.value = true
   try {
-    if (image.value && !form.imageUrl) { form.imageUrl = await uploadImage(image.value); persistDraft() }
-    const updated = await updateMyFood(props.food.id, { ...form, tagIds: form.tagIds })
+    if (selectedImage && !payload.imageUrl) {
+      uploadController = new AbortController()
+      payload.imageUrl = await uploadImage(selectedImage, uploadController.signal)
+      if (!stillCurrent()) return
+      form.imageUrl = payload.imageUrl
+      persistDraft()
+    }
+    if (!stillCurrent()) return
+    const updated = await updateMyFood(props.food.id, payload)
+    if (!stillCurrent()) return
     clearDraft(DRAFT_KEY)
     forgetDraftImage(DRAFT_KEY)
     emit('saved', updated)
   } catch (requestError) {
+    if (!stillCurrent()) return
     error.value = axios.isAxiosError(requestError)
       ? requestError.response?.data?.message || t('profile.updateError')
       : t('profile.updateError')
@@ -143,11 +170,19 @@ async function submit() {
   }
 }
 
-onMounted(async () => {
-  if (draft?.tagIds !== undefined) return
-  try { form.tagIds = (await getFoodTagsForFood(props.food.id)).map((tag) => tag.id) }
-  catch { error.value = t('tagPicker.loadFailed') }
-})
+async function loadTags() {
+  tagsError.value = false
+  if (draft?.tagIds !== undefined) { tagsReady.value = true; return }
+  try {
+    const tags = await getFoodTagsForFood(props.food.id)
+    if (!active) return
+    if (saving.value) { tagsError.value = true; return }
+    form.tagIds = tags.map((tag) => tag.id)
+    tagsReady.value = true
+  } catch { if (active) tagsError.value = true }
+}
+onMounted(loadTags)
+
 </script>
 
 <template>
@@ -198,7 +233,8 @@ onMounted(async () => {
           {{ t('upload.ingredients') }}
           <input v-model.trim="form.ingredients" required maxlength="500">
         </label>
-        <FoodTagPicker v-model="form.tagIds" :disabled="saving" />
+        <FoodTagPicker v-model="form.tagIds" :disabled="saving || !tagsReady" />
+        <p v-if="tagsError" class="form-error">{{ t('tagPicker.loadFailed') }} <button type="button" :disabled="saving" @click="loadTags">{{ t('share.retry') }}</button></p>
         <label>
           {{ t('upload.story') }}
           <textarea v-model.trim="form.story" required maxlength="10000" rows="4"></textarea>
@@ -222,11 +258,12 @@ onMounted(async () => {
             </button>
           </div>
           <img v-if="previewUrl || form.imageUrl" class="cover-preview" :src="previewUrl || form.imageUrl" :alt="t('profile.replaceCover')">
-          <small v-if="imageMeta && !image" class="cover-warning">{{ t('upload.imageNeedsReselect') }}</small>
+          <small v-if="imageMeta && !image && !form.imageUrl" class="cover-warning">{{ t('upload.imageNeedsReselect') }}</small>
           <small>{{ food.imageUrl ? t('profile.keepCover') : t('upload.imageTip') }}</small>
         </div>
         </fieldset>
 
+        <p v-if="!draftStored" class="form-error" role="status">{{ t('audit.draftNotSaved') }}</p>
         <p v-if="error" class="form-error">{{ error }}</p>
         <div class="modal-actions">
           <button type="button" class="secondary-button" @click="emit('close')">{{ t('common.cancel') }}</button>

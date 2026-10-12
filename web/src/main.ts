@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import App from './App.vue'
 import { AUTH_SESSION_CHANGE_KEY, isAdminRole, useAuth } from './auth'
-import { registerSessionRevisionProvider, registerUnauthorizedHandler } from './api'
+import { registerSessionRevisionProvider, registerSessionSnapshotProvider, registerUnauthorizedHandler } from './api'
 import { i18n, saveLocale } from './i18n'
 
 // 样式按功能域拆分：基础 → 各页面 → 响应式（顺序即级联优先级）
@@ -105,6 +105,7 @@ saveLocale(i18n.global.locale.value)
 // 统一 401 处理：清除登录态并带 redirect 跳登录（防重复跳转由调用频率与路径判定兜底）。
 const auth = useAuth()
 registerSessionRevisionProvider(() => auth.getSessionRevision())
+registerSessionSnapshotProvider(() => ({ revision: auth.getSessionRevision(), userId: auth.currentUser.value?.id, confirmed: auth.sessionConfirmed.value }))
 registerUnauthorizedHandler((requestRevision) => {
   if (requestRevision !== undefined && requestRevision !== auth.getSessionRevision()) return
   auth.clearSession()
@@ -117,8 +118,12 @@ registerUnauthorizedHandler((requestRevision) => {
 })
 
 window.addEventListener('storage', (event) => {
-  if (event.key === AUTH_SESSION_CHANGE_KEY) void auth.handleExternalSessionChange()
+  if (event.key === AUTH_SESSION_CHANGE_KEY) void auth.handleExternalSessionChange(event.newValue)
 })
+
+window.addEventListener('focus', () => { void auth.verifyForegroundSession() })
+window.addEventListener('pageshow', () => { void auth.verifyForegroundSession() })
+document.addEventListener('visibilitychange', () => { void auth.verifyForegroundSession() })
 
 createApp(App)
   .use(i18n)

@@ -15,6 +15,12 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public interface FoodService {
+    FoodCatalogVO listMinePage(String username, int page, int pageSize);
+    FoodVO ownedDetail(Long id, String username);
+    FoodCatalogVO mapClusterMembers(String clusterId,String keyword,Long regionId,List<Long> tasteIds,
+        List<Long> ingredientIds,List<Long> cuisineIds,java.math.BigDecimal minLatitude,
+        java.math.BigDecimal maxLatitude,java.math.BigDecimal minLongitude,java.math.BigDecimal maxLongitude,int page,int pageSize);
+
 
     FoodVO create(FoodCreateDTO request, String username);
 

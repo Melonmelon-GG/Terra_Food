@@ -12,6 +12,8 @@ import com.dayan.food.service.AuthService;
 import com.dayan.food.service.PasswordResetCodeService;
 import com.dayan.food.service.RegistrationCodeService;
 import com.dayan.food.service.UserReviewPresenter;
+import com.dayan.food.security.AppUserPrincipal;
+import com.dayan.food.security.AuthenticatedActor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -66,12 +68,15 @@ public class AuthServiceImpl implements AuthService {
             throw new BadCredentialsException("登录类型与账号角色不匹配");
         }
 
-        achievementService.awardFirstLogin(authentication.getName());
-        return new LoginResult(authentication, findUser(authentication.getName()));
+        if (!(authentication.getPrincipal() instanceof AppUserPrincipal principal)) {
+            throw new BadCredentialsException("登录身份格式无效");
+        }
+        var user = AuthenticatedActor.validate(appUserMapper.findByIdForUpdate(principal.userId()), principal);
+        // Auxiliary achievements are granted by the authenticated notification request, not login.
+        return new LoginResult(authentication, reviewPresenter.toVO(user));
     }
 
     @Override
-    @Cacheable(cacheNames = "authUsers", key = "#username")
     @Transactional(readOnly = true)
     public AuthUserVO currentUser(String username) {
         return findUser(username);
@@ -123,7 +128,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthUserVO findUser(String username) {
-        AppUser user = appUserMapper.findByUsername(username);
+        AppUser user = AuthenticatedActor.resolve(appUserMapper, username);
         if (user == null) {
             throw new BadCredentialsException("用户不存在");
         }

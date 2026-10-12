@@ -33,23 +33,33 @@ public class AuthController {
     private final RegistrationCodeService registrationCodeService;
     private final PasswordResetCodeService passwordResetCodeService;
     private final AbuseBudgetService abuseBudgetService;
+    private final com.dayan.food.security.ClientAddressResolver clientAddresses;
 
     public AuthController(
             AuthService authService,
             RegistrationCodeService registrationCodeService,
             PasswordResetCodeService passwordResetCodeService,
-            AbuseBudgetService abuseBudgetService
+            AbuseBudgetService abuseBudgetService,
+            com.dayan.food.security.ClientAddressResolver clientAddresses
     ) {
         this.authService = authService;
         this.registrationCodeService = registrationCodeService;
         this.passwordResetCodeService = passwordResetCodeService;
         this.abuseBudgetService = abuseBudgetService;
+        this.clientAddresses = clientAddresses;
     }
 
     @PostMapping("/login")
     public AuthUserVO login(@Valid @RequestBody LoginDTO request, HttpServletRequest servletRequest) {
-        abuseBudgetService.login(servletRequest.getRemoteAddr(), request.username());
-        var result = authService.login(request);
+        String budget = abuseBudgetService.login(clientAddresses.resolve(servletRequest), request.username());
+        AuthService.LoginResult result;
+        try {
+            result = authService.login(request);
+        } catch (org.springframework.security.core.AuthenticationException invalid) {
+            abuseBudgetService.loginFailed(budget);
+            throw invalid;
+        }
+        abuseBudgetService.loginSucceeded(budget);
 
         // 认证成功后更换 Session，防止复用登录前的会话标识造成会话固定风险。
         var existingSession = servletRequest.getSession(false);
@@ -77,14 +87,14 @@ public class AuthController {
     @PostMapping("/registration-code")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void sendRegistrationCode(@Valid @RequestBody RegistrationCodeSendDTO request, HttpServletRequest servletRequest) {
-        abuseBudgetService.mail(servletRequest.getRemoteAddr(), request.email());
+        abuseBudgetService.mail(clientAddresses.resolve(servletRequest), request.email());
         registrationCodeService.sendCode(request.email(), request.captchaId(), request.captchaAnswer());
     }
 
     @PostMapping("/password-reset-code")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void sendPasswordResetCode(@Valid @RequestBody PasswordResetCodeSendDTO request, HttpServletRequest servletRequest) {
-        abuseBudgetService.mail(servletRequest.getRemoteAddr(), request.email());
+        abuseBudgetService.mail(clientAddresses.resolve(servletRequest), request.email());
         passwordResetCodeService.sendCode(request.username(), request.email());
     }
 
@@ -95,7 +105,8 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public AuthUserVO currentUser(Authentication authentication) {
+    public AuthUserVO currentUser(Authentication authentication, jakarta.servlet.http.HttpServletResponse response) {
+        response.setHeader("Cache-Control", "private, no-store");
         return authService.currentUser(authentication.getName());
     }
 

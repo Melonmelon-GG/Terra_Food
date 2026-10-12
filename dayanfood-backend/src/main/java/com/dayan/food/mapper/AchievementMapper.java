@@ -15,6 +15,10 @@ public interface AchievementMapper {
 
     List<Achievement> findUnnotifiedByUsername(String username);
 
+    List<Achievement> findUnlockedByUserId(@Param("userId") Long userId);
+
+    List<Achievement> findUnnotifiedByUserId(@Param("userId") Long userId);
+
     int markNotified(@Param("username") String username, @Param("achievementId") Long achievementId);
 
     int clearSelection(String username);

@@ -11,7 +11,7 @@ from pydantic import AnyHttpUrl
 
 
 BACKEND_URL = os.getenv("BACKEND_INTERNAL_URL", "http://localhost:8080").rstrip("/")
-INTERNAL_TOKEN = os.getenv("AGENT_INTERNAL_TOKEN", "")
+INTERNAL_TOKEN = os.getenv("MCP_BACKEND_TOKEN", "")
 MCP_TOKEN = os.getenv("MCP_INTERNAL_TOKEN", "")
 
 
@@ -38,9 +38,9 @@ mcp = FastMCP(
 
 async def _backend_request(method: str, path: str, **kwargs: Any) -> Any:
     if not INTERNAL_TOKEN:
-        raise RuntimeError("AGENT_INTERNAL_TOKEN is not configured")
+        raise RuntimeError("MCP_BACKEND_TOKEN is not configured")
     headers = dict(kwargs.pop("headers", {}))
-    headers["X-Agent-Internal-Token"] = INTERNAL_TOKEN
+    headers["X-MCP-Backend-Token"] = INTERNAL_TOKEN
     async with httpx.AsyncClient(base_url=BACKEND_URL, timeout=12.0) as client:
         response = await client.request(method, path, headers=headers, **kwargs)
         response.raise_for_status()
@@ -49,7 +49,8 @@ async def _backend_request(method: str, path: str, **kwargs: Any) -> Any:
 
 @mcp.tool()
 async def recommend_local_foods(
-    username: str,
+    subject_id: str,
+    context: str,
     province: str = "",
     city: str = "",
     limit: int = 5,
@@ -59,7 +60,8 @@ async def recommend_local_foods(
         "GET",
         "/api/internal/agent/recommendations",
         params={
-            "username": username,
+            "subjectId": subject_id,
+            "context": context,
             "province": province,
             "city": city,
             "personalized": "false",
@@ -71,7 +73,8 @@ async def recommend_local_foods(
 
 @mcp.tool()
 async def recommend_from_recent_history(
-    username: str,
+    subject_id: str,
+    context: str,
     province: str = "",
     city: str = "",
     limit: int = 5,
@@ -81,7 +84,8 @@ async def recommend_from_recent_history(
         "GET",
         "/api/internal/agent/recommendations",
         params={
-            "username": username,
+            "subjectId": subject_id,
+            "context": context,
             "province": province,
             "city": city,
             "personalized": "true",

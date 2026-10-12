@@ -16,6 +16,7 @@ const router = useRouter()
 const auth = useAuth()
 const mobileNavOpen = ref(false)
 const routeLoadFailed = ref(false)
+const logoutUnconfirmed = ref(false)
 const { themeMode, setTheme } = useTheme()
 const nextLocaleLabel = computed(() => locale.value === 'zh-CN' ? 'EN' : '中')
 // 不参与常规导航展示的页面：登录/注册/关于。
@@ -84,8 +85,11 @@ function toggleLocale() {
 
 async function logout() {
   mobileNavOpen.value = false
+  logoutUnconfirmed.value = false
   try {
     await auth.logout()
+  } catch {
+    logoutUnconfirmed.value = true
   } finally {
     await router.push('/login')
   }
@@ -148,19 +152,25 @@ async function logout() {
     </nav>
   </header>
 
-  <main>
+  <main :class="{ 'session-verifying': route.meta.requiresAuth && !auth.sessionConfirmed.value }">
+    <div v-if="logoutUnconfirmed" class="route-load-error" role="alert">{{ t('audit.sessionLogoutFailed') }} <button type="button" @click="logout">{{ t('share.retry') }}</button></div>
     <div v-if="routeLoadFailed" class="route-load-error" role="alert">
       <span>{{ t('common.routeLoadFailed') }}</span>
       <button type="button" @click="reloadPage">{{ t('common.reload') }}</button>
     </div>
-    <RouterView :key="`${route.fullPath}:${auth.getSessionRevision()}:${auth.currentUser.value?.id ?? 'anonymous'}`" />
+    <p v-if="route.meta.requiresAuth && !auth.sessionConfirmed.value" class="state session-status" role="status">{{ t('audit.confirmingSession') }}</p>
+    <RouterView :key="route.meta.requiresAuth ? `${route.path}:${auth.sessionRevision.value}:${auth.currentUser.value?.id ?? 'anonymous'}` : route.path" />
   </main>
 
   <BackgroundMusic v-if="!isAuthFlowPage" :launcher-visible="route.path !== '/'" />
   <AchievementToast />
-  <AgentPanel v-if="auth.currentUser.value" :launcher-visible="route.path !== '/'" />
+  <AgentPanel v-if="auth.currentUser.value && auth.sessionConfirmed.value" :key="auth.sessionRevision.value" :launcher-visible="route.path !== '/'" />
 
   <footer id="about">
     {{ t('footer') }}
   </footer>
 </template>
+
+<style>
+.session-verifying > :not(.session-status) { visibility: hidden; pointer-events: none; }
+</style>

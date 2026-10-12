@@ -53,6 +53,16 @@ public class ActiveSessionFilter extends OncePerRequestFilter {
                 return;
             }
 
+            String expectedUserId = request.getHeader("X-Expected-User-Id");
+            if (!java.util.Set.of("GET", "HEAD", "OPTIONS").contains(request.getMethod())
+                    && expectedUserId != null && !principal.userId().toString().equals(expectedUserId)) {
+                response.setStatus(HttpServletResponse.SC_CONFLICT);
+                response.setCharacterEncoding("UTF-8");
+                response.setContentType("application/json");
+                response.getWriter().write("{\"code\":\"IDENTITY_CHANGED\",\"message\":\"登录账号已变化，请刷新后重试\"}");
+                return;
+            }
+
             String expectedAuthority = "ROLE_" + user.getRole().name();
             boolean roleIsCurrent = authentication.getAuthorities().stream()
                     .anyMatch(authority -> authority.getAuthority().equals(expectedAuthority));

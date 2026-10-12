@@ -40,19 +40,19 @@ class FoodCreationServiceImplTests {
 
     @BeforeEach
     void setUp() {
+        com.dayan.food.support.TestActors.bind(users,"alice",7L,com.dayan.food.entity.enums.UserRole.USER);
         service = new FoodCreationServiceImpl(foodService, users, idempotency, new ObjectMapper());
         request = new FoodCreateDTO("Dish", 1L, BigDecimal.ONE, BigDecimal.TEN,
                 "Address", "Summary", "Story", "Ingredients", null, null,
                 "Province", "City", List.of());
     }
 
+    @org.junit.jupiter.api.AfterEach void cleanup(){com.dayan.food.support.TestActors.clear();}
+
     @Test
     void locksAccountBeforeReadingAndCreatingIdempotentResult() {
         AppUser user = mock(AppUser.class);
         FoodVO created = mock(FoodVO.class);
-        when(user.getId()).thenReturn(7L);
-        when(user.isActive()).thenReturn(true);
-        when(users.findByUsernameForUpdate("alice")).thenReturn(user);
         when(idempotency.find(7L, "request-key-123")).thenReturn(null);
         when(foodService.create(request, "alice")).thenReturn(created);
         when(created.id()).thenReturn(42L);
@@ -61,7 +61,7 @@ class FoodCreationServiceImplTests {
         assertEquals(created, service.create(request, "alice", "request-key-123"));
 
         InOrder order = inOrder(users, idempotency, foodService);
-        order.verify(users).findByUsernameForUpdate("alice");
+        order.verify(users).findByIdForUpdate(7L);
         order.verify(idempotency).deleteExpired(eq(7L), eq("request-key-123"), any());
         order.verify(idempotency).find(7L, "request-key-123");
         order.verify(idempotency).insertReservation(eq(7L), eq("request-key-123"), any(), any());
@@ -73,9 +73,6 @@ class FoodCreationServiceImplTests {
     void rejectsReuseWithDifferentContentBeforeCreatingFood() {
         AppUser user = mock(AppUser.class);
         FoodCreateIdempotency existing = mock(FoodCreateIdempotency.class);
-        when(user.getId()).thenReturn(7L);
-        when(user.isActive()).thenReturn(true);
-        when(users.findByUsernameForUpdate("alice")).thenReturn(user);
         when(idempotency.find(7L, "request-key-123")).thenReturn(existing);
         when(existing.getRequestHash()).thenReturn("different-hash");
 

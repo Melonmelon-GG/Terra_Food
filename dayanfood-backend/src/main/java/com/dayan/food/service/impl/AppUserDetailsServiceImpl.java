@@ -21,7 +21,7 @@ public class AppUserDetailsServiceImpl implements AppUserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String identity) throws UsernameNotFoundException {
-        String normalizedIdentity = identity == null ? "" : identity.trim();
+        String normalizedIdentity = com.dayan.food.service.AbuseBudgetService.normalize(identity);
         AppUser appUser = appUserMapper.findByUsernameOrEmail(normalizedIdentity);
         if (appUser == null) {
             throw new UsernameNotFoundException("用户不存在");

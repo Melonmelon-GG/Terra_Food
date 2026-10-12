@@ -18,10 +18,12 @@
     </insert>
     <select id="findByOriginalUrl" resultMap="asset">SELECT * FROM image_asset WHERE original_url=#{originalUrl}</select>
     <select id="findPending" resultMap="asset">SELECT * FROM image_asset WHERE status='PENDING' ORDER BY id LIMIT #{limit}</select>
-    <update id="markProcessing">UPDATE image_asset SET status='PROCESSING', error_code=NULL WHERE id=#{id} AND status='PENDING'</update>
+    <update id="claim">UPDATE image_asset SET status='PROCESSING', worker_owner=#{owner}, lease_until=DATE_ADD(NOW(),INTERVAL 60 SECOND), attempts=attempts+1, error_code=NULL WHERE id=#{id} AND status='PENDING' AND attempts &lt; 3</update>
+    <update id="readyOwned">UPDATE image_asset SET status='READY', variant_320_url=#{url320}, variant_640_url=#{url640}, variant_1280_url=#{url1280}, error_code=NULL, worker_owner=NULL, lease_until=NULL WHERE id=#{id} AND status='PROCESSING' AND worker_owner=#{owner} AND lease_until &gt; NOW()</update>
+    <update id="failOwned">UPDATE image_asset SET status='FAILED', error_code=#{errorCode}, worker_owner=NULL, lease_until=NULL WHERE id=#{id} AND status='PROCESSING' AND worker_owner=#{owner}</update>
+    <update id="recoverExpired">UPDATE image_asset SET status=IF(attempts &lt; 3,'PENDING','FAILED'), error_code='WORKER_LOST', worker_owner=NULL, lease_until=NULL WHERE status='PROCESSING' AND lease_until &lt; NOW()</update>
     <update id="markReady">UPDATE image_asset SET status='READY', variant_320_url=#{url320}, variant_640_url=#{url640}, variant_1280_url=#{url1280}, error_code=NULL WHERE id=#{id}</update>
     <update id="markFailed">UPDATE image_asset SET status='FAILED', error_code=#{errorCode} WHERE id=#{id}</update>
-    <update id="resetProcessing">UPDATE image_asset SET status='PENDING' WHERE status='PROCESSING'</update>
-    <update id="retryFailed">UPDATE image_asset SET status='PENDING', error_code=NULL WHERE id=#{id} AND status='FAILED'</update>
+    <update id="retryFailed">UPDATE image_asset SET status='PENDING', attempts=0, error_code=NULL WHERE id=#{id} AND status='FAILED'</update>
     <delete id="deleteByOriginalUrl">DELETE FROM image_asset WHERE original_url=#{originalUrl}</delete>
 </mapper>

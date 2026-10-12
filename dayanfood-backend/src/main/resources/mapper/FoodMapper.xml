@@ -25,6 +25,7 @@
         <result property="reviewedAt" column="reviewed_at"/>
         <result property="createdBy" column="created_by"/>
         <result property="createdByUserId" column="created_by_user_id"/>
+        <result property="ownershipStatus" column="ownership_status"/>
         <result property="createdAt" column="created_at"/>
         <association property="region" javaType="com.dayan.food.entity.po.Region">
             <id property="id" column="region_id"/>
@@ -73,6 +74,7 @@
         f.reviewed_at,
         f.created_by,
         f.created_by_user_id,
+        f.ownership_status,
         f.created_at,
         r.id AS region_id,
         COALESCE(NULLIF(f.city, ''), r.name) AS region_name,
@@ -266,9 +268,33 @@
         <where><include refid="filteredConditions"/></where>
     </select>
 
+    <sql id="clusterConditions">
+        <include refid="filteredConditions"/>
+        AND LEAST(POWER(2, #{zoom})-1,FLOOR((f.longitude + 180) / 360 * POWER(2, #{zoom})))=#{clusterX}
+        AND FLOOR((1 - LN(TAN(RADIANS(LEAST(85, GREATEST(-85, f.latitude)))) +
+            1 / COS(RADIANS(LEAST(85, GREATEST(-85, f.latitude))))) / PI()) / 2 * POWER(2, #{zoom}))=#{clusterY}
+    </sql>
+    <select id="countClusterMembers" resultType="int">
+        SELECT COUNT(*) FROM food f LEFT JOIN region r ON r.id=f.region_id
+        <where><include refid="clusterConditions"/></where>
+    </select>
+    <select id="findClusterMembers" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/> FROM food f LEFT JOIN region r ON r.id=f.region_id
+        <where><include refid="clusterConditions"/></where> ORDER BY f.heat DESC,f.id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countMine" resultType="int">SELECT COUNT(*) FROM food WHERE created_by_user_id=#{userId} AND ownership_status='VERIFIED'</select>
+    <select id="findMinePage" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/> FROM food f LEFT JOIN region r ON r.id=f.region_id
+        WHERE f.created_by_user_id=#{userId} AND ownership_status='VERIFIED' ORDER BY f.created_at DESC,f.id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="findApprovedByIds" resultMap="foodResultMap">
+        SELECT <include refid="foodColumns"/> FROM food f LEFT JOIN region r ON r.id=f.region_id
+        WHERE f.review_status='APPROVED' AND f.id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </select>
+
     <select id="findMapClusters" resultType="com.dayan.food.entity.po.FoodMapClusterRow">
         SELECT
-          FLOOR((f.longitude + 180) / 360 * POWER(2, #{zoom})) AS cluster_x,
+          LEAST(POWER(2, #{zoom})-1,FLOOR((f.longitude + 180) / 360 * POWER(2, #{zoom}))) AS cluster_x,
           FLOOR((1 - LN(TAN(RADIANS(LEAST(85, GREATEST(-85, f.latitude)))) +
             1 / COS(RADIANS(LEAST(85, GREATEST(-85, f.latitude))))) / PI()) / 2 * POWER(2, #{zoom})) AS cluster_y,
           COUNT(*) AS item_count, AVG(f.latitude) AS latitude, AVG(f.longitude) AS longitude,
@@ -298,7 +324,7 @@
         SELECT <include refid="foodColumns"/>
         FROM food f
         LEFT JOIN region r ON r.id = f.region_id
-        WHERE f.created_by_user_id = #{userId}
+        WHERE f.created_by_user_id = #{userId} AND f.ownership_status='VERIFIED'
         ORDER BY f.created_at DESC, f.id DESC
     </select>
 
@@ -307,13 +333,16 @@
         FROM food f
         LEFT JOIN region r ON r.id = f.region_id
         WHERE f.review_status = 'APPROVED'
-          AND f.created_by_user_id = #{userId}
+          AND f.created_by_user_id = #{userId} AND f.ownership_status='VERIFIED'
         ORDER BY f.heat DESC, f.id DESC
         LIMIT #{limit}
     </select>
 
     <select id="findMatchingCandidates" resultMap="foodResultMap">
-        SELECT <include refid="foodColumns"/>
+        SELECT f.id AS food_id,f.name AS food_name,f.latitude,f.longitude,f.image_url,f.heat,f.review_status,
+          f.created_by,f.created_by_user_id,f.created_at,f.ingredients,LEFT(f.summary,240) AS summary,
+          r.id AS region_id,COALESCE(NULLIF(f.city,''),r.name) AS region_name,
+          COALESCE(NULLIF(f.province,''),r.province) AS region_province
         FROM food f
         LEFT JOIN region r ON r.id = f.region_id
         WHERE f.review_status = 'APPROVED'
@@ -325,6 +354,7 @@
                 OR INSTR(LOWER(COALESCE(f.province, '')), LOWER(#{token})) &gt; 0
             </foreach>
         </if>
+        <if test="tokens == null or tokens.isEmpty()">AND 1=0</if>
         ORDER BY f.heat DESC, f.id DESC
         LIMIT #{limit}
     </select>
@@ -334,7 +364,7 @@
         FROM food f
         LEFT JOIN region r ON r.id = f.region_id
         WHERE f.id = #{id}
-          AND f.created_by_user_id = #{userId}
+          AND f.created_by_user_id = #{userId} AND f.ownership_status='VERIFIED'
     </select>
 
     <update id="updateOwnedDetails">
@@ -354,7 +384,7 @@
             reviewed_by = #{reviewedBy},
             reviewed_at = CASE WHEN #{status} = 'APPROVED' THEN CURRENT_TIMESTAMP ELSE NULL END
         WHERE id = #{id}
-          AND created_by_user_id = #{userId}
+          AND created_by_user_id = #{userId} AND ownership_status='VERIFIED'
     </update>
 
     <select id="countAdmin" resultType="int">
@@ -419,7 +449,7 @@
         INSERT IGNORE INTO food_daily_visit (food_id, user_id, visit_date, visited_at)
         SELECT f.id, u.id, CURRENT_DATE, CURRENT_TIMESTAMP
         FROM food f
-        INNER JOIN app_user u ON u.username = #{username} AND u.active = TRUE
+        INNER JOIN app_user u ON u.id = #{userId} AND u.active = TRUE
         WHERE f.id = #{foodId}
           AND f.review_status = 'APPROVED'
     </insert>
@@ -430,7 +460,7 @@
         INNER JOIN food f ON f.id = v.food_id AND f.review_status = 'APPROVED'
         SET v.visited_at = CURRENT_TIMESTAMP
         WHERE v.food_id = #{foodId}
-          AND u.username = #{username}
+          AND u.id = #{userId}
           AND v.visit_date = CURRENT_DATE
     </update>
 
@@ -441,7 +471,7 @@
         INNER JOIN app_user u ON u.id = v.user_id
         INNER JOIN food f ON f.id = v.food_id
         LEFT JOIN region r ON r.id = f.region_id
-        WHERE u.username = #{username}
+        WHERE u.id = #{userId}
           AND f.review_status = 'APPROVED'
         ORDER BY v.visited_at DESC, f.id DESC
         LIMIT #{limit}
@@ -458,24 +488,24 @@
         <if test="city != null and city != ''">
             AND r.name LIKE CONCAT('%', #{city}, '%')
         </if>
-        <if test="personalized and username != null and username != ''">
+        <if test="personalized and userId != null">
             AND NOT EXISTS (
                 SELECT 1
                 FROM food_daily_visit seen
                 INNER JOIN app_user seen_user ON seen_user.id = seen.user_id
                 WHERE seen.food_id = f.id
-                  AND seen_user.username = #{username}
+                  AND seen_user.id = #{userId}
                   AND seen.visited_at &gt;= CURRENT_TIMESTAMP - INTERVAL 30 DAY
             )
         </if>
         ORDER BY
-        <if test="personalized and username != null and username != ''">
+        <if test="personalized and userId != null">
             (
                 SELECT COUNT(*)
                 FROM food_daily_visit preference
                 INNER JOIN app_user preference_user ON preference_user.id = preference.user_id
                 INNER JOIN food viewed_food ON viewed_food.id = preference.food_id
-                WHERE preference_user.username = #{username}
+                WHERE preference_user.id = #{userId}
                   AND preference.visited_at &gt;= CURRENT_TIMESTAMP - INTERVAL 30 DAY
                   AND viewed_food.region_id = f.region_id
             ) DESC,

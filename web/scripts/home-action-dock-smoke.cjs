@@ -61,7 +61,7 @@ const pixel = 'data:image/svg+xml,' + encodeURIComponent(
 
       const trigger = page.getByRole('button', { name: '展开快捷操作' })
       await trigger.click()
-      assert.equal(await page.locator('.home-action-list button').count(), 4)
+      assert.equal(await page.locator('.home-action-list button').count(), 5)
       assert.equal(await page.locator('.agent-panel').count(), 0)
       if (screenshotDirectory) {
         fs.mkdirSync(screenshotDirectory, { recursive: true })
@@ -87,7 +87,7 @@ const pixel = 'data:image/svg+xml,' + encodeURIComponent(
       assert.deepEqual(errors, [])
       await page.close()
     }
-    console.log('PASS desktop/mobile: no sidebar or filter toolbar, centered catalog, top search, four-action dock, full-image frosted cards')
+    console.log('PASS desktop/mobile: no sidebar or filter toolbar, centered catalog, top search, five-action dock with filter/favorites access, full-image frosted cards')
   } finally {
     await browser.close()
   }

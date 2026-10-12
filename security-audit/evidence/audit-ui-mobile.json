@@ -1,0 +1,11 @@
+{
+  "base": "http://127.0.0.1:18382",
+  "kind": "mocked-browser-contracts",
+  "results": [
+    {
+      "id": "FE-MOBILE-ENTRY",
+      "status": "passed",
+      "durationMs": 2604
+    }
+  ]
+}

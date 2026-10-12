@@ -19,6 +19,10 @@ public interface AppUserMapper {
 
     AppUser findById(Long id);
 
+    AppUser findByIdForUpdate(@Param("id") Long id);
+
+    int updateAvatarById(@Param("id") Long id, @Param("avatarUrl") String avatarUrl);
+
     /** Locks and returns the account in the caller's transaction. */
     AppUser findByUsernameForUpdate(@Param("username") String username);
 

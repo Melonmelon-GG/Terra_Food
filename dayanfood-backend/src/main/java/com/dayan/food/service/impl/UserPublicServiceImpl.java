@@ -52,7 +52,7 @@ public class UserPublicServiceImpl implements UserPublicService {
         String signature = user.getSignature() == null || user.getSignature().isBlank()
                 ? null
                 : user.getSignature().trim();
-        AchievementVO selectedAchievement = achievementMapper.findUnlockedByUsername(user.getUsername()).stream()
+        AchievementVO selectedAchievement = achievementMapper.findUnlockedByUserId(user.getId()).stream()
                 .filter(achievement -> achievement.isSelected())
                 .findFirst().map(AchievementVO::from).orElse(null);
         return new UserPublicVO(

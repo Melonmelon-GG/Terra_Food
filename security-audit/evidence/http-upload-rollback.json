@@ -1,0 +1,53 @@
+{
+  "runId": "aud1552047b16c8",
+  "scope": "isolated synthetic HTTP/MySQL/Redis Session/SMTP",
+  "base": "http://127.0.0.1:18380",
+  "project": "terra-audit-20260922",
+  "passed": 3,
+  "failed": 0,
+  "requiredCaseCount": 3,
+  "executedCaseCount": 3,
+  "cases": [
+    {
+      "caseId": "PREFLIGHT-01",
+      "status": "PASS",
+      "seconds": 0.291,
+      "evidence": {
+        "anonymousMe": 401,
+        "schemaV28": true,
+        "database": "terra_audit_20260922"
+      }
+    },
+    {
+      "caseId": "AUTH-01",
+      "status": "PASS",
+      "seconds": 0.654,
+      "evidence": {
+        "oldCookieStatuses": [
+          401,
+          401,
+          401
+        ],
+        "replacementEdit": 404,
+        "ownerNullRows": 1
+      }
+    },
+    {
+      "caseId": "UPLOAD-ROLLBACK",
+      "status": "PASS",
+      "seconds": 0.61,
+      "evidence": {
+        "faultStatus": 500,
+        "metadataDeltaDuringFailure": 0,
+        "fileDeltaDuringFailure": 0,
+        "recovery": 201,
+        "fixture": "transient isolated SQL trigger"
+      }
+    }
+  ],
+  "limitations": [
+    "In-flight filter-to-service interleaving is covered separately; AUTH-01 tests old Cookies across account replacement.",
+    "Captcha arithmetic is intentionally solved in the isolated test; this is not evidence of bot resistance.",
+    "No real deployment or production data was tested."
+  ]
+}

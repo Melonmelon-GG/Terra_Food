@@ -41,6 +41,8 @@ import java.util.regex.Pattern;
 @Service
 public class FoodImportServiceImpl implements FoodImportService {
 
+    @org.springframework.beans.factory.annotation.Autowired(required=false) private com.dayan.food.cache.DiscoveryVersion discoveryVersion;
+
     private static final int MAX_IMPORT_ROWS = 2_000;
     private static final int MAX_REPORTED_ISSUES = 100;
     private static final String ANONYMOUS = "无名";
@@ -82,6 +84,8 @@ public class FoodImportServiceImpl implements FoodImportService {
     @Override
     @Transactional
     public FoodImportResultVO importSpreadsheet(MultipartFile file) {
+        var actor=com.dayan.food.security.AuthenticatedActor.resolveForUpdate(appUserMapper,com.dayan.food.security.AuthenticatedActor.principal().username());
+        if(actor.getRole()!=com.dayan.food.entity.enums.UserRole.ADMIN)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"需要主管理员权限");
         validateFile(file);
 
         var parsedRows = new ArrayList<FoodImportRowDTO>();
@@ -141,6 +145,7 @@ public class FoodImportServiceImpl implements FoodImportService {
 
         int skipped = totalRows - parsedRows.size();
         // 批量入库后统一在事务提交时失效集合类缓存，避免回滚时误清。
+        if(discoveryVersion!=null)discoveryVersion.advance();
         cacheInvalidator.clear(cacheManager.getCache("foodLists"));
         cacheInvalidator.clear(cacheManager.getCache("foodCatalogs"));
         cacheInvalidator.clear(cacheManager.getCache("foodMarkers"));

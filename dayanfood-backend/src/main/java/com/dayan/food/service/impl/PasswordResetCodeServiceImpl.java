@@ -2,6 +2,7 @@ package com.dayan.food.service.impl;
 
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.mapper.AppUserMapper;
+import com.dayan.food.service.AtomicChallengeStore;
 import com.dayan.food.service.PasswordResetCodeService;
 import com.dayan.food.service.RegistrationCodeDeliveryException;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +17,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -28,6 +28,7 @@ public class PasswordResetCodeServiceImpl implements PasswordResetCodeService {
     private final JavaMailSender mailSender;
     private final StringRedisTemplate redisTemplate;
     private final AppUserMapper appUserMapper;
+    private final AtomicChallengeStore challenges;
     private final String from;
     private final Duration expiration;
     private final Duration resendInterval;
@@ -37,6 +38,7 @@ public class PasswordResetCodeServiceImpl implements PasswordResetCodeService {
             JavaMailSender mailSender,
             StringRedisTemplate redisTemplate,
             AppUserMapper appUserMapper,
+            AtomicChallengeStore challenges,
             @Value("${app.registration-code.from:}") String from,
             @Value("${app.registration-code.expiration:10m}") Duration expiration,
             @Value("${app.registration-code.resend-interval:60s}") Duration resendInterval,
@@ -45,6 +47,7 @@ public class PasswordResetCodeServiceImpl implements PasswordResetCodeService {
         this.mailSender = mailSender;
         this.redisTemplate = redisTemplate;
         this.appUserMapper = appUserMapper;
+        this.challenges = challenges;
         this.from = from;
         this.expiration = expiration;
         this.resendInterval = resendInterval;
@@ -55,23 +58,19 @@ public class PasswordResetCodeServiceImpl implements PasswordResetCodeService {
     public void sendCode(String username, String email) {
         String normalizedUsername = username.trim();
         String normalizedEmail = normalizeEmail(email);
-        requireMatchingUser(normalizedUsername, normalizedEmail);
+        AppUser account = requireMatchingUser(normalizedUsername, normalizedEmail);
 
-        String identity = keyIdentity(normalizedUsername, normalizedEmail);
+        String identity = keyIdentity(account.getSubjectId(), normalizedEmail);
         String cooldownKey = KEY_PREFIX + "cooldown:" + identity;
-        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(cooldownKey, "1", resendInterval);
+        String cooldownLease = java.util.UUID.randomUUID().toString();
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(cooldownKey, cooldownLease, resendInterval);
         if (!Boolean.TRUE.equals(acquired)) {
             throw new IllegalArgumentException("验证码发送过于频繁，请稍后再试");
         }
 
         String code = "%06d".formatted(SECURE_RANDOM.nextInt(1_000_000));
-        String codeKey = KEY_PREFIX + "code:" + identity;
         // Redis 中只保存账号标识与验证码的摘要，避免缓存泄露明文敏感数据。
-        redisTemplate.opsForValue().set(
-                codeKey,
-                digest(normalizedUsername, normalizedEmail, code),
-                expiration
-        );
+        String generation = challenges.issue("password-reset", account.getSubjectId() + ":" + normalizedEmail, code, expiration);
 
         try {
             if (from.isBlank()) {
@@ -85,7 +84,8 @@ public class PasswordResetCodeServiceImpl implements PasswordResetCodeService {
                     + expiration.toMinutes() + " 分钟后失效。若非本人操作，请忽略此邮件。");
             mailSender.send(message);
         } catch (MailException | RegistrationCodeDeliveryException exception) {
-            redisTemplate.delete(List.of(codeKey, cooldownKey));
+            challenges.revoke("password-reset", account.getSubjectId() + ":" + normalizedEmail, generation);
+            challenges.releaseCooldown(cooldownKey, cooldownLease);
             if (exception instanceof RegistrationCodeDeliveryException deliveryException) {
                 throw deliveryException;
             }
@@ -97,48 +97,25 @@ public class PasswordResetCodeServiceImpl implements PasswordResetCodeService {
     public String verify(String username, String email, String code) {
         String normalizedUsername = username.trim();
         String normalizedEmail = normalizeEmail(email);
-        requireMatchingUser(normalizedUsername, normalizedEmail);
+        AppUser account = requireMatchingUser(normalizedUsername, normalizedEmail);
 
-        String identity = keyIdentity(normalizedUsername, normalizedEmail);
-        String codeKey = KEY_PREFIX + "code:" + identity;
-        String attemptKey = KEY_PREFIX + "attempt:" + identity;
-        String expectedDigest = redisTemplate.opsForValue().get(codeKey);
-        if (expectedDigest == null) {
-            throw new IllegalArgumentException("验证码已失效，请重新获取");
-        }
-
-        Long attempts = redisTemplate.opsForValue().increment(attemptKey);
-        if (attempts != null && attempts == 1) {
-            redisTemplate.expire(attemptKey, expiration);
-        }
-        if (attempts != null && attempts > maxAttempts) {
-            redisTemplate.delete(List.of(codeKey, attemptKey));
-            throw new IllegalArgumentException("验证码尝试次数过多，请重新获取");
-        }
-
-        byte[] expected = expectedDigest.getBytes(StandardCharsets.UTF_8);
-        byte[] actual = digest(normalizedUsername, normalizedEmail, code).getBytes(StandardCharsets.UTF_8);
-        if (!MessageDigest.isEqual(expected, actual)) {
-            throw new IllegalArgumentException("邮箱验证码不正确");
-        }
+        challenges.claim("password-reset", account.getSubjectId() + ":" + normalizedEmail, code, maxAttempts, true);
         return normalizedEmail;
     }
 
     @Override
     public void consume(String username, String normalizedEmail) {
-        String identity = keyIdentity(username.trim(), normalizedEmail);
-        redisTemplate.delete(List.of(
-                KEY_PREFIX + "code:" + identity,
-                KEY_PREFIX + "attempt:" + identity
-        ));
+        // Already atomically claimed by verify. Never delete a newer generation here.
     }
 
-    private void requireMatchingUser(String username, String normalizedEmail) {
-        AppUser user = appUserMapper.findByUsername(username);
+    private AppUser requireMatchingUser(String username, String normalizedEmail) {
+        AppUser user = org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()
+                ? appUserMapper.findByUsernameForUpdate(username) : appUserMapper.findByUsername(username);
         if (user == null || !user.isActive() || user.getEmail() == null
                 || !normalizedEmail.equals(normalizeEmail(user.getEmail()))) {
             throw new IllegalArgumentException("用户名与邮箱不匹配，或账号不可用");
         }
+        return user;
     }
 
     private String normalizeEmail(String email) {
@@ -147,10 +124,6 @@ public class PasswordResetCodeServiceImpl implements PasswordResetCodeService {
 
     private String keyIdentity(String username, String email) {
         return sha256(username + ":" + email);
-    }
-
-    private String digest(String username, String email, String code) {
-        return sha256(username + ":" + email + ":" + code);
     }
 
     private String sha256(String value) {

@@ -1,5 +1,7 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.security.AuthenticatedActor;
+
 import com.dayan.food.entity.enums.ReviewField;
 import com.dayan.food.entity.enums.ReviewStatus;
 import com.dayan.food.entity.enums.UserRole;
@@ -12,7 +14,6 @@ import com.dayan.food.service.AppUserService;
 import com.dayan.food.service.UserReviewPresenter;
 import com.dayan.food.entity.vo.AuthUserVO;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +56,7 @@ public class AppUserServiceImpl implements AppUserService {
     @Override
     @Transactional(readOnly = true)
     public List<AuthUserVO> listUsers(int page, int pageSize) {
+        requireCurrentAdministrator();
         // 页号设上限，避免极端页码导致 (page-1)*pageSize 整数溢出。
         int normalizedPage = Math.min(Math.max(page, 1), 20_000);
         int normalizedPageSize = normalizedPageSize(pageSize);
@@ -76,22 +78,22 @@ public class AppUserServiceImpl implements AppUserService {
     @Override
     @Transactional(readOnly = true)
     public int countUsers() {
+        requireCurrentAdministrator();
         return appUserMapper.count();
     }
 
     @Override
-    @CacheEvict(cacheNames = "authUsers", key = "#username")
     @Transactional
     public AuthUserVO updateAvatar(String username, String avatarUrl) {
+        var actor = AuthenticatedActor.resolveForUpdate(appUserMapper, username);
         String normalizedAvatarUrl = avatarUrl.trim();
-        if (appUserMapper.updateAvatar(username, normalizedAvatarUrl) != 1) {
+        if (appUserMapper.updateAvatarById(actor.getId(), normalizedAvatarUrl) != 1) {
             throw new IllegalArgumentException("当前用户不存在或已被停用");
         }
         return toAuthUserVO(findRequiredByUsername(username));
     }
 
     @Override
-    @CacheEvict(cacheNames = "authUsers", key = "#username")
     @Transactional
     public AuthUserVO updateSignature(String username, String signature) {
         AppUser user = findRequiredByUsername(username);
@@ -102,7 +104,6 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
-    @CacheEvict(cacheNames = "authUsers", key = "#username")
     @Transactional
     public AuthUserVO submitDisplayName(String username, String displayName) {
         AppUser user = findRequiredByUsername(username);
@@ -112,7 +113,6 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
-    @CacheEvict(cacheNames = "authUsers", allEntries = true)
     @Transactional
     public void reviewItem(Long userId, ReviewField field, ReviewStatus status, long expectedVersion, String operatorUsername) {
         if (status != ReviewStatus.APPROVED && status != ReviewStatus.REJECTED) {
@@ -168,7 +168,6 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
-    @CacheEvict(cacheNames = "authUsers", allEntries = true)
     @Transactional
     public void setActive(Long id, boolean active, String operatorUsername) {
         var operator = findRequiredOperator(operatorUsername);
@@ -186,7 +185,6 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
-    @CacheEvict(cacheNames = "authUsers", allEntries = true)
     @Transactional
     public void setRole(Long id, UserRole role, String operatorUsername) {
         if (role != UserRole.USER && role != UserRole.SUB_ADMIN) {
@@ -210,7 +208,6 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
-    @CacheEvict(cacheNames = "authUsers", allEntries = true)
     @Transactional
     public void deleteById(Long id, String operatorUsername) {
         var operator = findRequiredOperator(operatorUsername);
@@ -237,7 +234,7 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     private AppUser findRequiredByUsername(String username) {
-        AppUser user = appUserMapper.findByUsername(username);
+        AppUser user = AuthenticatedActor.resolve(appUserMapper, username);
         if (user == null || !user.isActive()) {
             throw new IllegalArgumentException("当前用户不存在或已被停用");
         }
@@ -259,11 +256,15 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     private AppUser findRequiredOperator(String username) {
-        var operator = appUserMapper.findByUsername(username);
-        if (operator == null) {
+        var operator = AuthenticatedActor.resolve(appUserMapper, username);
+        if (operator.getRole() != UserRole.ADMIN && operator.getRole() != UserRole.SUB_ADMIN) {
             throw new IllegalArgumentException("当前管理员不存在");
         }
         return operator;
+    }
+
+    private void requireCurrentAdministrator() {
+        findRequiredOperator(AuthenticatedActor.principal().username());
     }
 
     private void ensureCanManageTarget(AppUser operator, AppUser target) {

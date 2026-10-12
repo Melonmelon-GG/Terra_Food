@@ -43,7 +43,7 @@ public class FoodCreationServiceImpl implements FoodCreationService {
         // Use a locking read as the first database read in this transaction.
         // A non-locking read first would establish an older repeatable-read
         // snapshot, allowing a waiter to miss the winner's committed result.
-        var user = appUserMapper.findByUsernameForUpdate(username);
+        var user = com.dayan.food.security.AuthenticatedActor.resolveForUpdate(appUserMapper, username);
         if (user == null || !user.isActive()) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         String requestHash = hash(request);
         LocalDateTime now = LocalDateTime.now();
@@ -66,10 +66,7 @@ public class FoodCreationServiceImpl implements FoodCreationService {
         if (existing.getFoodId() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "相同请求正在处理中，请稍后重试");
         }
-        return foodService.listMine(username).stream()
-                .filter(food -> existing.getFoodId().equals(food.id()))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "原提交结果已不可访问"));
+        return foodService.ownedDetail(existing.getFoodId(), username);
     }
 
     private String hash(FoodCreateDTO request) {

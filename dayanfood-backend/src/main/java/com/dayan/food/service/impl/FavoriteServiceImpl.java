@@ -1,5 +1,7 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.security.AuthenticatedActor;
+
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.entity.po.FoodFavorite;
 import com.dayan.food.entity.vo.FavoriteStatusVO;
@@ -77,7 +79,7 @@ public class FavoriteServiceImpl implements FavoriteService {
     }
 
     private AppUser requireUser(String username) {
-        AppUser user = appUserMapper.findByUsername(username);
+        AppUser user = AuthenticatedActor.resolve(appUserMapper, username);
         if (user == null || !user.isActive()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         }

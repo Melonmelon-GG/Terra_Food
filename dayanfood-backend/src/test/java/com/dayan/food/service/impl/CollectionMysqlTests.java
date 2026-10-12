@@ -27,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnabledIfEnvironmentVariable(named = "RUN_MYSQL_FLOW_TESTS", matches = "true")
 class CollectionMysqlTests {
+    @org.junit.jupiter.api.AfterEach void clearActor(){com.dayan.food.support.TestActors.clear();}
+
     @Test
     @SuppressWarnings("unchecked")
     void realMysqlFavoriteAndEtchingRoundTripInSessionTemporaryTables() throws Exception {
@@ -50,7 +52,7 @@ class CollectionMysqlTests {
                         "user_etching_design", "user_achievement"}) {
                     statement.execute("CREATE TEMPORARY TABLE " + table + " LIKE " + table);
                 }
-                statement.executeUpdate("INSERT INTO app_user (id,username,password,display_name,role,active) VALUES (1,'flow-test','unused','Test','USER',TRUE),(2,'other-test','unused','Other','USER',TRUE)");
+                statement.executeUpdate("INSERT INTO app_user (id,username,password,display_name,role,active,subject_id) VALUES (1,'flow-test','unused','Test','USER',TRUE,'temporary-flow-subject'),(2,'other-test','unused','Other','USER',TRUE,'temporary-other-subject')");
                 statement.executeUpdate("INSERT INTO region (id,name,province) VALUES (1,'Test','Test')");
                 statement.executeUpdate("INSERT INTO food (id,name,region_id,summary,story,ingredients,created_by,review_status) VALUES (1,'Test dish',1,'Test','Test','Test','flow-test','APPROVED')");
             }
@@ -62,13 +64,16 @@ class CollectionMysqlTests {
             factory.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath:mapper/*.xml"));
             try (var session = factory.getObject().openSession()) {
                 var users = session.getMapper(AppUserMapper.class);
+                com.dayan.food.support.TestActors.use(users.findById(1L));
                 var favorites = new FavoriteServiceImpl(session.getMapper(FavoriteMapper.class),
                         session.getMapper(FoodMapper.class), users);
                 assertFalse(favorites.status(1L, "flow-test").favorited());
                 assertTrue(favorites.add(1L, "flow-test").favorited());
                 assertTrue(favorites.add(1L, "flow-test").favorited());
                 assertEquals(1, favorites.list("flow-test").size());
+                com.dayan.food.support.TestActors.use(users.findById(2L));
                 assertTrue(favorites.list("other-test").isEmpty());
+                com.dayan.food.support.TestActors.use(users.findById(1L));
                 assertFalse(favorites.remove(1L, "flow-test").favorited());
                 assertTrue(favorites.list("flow-test").isEmpty());
 
@@ -82,12 +87,15 @@ class CollectionMysqlTests {
                 assertEquals(colors, etchings.listMine("flow-test").getFirst().layerOne());
                 assertEquals(saved.id(), etchings.update("flow-test", saved.id(), request).id());
                 assertTrue(etchings.select("flow-test", saved.id()).selected());
+                com.dayan.food.support.TestActors.use(users.findById(2L));
                 assertThrows(IllegalArgumentException.class, () -> etchings.update("other-test", saved.id(), request));
+                com.dayan.food.support.TestActors.use(users.findById(1L));
                 etchings.delete("flow-test", saved.id());
                 assertTrue(etchings.listMine("flow-test").isEmpty());
                 session.rollback();
             }
             connection.rollback();
+            com.dayan.food.support.TestActors.clear();
         }
     }
 }

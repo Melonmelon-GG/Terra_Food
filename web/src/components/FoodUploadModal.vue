@@ -61,6 +61,7 @@ const previewUrl = ref('')
 const coverInput = ref<HTMLInputElement>()
 const saving = ref(false)
 const error = ref('')
+const draftStored = ref(true)
 const stage = ref<'idle' | 'uploading' | 'saving'>('idle')
 const { t } = useI18n()
 const auth = useAuth()
@@ -69,6 +70,7 @@ const DRAFT_KEY = `foodUpload.v2.${accountId}`
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
 let uploadController: AbortController | undefined
 let active = true
+let internalImageUpdate = false
 
 // Snapshot the chosen location. Late parent geocoding must not replace edits.
 const locating = ref(false)
@@ -152,7 +154,7 @@ if (draft) {
 }
 
 function persistDraft() {
-  saveDraft(DRAFT_KEY, {
+  draftStored.value = saveDraft(DRAFT_KEY, {
     name: form.name,
     summary: form.summary,
     ingredients: form.ingredients,
@@ -170,9 +172,10 @@ function persistDraft() {
 watch(
   () => [{ ...form, tagIds: [...(form.tagIds || [])] }, imageMeta.value],
   () => {
-    idempotencyKey.value = crypto.randomUUID()
+    if (!internalImageUpdate) idempotencyKey.value = crypto.randomUUID()
     persistDraft()
   },
+  { flush: 'sync' },
 )
 
 onBeforeUnmount(() => {
@@ -217,26 +220,31 @@ async function submit() {
     return
   }
 
+  if (imageMeta.value && !image.value && !form.imageUrl) { error.value = t('upload.imageNeedsReselect'); return }
   stopLocation()
+  const submissionKey = idempotencyKey.value
+  const revision = auth.getSessionRevision()
+  const payload = { ...form, tagIds: [...(form.tagIds || [])], latitude: form.latitude as number, longitude: form.longitude as number }
+  const selectedImage = image.value
+  const stillCurrent = () => active && revision === auth.getSessionRevision() && accountId === auth.currentUser.value?.id
   saving.value = true
   try {
-    // 图片与菜品信息分两步提交：先取得资源 URL，再保存稳定的业务记录。
-    if (image.value && !form.imageUrl) {
+    if (selectedImage && !payload.imageUrl) {
       stage.value = 'uploading'
       uploadController = new AbortController()
-      form.imageUrl = await uploadImage(image.value, uploadController.signal)
+      const uploadedUrl = await uploadImage(selectedImage, uploadController.signal)
       uploadController = undefined
+      if (!stillCurrent()) return
+      payload.imageUrl = uploadedUrl
+      // An uploaded URL completes this logical submission; it is not a user edit.
+      internalImageUpdate = true
+      try { form.imageUrl = uploadedUrl } finally { internalImageUpdate = false }
       persistDraft()
     }
-
+    if (!stillCurrent()) return
     stage.value = 'saving'
-    const submissionKey = idempotencyKey.value
-    const payload = {
-      ...form,
-      latitude: form.latitude as number,
-      longitude: form.longitude as number,
-    }
     const food = await createFood(payload, submissionKey)
+    if (!stillCurrent()) return
     if (food.reviewStatus === 'PENDING') {
       window.alert(t('upload.pendingSuccess'))
     }
@@ -246,6 +254,7 @@ async function submit() {
     }
     emit('saved', food)
   } catch (requestError) {
+    if (!stillCurrent()) return
     error.value = apiErrorMessage(requestError, stage.value === 'uploading'
       ? t('upload.imageUploadError')
       : t('upload.saveError'))
@@ -352,11 +361,12 @@ function cancelUpload() {
             </button>
           </div>
           <img v-if="previewUrl" class="cover-preview" :src="previewUrl" :alt="t('upload.cover')">
-          <small v-if="imageMeta && !image" class="cover-warning">{{ t('upload.imageNeedsReselect') }}</small>
+          <small v-if="imageMeta && !image && !form.imageUrl" class="cover-warning">{{ t('upload.imageNeedsReselect') }}</small>
           <small>{{ t('upload.imageTip') }}</small>
         </div>
         </fieldset>
 
+        <p v-if="!draftStored" class="form-error" role="status">{{ t('audit.draftNotSaved') }}</p>
         <p v-if="error" class="form-error">{{ error }}</p>
 
         <div class="modal-actions">

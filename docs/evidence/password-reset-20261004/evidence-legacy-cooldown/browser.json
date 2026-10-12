@@ -1,0 +1,10 @@
+{
+  "base": "http://127.0.0.1:18481",
+  "results": [
+    {
+      "name": "identity-change-and-cooldown-reopen",
+      "status": "PASS"
+    }
+  ],
+  "apiMode": "deterministic interception"
+}

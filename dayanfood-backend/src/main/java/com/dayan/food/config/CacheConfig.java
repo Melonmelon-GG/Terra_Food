@@ -39,11 +39,10 @@ public class CacheConfig implements CachingConfigurer {
             }
 
             private void log(String operation, Cache cache, Object key, RuntimeException exception) {
-                LOGGER.warn("Redis 缓存{}失败，已回退数据库：cache={}, key={}",
+                LOGGER.warn("Redis 缓存{}失败，已回退数据库：cache={}, category={}",
                         operation,
                         cache.getName(),
-                        key,
-                        exception);
+                        exception.getClass().getSimpleName());
             }
         };
     }

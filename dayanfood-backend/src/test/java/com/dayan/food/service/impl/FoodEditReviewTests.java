@@ -29,6 +29,8 @@ class FoodEditReviewTests {
     private final ConcurrentMapCacheManager caches = new ConcurrentMapCacheManager();
     private final FoodServiceImpl service = new FoodServiceImpl(foods, regions, users, caches, new CacheInvalidator());
 
+    @org.junit.jupiter.api.AfterEach void cleanup(){com.dayan.food.support.TestActors.clear();}
+
     private FoodUpdateDTO request(Long regionId) {
         return new FoodUpdateDTO("Corrected", regionId, BigDecimal.ONE, BigDecimal.TEN,
                 "Address", "Summary", "Story", "Ingredients", null, null);
@@ -43,7 +45,7 @@ class FoodEditReviewTests {
     @ParameterizedTest
     @EnumSource(UserRole.class)
     void everyRoleMustResubmitAndInvalidatePublicCaches(UserRole role) {
-        when(users.findByUsername("owner")).thenReturn(owner(role));
+        com.dayan.food.support.TestActors.bind(users,"owner",1L,role);
         Food original = new Food("Original", null, BigDecimal.ONE, BigDecimal.TEN,
                 "Address", "Summary", "Story", "Ingredients", null, null, "owner", FoodReviewStatus.APPROVED);
         Food pending = new Food("Corrected", null, BigDecimal.ONE, BigDecimal.TEN,
@@ -63,7 +65,7 @@ class FoodEditReviewTests {
 
     @Test
     void cannotEditAnotherUsersDish() {
-        when(users.findByUsername("owner")).thenReturn(owner(UserRole.ADMIN));
+        com.dayan.food.support.TestActors.bind(users,"owner",1L,UserRole.ADMIN);
         assertEquals(404, assertThrows(ResponseStatusException.class,
                 () -> service.updateMine(7L, request(null), "owner")).getStatusCode().value());
         verify(foods).findOwnedById(7L, 1L);
@@ -72,7 +74,7 @@ class FoodEditReviewTests {
 
     @Test
     void changedRegionClearsImportedLabels() {
-        when(users.findByUsername("owner")).thenReturn(owner(UserRole.USER));
+        com.dayan.food.support.TestActors.bind(users,"owner",1L,UserRole.USER);
         Region region = new Region("New city", "New province", "");
         ReflectionTestUtils.setField(region, "id", 2L);
         when(regions.findById(2L)).thenReturn(region);

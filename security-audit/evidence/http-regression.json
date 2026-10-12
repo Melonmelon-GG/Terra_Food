@@ -1,0 +1,106 @@
+{
+  "runId": "aud15494571605c",
+  "scope": "isolated synthetic HTTP/MySQL/Redis Session/SMTP",
+  "base": "http://127.0.0.1:18380",
+  "project": "terra-audit-20260922",
+  "passed": 7,
+  "failed": 1,
+  "requiredCaseCount": 8,
+  "executedCaseCount": 8,
+  "cases": [
+    {
+      "caseId": "PREFLIGHT-01",
+      "status": "PASS",
+      "seconds": 1.042,
+      "evidence": {
+        "anonymousMe": 401,
+        "schemaV28": true,
+        "database": "terra_audit_20260922"
+      }
+    },
+    {
+      "caseId": "AUTH-01",
+      "status": "PASS",
+      "seconds": 1.032,
+      "evidence": {
+        "oldCookieStatuses": [
+          401,
+          401,
+          401
+        ],
+        "replacementEdit": 404,
+        "ownerNullRows": 1
+      }
+    },
+    {
+      "caseId": "AUTH-02-RESET",
+      "status": "PASS",
+      "seconds": 0.701,
+      "evidence": {
+        "concurrentResetStatuses": [
+          204,
+          400
+        ],
+        "authVersionDelta": 1,
+        "oldSessionsRejected": 2,
+        "newPasswordLogin": 200
+      }
+    },
+    {
+      "caseId": "AUTH-02-RECOVER",
+      "status": "PASS",
+      "seconds": 0.347,
+      "evidence": {
+        "heldOldSession": 401,
+        "authVersionDelta": 2,
+        "freshLogin": 200
+      }
+    },
+    {
+      "caseId": "AUTH-03",
+      "status": "PASS",
+      "seconds": 0.2,
+      "evidence": {
+        "status": 409,
+        "reviewRowsDelta": 0,
+        "currentSessionIntact": true
+      }
+    },
+    {
+      "caseId": "UPLOAD-QUOTA",
+      "status": "PASS",
+      "seconds": 0.944,
+      "evidence": {
+        "invalidStatus": 400,
+        "parallelStatuses": [
+          201,
+          201,
+          429
+        ],
+        "databaseAssetCount": 3,
+        "newOriginalFiles": 3
+      }
+    },
+    {
+      "caseId": "UPLOAD-ROLLBACK",
+      "status": "FAIL",
+      "seconds": 0.343,
+      "reason": "isolated subprocess failed (output suppressed)"
+    },
+    {
+      "caseId": "CAPTCHA-BUDGET",
+      "status": "PASS",
+      "seconds": 0.222,
+      "evidence": {
+        "issuedBeforeRejection": 10,
+        "rejectedStatus": 429,
+        "retryAfterPresent": true
+      }
+    }
+  ],
+  "limitations": [
+    "In-flight filter-to-service interleaving is covered separately; AUTH-01 tests old Cookies across account replacement.",
+    "Captcha arithmetic is intentionally solved in the isolated test; this is not evidence of bot resistance.",
+    "No real deployment or production data was tested."
+  ]
+}

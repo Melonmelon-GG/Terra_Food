@@ -1,5 +1,7 @@
 package com.dayan.food.service.impl;
 
+import com.dayan.food.security.AuthenticatedActor;
+
 import com.dayan.food.entity.po.AppUser;
 import com.dayan.food.entity.po.FoodLike;
 import com.dayan.food.entity.vo.FoodLikeStatusVO;
@@ -58,7 +60,7 @@ public class FoodLikeServiceImpl implements FoodLikeService {
     private FoodLikeStatusVO readStatus(Long foodId, String username) {
         boolean likedByMe = false;
         if (username != null) {
-            AppUser user = appUserMapper.findByUsername(username);
+            AppUser user = AuthenticatedActor.resolve(appUserMapper, username);
             likedByMe = user != null && user.isActive()
                     && foodLikeMapper.exists(foodId, user.getId()) > 0;
         }
@@ -72,7 +74,7 @@ public class FoodLikeServiceImpl implements FoodLikeService {
     }
 
     private AppUser requireActiveUser(String username) {
-        AppUser user = appUserMapper.findByUsername(username);
+        AppUser user = AuthenticatedActor.resolve(appUserMapper, username);
         if (user == null || !user.isActive()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录用户不存在或已停用");
         }

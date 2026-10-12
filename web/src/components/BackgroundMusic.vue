@@ -87,7 +87,7 @@ function togglePlaylist() { showPlaylist.value = !showPlaylist.value }
 function minimizePlayer() { isPlayerVisible.value = false; showPlaylist.value = false; keepPlayerInBounds() }
 function openPlayer() { isPlayerVisible.value = true }
 function openFromHome() { openPlayer() }
-function setPlayMode(mode: PlayMode) { playMode.value = mode; localStorage.setItem('background-music-play-mode', mode) }
+function setPlayMode(mode: PlayMode) { playMode.value = mode; try { localStorage.setItem('background-music-play-mode', mode) } catch { /* Session preference still works. */ } }
 function outside(e: MouseEvent) { if (isPlayerVisible.value && playerRef.value && !playerRef.value.contains(e.target as Node)) { isPlayerVisible.value = false; showPlaylist.value = false } }
 function startDrag(event: PointerEvent) { if (!playerRef.value) return; suppressClick.value = false; const rect = playerRef.value.getBoundingClientRect(); dragOffset.value = { x: event.clientX - rect.left, y: event.clientY - rect.top }; dragStart.value = { x: event.clientX, y: event.clientY }; dragging.value = false; dragMoved.value = false; window.addEventListener('pointermove', moveDrag); window.addEventListener('pointerup', stopDrag, { once: true }) }
 function moveDrag(event: PointerEvent) { if (!playerRef.value) return; const distance = Math.hypot(event.clientX - dragStart.value.x, event.clientY - dragStart.value.y); if (!dragging.value && distance < 4) return; if (!dragging.value) { dragging.value = true; dragMoved.value = true; suppressClick.value = true }; const rect = playerRef.value.getBoundingClientRect(); draggedPosition.value = { left: Math.max(8, Math.min(window.innerWidth - rect.width - 8, event.clientX - dragOffset.value.x)), top: Math.max(8, Math.min(window.innerHeight - rect.height - 8, event.clientY - dragOffset.value.y)) }; event.preventDefault() }
@@ -96,9 +96,9 @@ function suppressDraggedClick(event: MouseEvent) { if (!suppressClick.value) ret
 async function keepPlayerInBounds() { await nextTick(); if (!playerRef.value) return; const rect = playerRef.value.getBoundingClientRect(); const left = Math.max(8, Math.min(window.innerWidth - rect.width - 8, rect.left)); const top = Math.max(8, Math.min(window.innerHeight - rect.height - 8, rect.top)); if (Math.abs(left - rect.left) > 1 || Math.abs(top - rect.top) > 1) draggedPosition.value = { left, top } }
 watch(() => route.fullPath, () => minimizePlayer())
 watch(isPlayerVisible, visible => { if (visible) keepPlayerInBounds() })
-onMounted(async () => { const savedMode = localStorage.getItem('background-music-play-mode'); if (savedMode === 'list' || savedMode === 'random') playMode.value = savedMode; try { musicList.value = await (await fetch('/audio/music-manifest.json')).json(); await playCurrent() } catch { musicList.value = [] }; window.addEventListener('pointerdown', playCurrent, { once: true }); document.addEventListener('click', outside) })
+onMounted(async () => { let savedMode: string | null = null; try { savedMode = localStorage.getItem('background-music-play-mode') } catch { /* Use default mode. */ }; if (savedMode === 'list' || savedMode === 'random') playMode.value = savedMode; try { musicList.value = await (await fetch('/audio/music-manifest.json')).json() } catch { musicList.value = [] }; document.addEventListener('click', outside) })
 onMounted(() => { window.addEventListener('resize', keepPlayerInBounds); window.addEventListener('home:open-music', openFromHome) })
-onBeforeUnmount(() => { window.removeEventListener('pointerdown', playCurrent); window.removeEventListener('pointermove', moveDrag); window.removeEventListener('resize', keepPlayerInBounds); window.removeEventListener('home:open-music', openFromHome); document.removeEventListener('click', outside) })
+onBeforeUnmount(() => { window.removeEventListener('pointermove', moveDrag); window.removeEventListener('resize', keepPlayerInBounds); window.removeEventListener('home:open-music', openFromHome); document.removeEventListener('click', outside) })
 </script>
 
 <style scoped>

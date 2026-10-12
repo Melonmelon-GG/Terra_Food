@@ -1,0 +1,32 @@
+{
+  "base": "http://127.0.0.1:18382",
+  "kind": "mocked-browser-contracts",
+  "results": [
+    {
+      "id": "FE-QUERY",
+      "status": "passed",
+      "durationMs": 1755
+    },
+    {
+      "id": "FE-UPLOAD-KEY",
+      "status": "failed",
+      "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('.upload-modal') to be visible\n",
+      "durationMs": 15505
+    },
+    {
+      "id": "FE-DIARY-PAGING",
+      "status": "passed",
+      "durationMs": 586
+    },
+    {
+      "id": "FE-EDIT-IMAGE",
+      "status": "passed",
+      "durationMs": 696
+    },
+    {
+      "id": "FE-SESSION-FOREGROUND",
+      "status": "passed",
+      "durationMs": 1418
+    }
+  ]
+}

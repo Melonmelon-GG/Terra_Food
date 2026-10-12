@@ -1,0 +1,8 @@
+{
+  "unresolved_java_entries": [],
+  "npm_scope": "lockfile includes build and development dependencies",
+  "artifacts": {
+    "terra-audit-20260922-backend-1": "sha256:b10ce8ac760222db7cc4b1a86c3756dfb1b0b5a6a69bb02466742349886435da",
+    "terra-audit-20260922-agent-api-1": "sha256:bb8d45163091a5f9f58366b807820f8176a82893979a780b689ae7039d92285a"
+  }
+}

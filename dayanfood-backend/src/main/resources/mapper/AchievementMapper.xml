@@ -74,6 +74,20 @@
           AND ua.notified_at IS NULL
     </update>
 
+    <select id="findUnlockedByUserId" resultMap="achievementResultMap">
+        SELECT <include refid="unlockedAchievementColumns"/>
+        FROM user_achievement ua INNER JOIN achievement a ON a.id = ua.achievement_id
+        WHERE ua.user_id = #{userId}
+        ORDER BY ua.selected DESC, ua.unlocked_at DESC, a.id DESC
+    </select>
+
+    <select id="findUnnotifiedByUserId" resultMap="achievementResultMap">
+        SELECT <include refid="unlockedAchievementColumns"/>
+        FROM user_achievement ua INNER JOIN achievement a ON a.id = ua.achievement_id
+        WHERE ua.user_id = #{userId} AND ua.notified_at IS NULL
+        ORDER BY ua.unlocked_at, a.id
+    </select>
+
     <update id="clearSelection">
         UPDATE user_achievement ua
         INNER JOIN app_user u ON u.id = ua.user_id

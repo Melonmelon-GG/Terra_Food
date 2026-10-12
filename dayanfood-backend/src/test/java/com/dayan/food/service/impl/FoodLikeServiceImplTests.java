@@ -29,7 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class FoodLikeServiceImplTests {
+class FoodLikeServiceImplTests extends com.dayan.food.security.ActorTestSupport {
 
     private static final long FOOD_ID = 10L;
     private static final long USER_ID = 3L;
@@ -55,7 +55,7 @@ class FoodLikeServiceImplTests {
     void likeInsertsIgnoreAndReturnsStatus() {
         AppUser user = activeUser();
         when(foodMapper.findById(FOOD_ID)).thenReturn(approvedFood());
-        when(appUserMapper.findByUsername(USERNAME)).thenReturn(user);
+        actor(appUserMapper, USERNAME, user);
         when(foodLikeMapper.insertIgnore(anyLike())).thenReturn(1);
         when(foodLikeMapper.countByFoodId(FOOD_ID)).thenReturn(2);
         when(foodLikeMapper.exists(FOOD_ID, USER_ID)).thenReturn(1);
@@ -75,7 +75,7 @@ class FoodLikeServiceImplTests {
     void unlikeDeletesAndRefreshesStatus() {
         AppUser user = activeUser();
         when(foodMapper.findById(FOOD_ID)).thenReturn(approvedFood());
-        when(appUserMapper.findByUsername(USERNAME)).thenReturn(user);
+        actor(appUserMapper, USERNAME, user);
         when(foodLikeMapper.deleteIgnore(FOOD_ID, USER_ID)).thenReturn(1);
         when(foodLikeMapper.countByFoodId(FOOD_ID)).thenReturn(0);
         when(foodLikeMapper.exists(FOOD_ID, USER_ID)).thenReturn(0);
@@ -102,7 +102,7 @@ class FoodLikeServiceImplTests {
     @Test
     void likeRejectsMissingUserBeforeInsert() {
         when(foodMapper.findById(FOOD_ID)).thenReturn(approvedFood());
-        when(appUserMapper.findByUsername(USERNAME)).thenReturn(null);
+        
 
         assertThrows(ResponseStatusException.class, () -> service.like(FOOD_ID, USERNAME));
         verify(foodLikeMapper, never()).insertIgnore(anyLike());

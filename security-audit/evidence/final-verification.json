@@ -1,0 +1,137 @@
+{
+  "status": "PASS",
+  "sourceRevision": "7c161d1b1086bd85b554701f1cc7e09e3e3a4abe",
+  "liveDeploymentUnchanged": true,
+  "artifacts": [
+    {
+      "name": "/terra-audit-20260922-backend-1",
+      "id": "86ccfa69746f9efd978d44623873b3ce3889e4d56681ca072b45c711469378c2",
+      "started": "2026-09-23T08:40:02.717828759Z",
+      "image": "sha256:b10ce8ac760222db7cc4b1a86c3756dfb1b0b5a6a69bb02466742349886435da",
+      "user": "10001:10001"
+    },
+    {
+      "name": "/terra-audit-20260922-web-1",
+      "id": "f89fca1806520cfcc2894b8b5857272dd0f2d1465fed5e431350a9a7934e6122",
+      "started": "2026-09-23T08:40:03.248848567Z",
+      "image": "sha256:cf7c4c4fc8098764daa492b90bc38cf9325283f5e1fd9eb47f7e7d95bd1b7b69",
+      "user": "nginx"
+    },
+    {
+      "name": "/terra-audit-20260922-agent-api-1",
+      "id": "b5eb3013f025c4746b0af09d93b27f986f90acd99b1ae35ae6f1082a5f55bb13",
+      "started": "2026-09-23T08:40:02.723460499Z",
+      "image": "sha256:bb8d45163091a5f9f58366b807820f8176a82893979a780b689ae7039d92285a",
+      "user": "terra"
+    },
+    {
+      "name": "/terra-audit-20260922-agent-mcp-1",
+      "id": "ded5b9034d17e2c359639de7af5e7a9ca753f8daf273152df93104a72dfa98d7",
+      "started": "2026-09-23T08:40:02.719755343Z",
+      "image": "sha256:bb8d45163091a5f9f58366b807820f8176a82893979a780b689ae7039d92285a",
+      "user": "terra"
+    }
+  ],
+  "budget": {
+    "memory.max": "2147483648",
+    "memory.swap.max": "0",
+    "memory.current": "1014321152",
+    "memory.events": "low 0\nhigh 0\nmax 126\noom 1\noom_kill 1\noom_group_kill 0\nsock_throttled 3"
+  },
+  "logs": {
+    "java-final.log": {
+      "sha256": "466db280a4a98b3f54f9031efd7c5fcb6b00340c2f7d966ee097f6bfc54df960",
+      "summary": [
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.678 s -- in com.dayan.food.image.ImageSubprocessTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.088 s -- in com.dayan.food.service.impl.FoodTagVisibilityTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.480 s -- in com.dayan.food.service.impl.PasswordResetCodeServiceImplTests",
+        "[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.392 s -- in com.dayan.food.service.impl.EtchingDesignServiceImplTests",
+        "[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.679 s -- in com.dayan.food.service.impl.FoodImportServiceImplTests",
+        "[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.076 s -- in com.dayan.food.service.impl.FoodEditReviewTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.275 s -- in com.dayan.food.service.impl.FoodCreationServiceImplTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.055 s -- in com.dayan.food.service.impl.FoodCommentServiceImplTests",
+        "[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.995 s -- in com.dayan.food.service.impl.SecurityBusinessMysqlTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.061 s -- in com.dayan.food.service.impl.ProfileStatsServiceImplTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.dayan.food.service.impl.CaptchaServiceImplTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.012 s -- in com.dayan.food.service.impl.RegionServiceImplTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.060 s -- in com.dayan.food.service.impl.AchievementServiceImplTests",
+        "[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.143 s -- in com.dayan.food.service.impl.AppUserServiceImplTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.159 s -- in com.dayan.food.service.impl.RegistrationCodeServiceImplTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.198 s -- in com.dayan.food.service.impl.FoodCheckinRetryTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in com.dayan.food.service.impl.AppUserDetailsServiceImplTests",
+        "[WARNING] Tests run: 1, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0 s -- in com.dayan.food.service.impl.CollectionMysqlTests",
+        "[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.230 s -- in com.dayan.food.service.impl.WishlistServiceImplTests",
+        "[WARNING] Tests run: 1, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0 s -- in com.dayan.food.service.impl.LegacyOwnershipUpgradeMysqlTests",
+        "[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.104 s -- in com.dayan.food.service.impl.FoodServiceImplTests",
+        "[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.062 s -- in com.dayan.food.service.impl.UserPublicServiceImplTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.065 s -- in com.dayan.food.service.impl.FoodImageExportServiceImplTests",
+        "[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.080 s -- in com.dayan.food.service.impl.FoodLikeServiceImplTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in com.dayan.food.service.impl.ImageExportBoundsTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in com.dayan.food.cache.DiscoveryCacheTests",
+        "[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in com.dayan.food.cache.CacheInvalidatorTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in com.dayan.food.security.ExpectedIdentityFilterTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in com.dayan.food.security.AbuseBudgetServiceTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in com.dayan.food.security.AuthenticatedActorTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.581 s -- in com.dayan.food.security.AtomicChallengeRedisTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in com.dayan.food.security.ClientAddressResolverTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in com.dayan.food.config.FlywayMigrationHistoryTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.087 s -- in com.dayan.food.config.DefaultAdminInitializerTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in com.dayan.food.DayanFoodApplicationTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.088 s -- in com.dayan.food.SessionConfigurationTests",
+        "[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.401 s -- in com.dayan.food.controller.CollectionEndpointsTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.067 s -- in com.dayan.food.controller.ProfileStatsControllerTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.085 s -- in com.dayan.food.controller.ApiExceptionHandlerTests",
+        "[INFO] Tests run: 124, Failures: 0, Errors: 0, Skipped: 2",
+        "[INFO] BUILD SUCCESS"
+      ]
+    },
+    "startup-final.log": {
+      "sha256": "e25bb84b5e00d7e1feb247b068a00a8f08056f0d7ecc038c2aaf2944d35457a8",
+      "summary": [
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.144 s -- in com.dayan.food.DayanFoodApplicationTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0",
+        "[INFO] BUILD SUCCESS"
+      ]
+    },
+    "upgrade.log": {
+      "sha256": "d0a1882390985bb34c3a1fae4bc9c70f33c3ff4a5b6bd238f5c9c3d5d066c862",
+      "summary": [
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.654 s -- in com.dayan.food.service.impl.SecurityBusinessMysqlTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.697 s -- in com.dayan.food.service.impl.WishlistServiceImplTests",
+        "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.119 s -- in com.dayan.food.service.impl.LegacyOwnershipUpgradeMysqlTests",
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0",
+        "[INFO] BUILD SUCCESS"
+      ]
+    },
+    "agent-locked-tests.log": {
+      "sha256": "7d17ee33e0f0d9db8079b731bdf6244ec339a6c901e3940899c724c8cea035f5",
+      "summary": [
+        "Ran 5 tests in 0.036s",
+        "OK"
+      ]
+    },
+    "ops-release-final.log": {
+      "sha256": "203ecbb7981e064e81c138ff18a0358b6a7746c5688a5f401a0909109afed502",
+      "summary": [
+        "Ran 31 tests in 1.277s",
+        "OK"
+      ]
+    },
+    "nginx-nonroot-first-failure.log": {
+      "sha256": "6477d2d47ec276e8f21025bc0271a032898b69e0996289b7097d667b3e19a991",
+      "summary": [
+        "2026/09/23 08:36:27 [emerg] 1#1: open() \"/run/nginx.pid\" failed (13: Permission denied)",
+        "nginx: [emerg] open() \"/run/nginx.pid\" failed (13: Permission denied)"
+      ]
+    },
+    "web-final-retry.log": {
+      "sha256": "77f63c110a8f391a2438da575353b8a463fbd0c8a7e1f4fbf34382ed56fb3853",
+      "summary": []
+    }
+  },
+  "limitations": [
+    "One earlier MySQL OOM is retained in cumulative cgroup events; budget was not raised.",
+    "Application OSV scan does not cover every operating system vulnerability.",
+    "No live deployment, production data migration or network change performed."
+  ]
+}

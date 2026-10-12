@@ -141,10 +141,8 @@ public class FoodController {
             @RequestParam BigDecimal minLatitude, @RequestParam BigDecimal maxLatitude,
             @RequestParam BigDecimal minLongitude, @RequestParam BigDecimal maxLongitude,
             @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int pageSize) {
-        MapCell cell = mapCell(clusterId);
-        return foodService.filteredCatalog(keyword, regionId, tasteIds, ingredientIds, cuisineIds,
-                "HEAT", cell.minLatitude(), cell.maxLatitude(), cell.minLongitude(), cell.maxLongitude(),
-                page, Math.min(pageSize, 20), true);
+        return foodService.mapClusterMembers(clusterId, keyword, regionId, tasteIds, ingredientIds, cuisineIds,
+                minLatitude, maxLatitude, minLongitude, maxLongitude, page, pageSize);
     }
 
     @GetMapping("/{id}")
@@ -156,25 +154,11 @@ public class FoodController {
         return foodService.detail(id);
     }
 
-    private MapCell mapCell(String clusterId) {
-        if (!clusterId.matches("\\d{1,2}:\\d{1,10}:\\d{1,10}")) throw new IllegalArgumentException("无效的地图聚合标识");
-        String[] parts = clusterId.split(":");
-        int zoom = Integer.parseInt(parts[0]);
-        long x = Long.parseLong(parts[1]);
-        long y = Long.parseLong(parts[2]);
-        if (zoom < 1 || zoom > 18) throw new IllegalArgumentException("无效的地图聚合标识");
-        long cells = 1L << zoom;
-        if (x < 0 || y < 0 || x >= cells || y >= cells) throw new IllegalArgumentException("无效的地图聚合标识");
-        double minLon = x / (double) cells * 360d - 180d;
-        double maxLon = (x + 1d) / cells * 360d - 180d;
-        double maxLat = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * y / cells))));
-        double minLat = Math.toDegrees(Math.atan(Math.sinh(Math.PI * (1d - 2d * (y + 1d) / cells))));
-        return new MapCell(BigDecimal.valueOf(minLat), BigDecimal.valueOf(maxLat),
-                BigDecimal.valueOf(minLon), BigDecimal.valueOf(maxLon));
+    @GetMapping("/mine/page")
+    public FoodCatalogVO minePage(Authentication authentication,@RequestParam(defaultValue="1") int page,
+            @RequestParam(defaultValue="20") int pageSize){
+        return foodService.listMinePage(authentication.getName(),page,pageSize);
     }
-
-    private record MapCell(BigDecimal minLatitude, BigDecimal maxLatitude,
-                           BigDecimal minLongitude, BigDecimal maxLongitude) {}
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

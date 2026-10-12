@@ -36,7 +36,7 @@ public class EtchingDesignServiceImpl implements EtchingDesignService {
 
     @Override @Transactional(readOnly = true)
     public List<EtchingDesignVO> listMine(String username) {
-        return etchingDesignMapper.findByUsername(username).stream().map(this::toVO).toList();
+        return etchingDesignMapper.findByUserId(com.dayan.food.security.AuthenticatedActor.resolve(appUserMapper, username).getId()).stream().map(this::toVO).toList();
     }
 
     @Override @Transactional(readOnly = true)
@@ -47,10 +47,9 @@ public class EtchingDesignServiceImpl implements EtchingDesignService {
 
     @Override @Transactional
     public EtchingDesignVO create(String username, EtchingDesignDTO request) {
-        var user = appUserMapper.findByUsername(username);
+        var user = com.dayan.food.security.AuthenticatedActor.resolveForUpdate(appUserMapper, username);
         if (user == null || !user.isActive()) throw new IllegalArgumentException("当前用户不存在或已停用");
-        appUserMapper.findByUsernameForUpdate(username);
-        if (etchingDesignMapper.countByUsername(username) >= MAX_DESIGNS) {
+        if (etchingDesignMapper.countByUserId(user.getId()) >= MAX_DESIGNS) {
             throw new IllegalArgumentException("每位用户最多保存12枚自制蚀刻章");
         }
         ensurePainted(request);
@@ -64,26 +63,30 @@ public class EtchingDesignServiceImpl implements EtchingDesignService {
         ensurePainted(request);
         requiredOwned(id, username);
         // MySQL may report zero changed rows for an identical save.
-        etchingDesignMapper.updateOwned(id, username, request.name().trim(), json(request.layerOne()));
+        etchingDesignMapper.updateOwned(id, actorId(username), request.name().trim(), json(request.layerOne()));
         return toVO(requiredOwned(id, username));
     }
 
     @Override @Transactional
     public void delete(String username, Long id) {
-        if (etchingDesignMapper.deleteOwned(id, username) != 1) throw new IllegalArgumentException("蚀刻章不存在或不属于当前用户");
+        if (etchingDesignMapper.deleteOwned(id, actorId(username)) != 1) throw new IllegalArgumentException("蚀刻章不存在或不属于当前用户");
     }
 
     @Override @Transactional
     public EtchingDesignVO select(String username, Long id) {
         requiredOwned(id, username);
-        etchingDesignMapper.clearSelection(username);
+        etchingDesignMapper.clearSelection(actorId(username));
         achievementMapper.clearSelection(username);
-        if (etchingDesignMapper.selectOwned(id, username) != 1) throw new IllegalArgumentException("只能展示自己创建的蚀刻章");
+        if (etchingDesignMapper.selectOwned(id, actorId(username)) != 1) throw new IllegalArgumentException("只能展示自己创建的蚀刻章");
         return toVO(requiredOwned(id, username));
     }
 
+    private Long actorId(String username) {
+        return com.dayan.food.security.AuthenticatedActor.resolve(appUserMapper, username).getId();
+    }
+
     private EtchingDesign requiredOwned(Long id, String username) {
-        var design = etchingDesignMapper.findOwnedById(id, username);
+        var design = etchingDesignMapper.findOwnedById(id, actorId(username));
         if (design == null) throw new IllegalArgumentException("蚀刻章不存在或不属于当前用户");
         return design;
     }
