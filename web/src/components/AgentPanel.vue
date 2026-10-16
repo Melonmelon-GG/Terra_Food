@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
 
-import { chatWithAgent, createFoodComment, getFood } from '../api'
+import { chatWithAgent, createFoodComment } from '../api'
+import { useAuth } from '../auth'
+import { currentFoodContextId } from '../foodContext'
+import { getMusicTracks } from '../music'
 import type { AgentCommentDraft, AgentFoodRecommendation } from '../types'
 
 interface AgentMessage {
@@ -16,22 +18,20 @@ interface AgentMessage {
   commentPublished?: boolean
 }
 
-interface MusicTrack {
-  name: string
-  artist?: string
-}
-
 const props = defineProps<{ launcherVisible?: boolean }>()
 
 const { t } = useI18n()
-const route = useRoute()
+const auth = useAuth()
+let active = true
+const manifestController = new AbortController()
+let chatController: AbortController | undefined
 const open = ref(false)
 const input = ref('')
 const sending = ref(false)
 const publishingCommentMessageId = ref<number>()
 const error = ref('')
 const availableTracks = ref<string[]>([])
-const currentFoodId = ref<number>()
+const currentFoodId = currentFoodContextId
 const messageList = ref<HTMLElement>()
 const messages = ref<AgentMessage[]>([
   { id: 1, role: 'assistant', content: t('agent.greeting') },
@@ -45,7 +45,10 @@ async function scrollToBottom() {
 
 async function submit(messageOverride?: string) {
   const message = (messageOverride ?? input.value).trim()
-  if (!message || sending.value) return
+  if (!message || sending.value || !auth.sessionConfirmed.value) return
+  const revision = auth.getSessionRevision()
+  const userId = auth.currentUser.value?.id
+  const stillCurrent = () => active && revision === auth.getSessionRevision() && userId === auth.currentUser.value?.id
 
   messages.value.push({ id: nextMessageId++, role: 'user', content: message })
   input.value = ''
@@ -54,11 +57,13 @@ async function submit(messageOverride?: string) {
   await scrollToBottom()
 
   try {
+    chatController = new AbortController()
     const response = await chatWithAgent({
       message,
       availableTracks: availableTracks.value,
       currentFoodId: currentFoodId.value,
-    })
+    }, chatController.signal)
+    if (!stillCurrent()) return
     messages.value.push({
       id: nextMessageId++,
       role: 'assistant',
@@ -76,55 +81,46 @@ async function submit(messageOverride?: string) {
       }))
     }
   } catch (requestError) {
+    if (!stillCurrent() || axios.isCancel(requestError)) return
     error.value = axios.isAxiosError(requestError) && requestError.response?.status === 503
       ? t('agent.notConfigured')
       : t('agent.error')
   } finally {
-    sending.value = false
-    await scrollToBottom()
+    if (stillCurrent()) { sending.value = false; await scrollToBottom() }
   }
 }
 
 async function publishComment(message: AgentMessage) {
   const draft = message.commentDraft
-  if (!draft || message.commentPublished || publishingCommentMessageId.value !== undefined) return
+  if (!draft || message.commentPublished || publishingCommentMessageId.value !== undefined || !auth.sessionConfirmed.value) return
+  const revision = auth.getSessionRevision()
+  const userId = auth.currentUser.value?.id
+  const stillCurrent = () => active && revision === auth.getSessionRevision() && userId === auth.currentUser.value?.id
 
   publishingCommentMessageId.value = message.id
   error.value = ''
   try {
     await createFoodComment(draft.foodId, { content: draft.content })
+    if (!stillCurrent()) return
     message.commentPublished = true
     window.dispatchEvent(new CustomEvent('agent:comment-published', {
       detail: { foodId: draft.foodId },
     }))
   } catch (requestError) {
+    if (!stillCurrent()) return
     error.value = axios.isAxiosError(requestError)
       ? requestError.response?.data?.message || t('agent.commentPublishError')
       : t('agent.commentPublishError')
   } finally {
-    publishingCommentMessageId.value = undefined
-    await scrollToBottom()
+    if (stillCurrent()) { publishingCommentMessageId.value = undefined; await scrollToBottom() }
   }
 }
-
-watch(() => route.params.id, async (routeFoodId) => {
-  const foodId = Number(routeFoodId)
-  currentFoodId.value = undefined
-  if (!route.path.startsWith('/foods/')) return
-  if (!Number.isSafeInteger(foodId) || foodId <= 0) return
-  try {
-    const food = await getFood(foodId)
-    if (Number(route.params.id) === food.id) currentFoodId.value = food.id
-  } catch {
-    currentFoodId.value = undefined
-  }
-}, { immediate: true })
 
 onMounted(async () => {
   window.addEventListener('home:open-agent', openFromHome)
   try {
-    const response = await fetch('/audio/music-manifest.json')
-    const tracks = await response.json() as MusicTrack[]
+    const tracks = await getMusicTracks(manifestController.signal)
+    if (!active) return
     availableTracks.value = tracks.map((track) =>
       track.artist ? `${track.name} — ${track.artist}` : track.name,
     )
@@ -134,10 +130,14 @@ onMounted(async () => {
 })
 
 function openFromHome() {
+  if (!auth.sessionConfirmed.value) return
   open.value = true
 }
 
 onBeforeUnmount(() => {
+  active = false
+  manifestController.abort()
+  chatController?.abort()
   window.removeEventListener('home:open-agent', openFromHome)
 })
 </script>

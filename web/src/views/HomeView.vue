@@ -164,32 +164,48 @@ let catalogRequestSequence = 0
 let markerRequestSequence = 0
 let catalogRequestController: AbortController | undefined
 let markerRequestController: AbortController | undefined
+let tagRequestController: AbortController | undefined
+let tagRequestKey = ''
+const regionsController = new AbortController()
+let catalogTask: { key: string; promise: Promise<void> } | undefined
+let markerTask: { key: string; promise: Promise<void> } | undefined
+let completedCatalog = { key: '', at: 0 }
+let completedMarkers = { key: '', at: 0 }
 
-async function loadCatalog(targetPage?: number) {
-  if (!active) return
+function discoveryKey(params: ReturnType<typeof searchParams> & { page?: number; pageSize?: number; compact?: boolean; zoom?: number }) {
+  return JSON.stringify({ ...params,
+    tasteIds: [...(params.tasteIds || [])].sort((a, b) => a - b),
+    ingredientIds: [...(params.ingredientIds || [])].sort((a, b) => a - b),
+    cuisineIds: [...(params.cuisineIds || [])].sort((a, b) => a - b),
+  })
+}
+
+function loadCatalog(targetPage?: number, force = false): Promise<void> {
+  if (!active) return Promise.resolve()
+  const page = Math.max(1, targetPage ?? catalogPage.value)
+  const params = { ...searchParams(), page, pageSize: catalogPageSize, compact: true }
+  const key = discoveryKey(params)
+  if (catalogTask?.key === key) return catalogTask.promise
+  if (!force && !error.value && completedCatalog.key === key && Date.now() - completedCatalog.at < 60_000) return Promise.resolve()
   const requestSequence = ++catalogRequestSequence
   catalogRequestController?.abort()
   catalogRequestController = new AbortController()
-  const page = Math.max(1, targetPage ?? catalogPage.value)
   error.value = ''
   // 无数据时才显示整页 loading；已有数据时保留列表，仅顶部轻量提示。
   if (foods.value.length === 0) {
     loading.value = true
   }
 
-  try {
-    const next = await getFoodCatalog({
-      ...searchParams(),
-      page,
-      pageSize: catalogPageSize,
-      compact: true,
-    }, catalogRequestController.signal)
+  const signal = catalogRequestController.signal
+  const promise = (async () => { try {
+    const next = await getFoodCatalog(params, signal)
     if (!active || requestSequence !== catalogRequestSequence) {
       return
     }
     foods.value = next.items
     catalogTotal.value = next.total
     catalogPage.value = next.page
+    completedCatalog = { key, at: Date.now() }
   } catch (cause) {
     if (requestSequence === catalogRequestSequence) {
       if (!axios.isCancel(cause)) error.value = t('home.loadError')
@@ -197,28 +213,39 @@ async function loadCatalog(targetPage?: number) {
   } finally {
     if (requestSequence === catalogRequestSequence) {
       loading.value = false
+      catalogTask = undefined
     }
-  }
+  } })()
+  catalogTask = { key, promise }
+  return promise
 }
 
-async function loadMarkers() {
-  if (!active || !mapBounds.value) return
+function loadMarkers(force = false): Promise<void> {
+  if (!active || !mapBounds.value) return Promise.resolve()
+  const requestedFilters = mapSearchParams()
+  const key = discoveryKey(requestedFilters)
+  if (markerTask?.key === key) return markerTask.promise
+  if (!force && !mapError.value && completedMarkers.key === key && Date.now() - completedMarkers.at < 30_000) return Promise.resolve()
   const requestSequence = ++markerRequestSequence
   markerRequestController?.abort()
   markerRequestController = new AbortController()
   mapLoading.value = true
-  const requestedFilters = mapSearchParams()
-  try {
-    const next = await getFoodMapClusters(requestedFilters, markerRequestController.signal)
+  const signal = markerRequestController.signal
+  const promise = (async () => { try {
+    const next = await getFoodMapClusters(requestedFilters, signal)
     if (active && requestSequence === markerRequestSequence) {
       mapError.value = false
       markerFilters.value = requestedFilters
       markerItems.value = next.items
       mapTruncated.value = false
+      completedMarkers = { key, at: Date.now() }
     }
   } catch (cause) {
     if (active && requestSequence === markerRequestSequence && !axios.isCancel(cause)) mapError.value = true
-  } finally { if (requestSequence === markerRequestSequence) mapLoading.value = false }
+  } finally { if (requestSequence === markerRequestSequence) { mapLoading.value = false; markerTask = undefined } }
+  })()
+  markerTask = { key, promise }
+  return promise
 }
 
 function changeCatalogPage(direction: -1 | 1) {
@@ -276,7 +303,7 @@ function submitSearch() {
 
 function applyDiscovery() {
   const target = { path: '/', query: discoveryQuery() }
-  if (router.resolve(target).fullPath === route.fullPath) { void Promise.all([loadCatalog(1), loadMarkers()]); return }
+  if (router.resolve(target).fullPath === route.fullPath) { void Promise.all([loadCatalog(1, true), loadMarkers(true)]); return }
   void router.push(target)
 }
 
@@ -300,6 +327,8 @@ onBeforeUnmount(() => {
   if (boundsLoadTimer) clearTimeout(boundsLoadTimer)
   catalogRequestController?.abort()
   markerRequestController?.abort()
+  tagRequestController?.abort()
+  regionsController.abort()
   stopGeolocation()
   cancelLocationLookup()
   document.removeEventListener('pointerdown', closeActions)
@@ -394,7 +423,7 @@ async function pickLocation(latitude: number, longitude: number) {
 function handleSaved(food: Food) {
   uploadOpen.value = false
   if (food.reviewStatus === 'APPROVED') {
-    void Promise.all([loadCatalog(1), loadMarkers()])
+    void Promise.all([loadCatalog(1, true), loadMarkers(true)])
   }
 }
 
@@ -518,16 +547,22 @@ onMounted(async () => {
 
 async function loadRegions() {
   regionsError.value = false
-  try { const result = await getRegions(); if (active) regions.value = result }
+  try { const result = await getRegions(regionsController.signal); if (active) regions.value = result }
   catch { if (active) regionsError.value = true }
 }
 async function loadFilterTags() {
+  const key = JSON.stringify([auth.getSessionRevision(), tagKeyword.value.trim()])
+  if (tagsLoading.value && key === tagRequestKey) return
+  tagRequestKey = key
   const sequence = ++tagSequence
   tagsLoading.value = true; tagsError.value = false
+  tagRequestController?.abort()
+  tagRequestController = new AbortController()
+  const signal = tagRequestController.signal
   try {
-    const result = await getFoodTags(undefined, tagKeyword.value.trim() || undefined)
+    const result = await getFoodTags(undefined, tagKeyword.value.trim() || undefined, signal)
     if (active && sequence === tagSequence) filterTags.value = result.filter((tag) => tag.status === 'APPROVED')
-  } catch { if (active && sequence === tagSequence) tagsError.value = true }
+  } catch (cause) { if (active && sequence === tagSequence && !signal.aborted && !axios.isCancel(cause) && !(cause instanceof DOMException && cause.name === 'AbortError')) tagsError.value = true }
   finally { if (sequence === tagSequence) tagsLoading.value = false }
 }
 function selectedTags(type: FoodTag['type']) {
@@ -620,7 +655,7 @@ function fallbackToOriginal(event: Event, original?: string) {
     <div class="explorer-map-wash"></div>
 
     <div class="explorer-map-hint" role="status">
-      <span v-if="mapError" class="error">{{ t('audit.mapStale') }} <button type="button" @click="loadMarkers">{{ t('share.retry') }}</button></span>
+      <span v-if="mapError" class="error">{{ t('audit.mapStale') }} <button type="button" @click="loadMarkers(true)">{{ t('share.retry') }}</button></span>
       <span v-else-if="mapLoading">{{ t('home.refreshing') }}</span>
       <span v-if="mapTruncated">{{ t('home.mapTruncated') }}</span>
       <span v-if="pickHint">{{ pickHint }}</span>

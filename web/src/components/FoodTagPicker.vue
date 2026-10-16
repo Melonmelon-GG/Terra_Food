@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createFoodTag, getFoodTags } from '../api'
 import { apiErrorMessage } from '../apiError'
@@ -15,6 +15,8 @@ const draftNames = ref<Record<FoodTag['type'], string>>({ TASTE: '', INGREDIENT:
 const creating = ref<FoodTag['type']>()
 const types: FoodTag['type'][] = ['TASTE', 'INGREDIENT', 'CUISINE']
 const selected = computed(() => new Set(props.modelValue ?? []))
+const controller = new AbortController()
+onBeforeUnmount(() => controller.abort())
 
 function tagsFor(type: FoodTag['type']) { return tags.value.filter((tag) => tag.type === type) }
 function toggle(tag: FoodTag) {
@@ -47,9 +49,9 @@ async function add(type: FoodTag['type']) {
 }
 
 onMounted(async () => {
-  try { tags.value = await getFoodTags() }
-  catch (reason) { error.value = apiErrorMessage(reason, t('tagPicker.loadFailed')) }
-  finally { loading.value = false }
+  try { const result = await getFoodTags(undefined, undefined, controller.signal); if (!controller.signal.aborted) tags.value = result }
+  catch (reason) { if (!controller.signal.aborted) error.value = apiErrorMessage(reason, t('tagPicker.loadFailed')) }
+  finally { if (!controller.signal.aborted) loading.value = false }
 })
 </script>
 

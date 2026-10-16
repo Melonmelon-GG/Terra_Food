@@ -1,0 +1,189 @@
+{
+  "finalCases": [
+    {
+      "name": "home-390",
+      "status": "PASS",
+      "observations": {
+        "layout": [
+          {
+            "class": "",
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 64,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(250, 246, 237, 0.94)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          },
+          {
+            "class": "food-map leaflet-container leaflet-touch leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom",
+            "x": 0,
+            "y": 64,
+            "width": 390,
+            "height": 780,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgb(221, 221, 221)",
+            "font": "12px / 18px \"Helvetica Neue\", Arial, Helvetica, sans-serif"
+          },
+          {
+            "class": "explorer-catalog explorer-panel",
+            "x": 8,
+            "y": 688,
+            "width": 374,
+            "height": 148,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(250, 246, 237, 0.94)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          }
+        ],
+        "initial": {
+          "regions": 1,
+          "catalog": 1,
+          "map": 1,
+          "music": 1
+        },
+        "afterFocus": {
+          "me": 4,
+          "notifications": 1,
+          "music": 1
+        },
+        "afterPage": {
+          "catalog": 2,
+          "map": 1
+        }
+      }
+    },
+    {
+      "name": "home-1366",
+      "status": "PASS",
+      "observations": {
+        "layout": [
+          {
+            "class": "",
+            "x": 0,
+            "y": 0,
+            "width": 1366,
+            "height": 82,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          },
+          {
+            "class": "food-map leaflet-container leaflet-touch leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom",
+            "x": 0,
+            "y": 82,
+            "width": 1366,
+            "height": 762,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgb(221, 221, 221)",
+            "font": "12px / 18px \"Helvetica Neue\", Arial, Helvetica, sans-serif"
+          },
+          {
+            "class": "explorer-catalog explorer-panel",
+            "x": 190,
+            "y": 610,
+            "width": 986,
+            "height": 216,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          }
+        ],
+        "initial": {
+          "regions": 1,
+          "catalog": 1,
+          "map": 1,
+          "music": 1
+        },
+        "afterFocus": {
+          "me": 4,
+          "notifications": 1,
+          "music": 1
+        },
+        "afterPage": {
+          "catalog": 2,
+          "map": 1
+        }
+      }
+    },
+    {
+      "name": "detail-identity-and-draft",
+      "status": "PASS",
+      "observations": {
+        "layout": [
+          {
+            "class": "",
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 64,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(249, 245, 235, 0.867)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          },
+          {
+            "class": "detail-hero",
+            "x": 12,
+            "y": 102,
+            "width": 366,
+            "height": 576.90625,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "font": "16px \"Microsoft YaHei\", system-ui, sans-serif"
+          }
+        ],
+        "sameAccount": {
+          "details": 1,
+          "comments": 1,
+          "likes": 1,
+          "visits": 1,
+          "music": 1,
+          "draft": "保留同账号草稿",
+          "agentDraft": "保留助手输入"
+        }
+      }
+    },
+    {
+      "name": "cancel-detail-on-route-change",
+      "status": "PASS",
+      "observations": {}
+    },
+    {
+      "name": "music-unmount-listeners",
+      "status": "PASS",
+      "observations": {}
+    },
+    {
+      "name": "tag-cache-and-identity",
+      "status": "PASS",
+      "observations": {}
+    },
+    {
+      "name": "foreground-failure-backoff",
+      "status": "PASS",
+      "observations": {}
+    },
+    {
+      "name": "late-agent-cross-account",
+      "status": "PASS",
+      "observations": {}
+    },
+    {
+      "name": "region-invalidation-after-import",
+      "status": "PASS",
+      "observations": {}
+    }
+  ],
+  "oldListenerControl": [
+    {
+      "name": "music-unmount-listeners",
+      "status": "FAIL",
+      "observations": {},
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n"
+    }
+  ],
+  "oldListenerDefectReproduced": true,
+  "productionChanged": false,
+  "jsonCloneFallbackVerified": true,
+  "regionMutationInvalidationVerified": true
+}

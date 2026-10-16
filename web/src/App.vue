@@ -164,7 +164,7 @@ async function logout() {
 
   <BackgroundMusic v-if="!isAuthFlowPage" :launcher-visible="route.path !== '/'" />
   <AchievementToast />
-  <AgentPanel v-if="auth.currentUser.value && auth.sessionConfirmed.value" :key="auth.sessionRevision.value" :launcher-visible="route.path !== '/'" />
+  <AgentPanel v-if="auth.currentUser.value" v-show="auth.sessionConfirmed.value" :key="auth.sessionRevision.value" :launcher-visible="route.path !== '/'" />
 
   <footer id="about">
     {{ t('footer') }}

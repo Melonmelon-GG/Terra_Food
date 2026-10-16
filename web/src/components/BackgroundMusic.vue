@@ -32,7 +32,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-type Track = { name: string; artist: string; src: string }
+import { getMusicTracks, type MusicTrack as Track } from '../music'
+let active = true
+const manifestController = new AbortController()
 type PlayMode = 'list' | 'random'
 const props = defineProps<{ launcherVisible?: boolean }>()
 const musicList = ref<Track[]>([]), currentIndex = ref(0), currentTime = ref(0), duration = ref(0)
@@ -96,9 +98,16 @@ function suppressDraggedClick(event: MouseEvent) { if (!suppressClick.value) ret
 async function keepPlayerInBounds() { await nextTick(); if (!playerRef.value) return; const rect = playerRef.value.getBoundingClientRect(); const left = Math.max(8, Math.min(window.innerWidth - rect.width - 8, rect.left)); const top = Math.max(8, Math.min(window.innerHeight - rect.height - 8, rect.top)); if (Math.abs(left - rect.left) > 1 || Math.abs(top - rect.top) > 1) draggedPosition.value = { left, top } }
 watch(() => route.fullPath, () => minimizePlayer())
 watch(isPlayerVisible, visible => { if (visible) keepPlayerInBounds() })
-onMounted(async () => { let savedMode: string | null = null; try { savedMode = localStorage.getItem('background-music-play-mode') } catch { /* Use default mode. */ }; if (savedMode === 'list' || savedMode === 'random') playMode.value = savedMode; try { musicList.value = await (await fetch('/audio/music-manifest.json')).json() } catch { musicList.value = [] }; document.addEventListener('click', outside) })
+onMounted(async () => {
+  document.addEventListener('click', outside)
+  let savedMode: string | null = null
+  try { savedMode = localStorage.getItem('background-music-play-mode') } catch { /* Use default mode. */ }
+  if (savedMode === 'list' || savedMode === 'random') playMode.value = savedMode
+  try { const tracks = await getMusicTracks(manifestController.signal); if (active) musicList.value = tracks }
+  catch { if (active) musicList.value = [] }
+})
 onMounted(() => { window.addEventListener('resize', keepPlayerInBounds); window.addEventListener('home:open-music', openFromHome) })
-onBeforeUnmount(() => { window.removeEventListener('pointermove', moveDrag); window.removeEventListener('resize', keepPlayerInBounds); window.removeEventListener('home:open-music', openFromHome); document.removeEventListener('click', outside) })
+onBeforeUnmount(() => { active = false; manifestController.abort(); window.removeEventListener('pointermove', moveDrag); window.removeEventListener('pointerup', stopDrag); window.removeEventListener('resize', keepPlayerInBounds); window.removeEventListener('home:open-music', openFromHome); document.removeEventListener('click', outside) })
 </script>
 
 <style scoped>

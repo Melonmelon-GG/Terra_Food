@@ -11,6 +11,7 @@ import {
   createFoodComment,
   createFoodCheckin,
   getFood,
+  recordFoodVisit,
   getFoodCommentsPage,
   getFavoriteStatus,
   getFoodLikeStatus,
@@ -21,6 +22,7 @@ import {
 } from '../api'
 import { useAuth } from '../auth'
 import { apiErrorMessage } from '../apiError'
+import { createFoodContext } from '../foodContext'
 import type { Food, FoodComment, FoodLikeStatus } from '../types'
 import LandmarkBackdrop from '../components/LandmarkBackdrop.vue'
 import '../archive.css'
@@ -70,6 +72,25 @@ const statusLoading = ref(true)
 const { t, locale } = useI18n()
 
 let foodLoadController: AbortController | undefined
+let detailController: AbortController | undefined
+const foodContext = createFoodContext()
+const visitAttempts = new Set<string>()
+let visitController: AbortController | undefined
+
+watch([() => food.value?.id, () => currentUser.value?.id, () => auth.sessionConfirmed.value], ([id, userId, confirmed]) => {
+  if (!id || !userId) { visitController?.abort(); return }
+  if (!confirmed) return
+  const key = `${id}:${userId}`
+  if (visitAttempts.has(key)) return
+  visitAttempts.add(key)
+  visitController?.abort()
+  visitController = new AbortController()
+  const signal = visitController.signal
+  // This daily-idempotent write must never block content or be retried in a loop.
+  void recordFoodVisit(id, signal).then(result => {
+    if (!signal.aborted && food.value?.id === id && currentUser.value?.id === userId && typeof result?.heat === 'number') food.value.heat = result.heat
+  }).catch(() => { /* A later page visit can try again. */ })
+})
 
 const imageFailed = ref(false)
 watch(() => food.value?.imageUrl, () => { imageFailed.value = false })
@@ -87,7 +108,7 @@ function formatDate(value: string): string {
 }
 
 async function loadComments(foodIdValue: number, append = false) {
-  const signal = foodLoadController?.signal
+  const signal = detailController?.signal
   commentsLoading.value = true
   commentError.value = ''
   try {
@@ -225,18 +246,43 @@ async function addToWishlist() {
     if (!signal?.aborted) collectionSaving.value = undefined
   }
 }
-// 组件复用时随路由 id 变化重新加载（安全报告 6.6），旧请求用 AbortController 丢弃。
+// Public page data belongs to the route, not to each replacement auth object.
 watch(
-  () => [route.params.id, currentUser.value?.id],
-  async ([id]) => {
+  () => route.params.id,
+  async (id) => {
     const foodIdValue = Number(id)
     shareOpen.value = false
+    detailController?.abort()
+    detailController = new AbortController()
+    const signal = detailController.signal
+    foodContext.clear()
+    food.value = undefined
+    comments.value = []
+    commentsPage.value = 0
+    commentsTotal.value = 0
+    error.value = ''
+    try {
+      const loaded = await getFood(foodIdValue, signal)
+      if (signal.aborted) return
+      food.value = loaded
+      foodContext.set(loaded.id)
+      void loadComments(foodIdValue)
+    } catch (cause) {
+      if (!signal.aborted && !axios.isCancel(cause)) error.value = t('detail.notFound')
+    }
+  },
+  { immediate: true },
+)
+
+// Independent scalar sources ignore same-account auth object replacements.
+watch(
+  [() => route.params.id, () => currentUser.value?.id, () => food.value?.id, () => auth.sessionRevision.value],
+  async ([id, , loadedId]) => {
+    const foodIdValue = Number(id)
     foodLoadController?.abort()
     foodLoadController = new AbortController()
     const signal = foodLoadController.signal
     statusLoading.value = true
-    food.value = undefined
-    comments.value = []
     likeStatus.value = { likeCount: 0, likedByMe: false }
     favorited.value = null
     wishlistListed.value = false
@@ -246,22 +292,12 @@ watch(
     commentContent.value = ''
     commentError.value = ''
     collectionError.value = ''
-    error.value = ''
-
-    try {
-      const loaded = await getFood(foodIdValue)
-      if (signal.aborted) return
-      food.value = loaded
-    } catch {
-      if (!signal.aborted) error.value = t('detail.notFound')
-      return
-    }
+    if (loadedId !== foodIdValue || !auth.sessionConfirmed.value) return
     // Failures in optional status endpoints must not erase successful responses.
     const results = await Promise.allSettled([
-      getFoodLikeStatus(foodIdValue),
-      currentUser.value ? getFavoriteStatus(foodIdValue) : Promise.resolve({ favorited: false }),
-      currentUser.value ? getWishlistStatus(foodIdValue) : Promise.resolve({ listed: false }),
-      loadComments(foodIdValue),
+      getFoodLikeStatus(foodIdValue, signal),
+      currentUser.value ? getFavoriteStatus(foodIdValue, signal) : Promise.resolve({ favorited: false }),
+      currentUser.value ? getWishlistStatus(foodIdValue, signal) : Promise.resolve({ listed: false }),
     ])
     if (signal.aborted) return
     statusLoading.value = false
@@ -283,6 +319,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  visitController?.abort()
+  detailController?.abort()
+  foodContext.clear()
   foodLoadController?.abort()
   compactMediaQuery?.removeEventListener('change', syncCompactMobile)
   window.removeEventListener('agent:comment-published', handleAgentCommentPublished)

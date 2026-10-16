@@ -1,0 +1,23 @@
+[
+  {
+    "name": "home-390",
+    "layoutIdentical": true,
+    "changedPixels": 0,
+    "totalPixels": 329160,
+    "ratio": 0
+  },
+  {
+    "name": "home-1366",
+    "layoutIdentical": true,
+    "changedPixels": 0,
+    "totalPixels": 1152904,
+    "ratio": 0
+  },
+  {
+    "name": "detail-identity-and-draft",
+    "layoutIdentical": true,
+    "changedPixels": 0,
+    "totalPixels": 520650,
+    "ratio": 0
+  }
+]
