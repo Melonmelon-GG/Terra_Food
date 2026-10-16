@@ -1,0 +1,15 @@
+{
+  "base": "740c0f17330843572c1f1dc8ef329c664d86a71a",
+  "lockSha256": "554353b35db26997f12b49ff793b6726825dfb4950375406c3c3f3035b0fb8a7",
+  "locationCases": 7,
+  "resetCases": 12,
+  "homeWidths": [
+    1440,
+    390
+  ],
+  "status": "PASS",
+  "limitations": [
+    "API/geolocation fixtures; no real GPS, SMTP or database writes; no deployment"
+  ],
+  "runnerImage": "sha256:9277adc8a53b8f71658a5da153836eef9099cd3d388fd04fb82cd5be49b132bc"
+}

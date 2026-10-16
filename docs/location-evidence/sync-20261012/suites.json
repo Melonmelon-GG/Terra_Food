@@ -1,0 +1,14 @@
+[
+  {
+    "suite": "location",
+    "exitCode": 0
+  },
+  {
+    "suite": "home",
+    "exitCode": 0
+  },
+  {
+    "suite": "reset",
+    "exitCode": 0
+  }
+]
