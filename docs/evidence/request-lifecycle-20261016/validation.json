@@ -1,0 +1,15 @@
+{
+  "environment": "isolated mini-host builds and browser previews",
+  "frontendTypecheckAndBuild": "PASS",
+  "sharedRead": {"tests": 8, "passed": 8, "failed": 0, "skipped": 0},
+  "backendFullSuite": {"tests": 128, "passed": 117, "failed": 0, "errors": 0, "skipped": 11},
+  "backendSkipped": {"SecurityBusinessMysqlTests": 7, "CollectionMysqlTests": 1, "LegacyOwnershipUpgradeMysqlTests": 1, "AtomicChallengeRedisTests": 1, "DayanFoodApplicationTests": 1},
+  "backendFinalVisitControllerRegression": {"tests": 4, "passed": 4, "failed": 0, "skipped": 0},
+  "browserFinalCases": {"cases": 9, "passed": 9},
+  "previousLocationCases": {"cases": 7, "passed": 7},
+  "previousPasswordResetCases": {"cases": 12, "passed": 12},
+  "visualComparisons": {"images": 3, "differentPixels": 0},
+  "normalCssAndLocaleFilesChanged": false,
+  "productionDeployed": false,
+  "notes": ["Original harness failures and expected old-version listener defect retained in separate evidence", "11 environment-gated integration cases were not executed", "Browser API/auth/model/tile calls intercepted; no real-device or production performance claim"]
+}

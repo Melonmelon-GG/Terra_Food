@@ -1,0 +1,14 @@
+[
+  {
+    "stage": "frontend-build",
+    "exitCode": 0
+  },
+  {
+    "stage": "shared-read",
+    "exitCode": 0
+  },
+  {
+    "stage": "backend-tests",
+    "exitCode": 0
+  }
+]

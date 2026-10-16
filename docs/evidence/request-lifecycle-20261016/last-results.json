@@ -1,0 +1,21 @@
+{
+  "stages": [
+    {
+      "stage": "frontend-build-complete",
+      "exitCode": 0
+    },
+    {
+      "stage": "shared-read-complete",
+      "exitCode": 0
+    },
+    {
+      "stage": "last-targeted-browser",
+      "exitCode": 0
+    }
+  ],
+  "error": null,
+  "cleanup": {
+    "existingContainersUnchanged": true,
+    "remaining": []
+  }
+}

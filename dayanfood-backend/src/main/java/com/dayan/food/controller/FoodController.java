@@ -146,12 +146,29 @@ public class FoodController {
     }
 
     @GetMapping("/{id}")
-    public FoodVO detail(@PathVariable Long id, Authentication authentication) {
+    public FoodVO detail(@PathVariable Long id, Authentication authentication,
+                         @RequestParam(defaultValue = "true") boolean recordVisit) {
+        FoodVO food = foodService.detail(id);
         // 游客浏览（匿名 token 的 isAuthenticated 为 false）不计入热度与每日访问。
-        if (authentication != null && authentication.isAuthenticated()) {
+        if (recordVisit && authentication != null && authentication.isAuthenticated()) {
             foodService.recordVisit(id, authentication.getName());
+            return foodService.detail(id); // Legacy response includes the updated heat.
         }
-        return foodService.detail(id);
+        return food;
+    }
+
+    // New clients read public content immediately and register a visit only once
+    // their session is confirmed. Legacy GET clients retain their default behavior.
+    public record VisitResult(Integer heat) {}
+
+    @PostMapping("/{id}/visits")
+    public VisitResult visit(@PathVariable Long id, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+        foodService.detail(id); // Reject inaccessible food before any visit write.
+        foodService.recordVisit(id, authentication.getName());
+        return new VisitResult(foodService.detail(id).heat());
     }
 
     @GetMapping("/mine/page")

@@ -1,0 +1,151 @@
+{
+  "baseline": true,
+  "results": [
+    {
+      "name": "home-390",
+      "status": "PASS",
+      "observations": {
+        "layout": [
+          {
+            "class": "",
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 64,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(250, 246, 237, 0.94)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          },
+          {
+            "class": "food-map leaflet-container leaflet-touch leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom",
+            "x": 0,
+            "y": 64,
+            "width": 390,
+            "height": 780,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgb(221, 221, 221)",
+            "font": "12px / 18px \"Helvetica Neue\", Arial, Helvetica, sans-serif"
+          },
+          {
+            "class": "explorer-catalog explorer-panel",
+            "x": 8,
+            "y": 688,
+            "width": 374,
+            "height": 148,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(250, 246, 237, 0.94)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          }
+        ],
+        "initial": {
+          "regions": 1,
+          "catalog": 1,
+          "map": 1,
+          "music": 2
+        },
+        "afterFocus": {
+          "me": 4,
+          "notifications": 4,
+          "music": 5
+        },
+        "afterPage": {
+          "catalog": 2,
+          "map": 2
+        }
+      }
+    },
+    {
+      "name": "home-1366",
+      "status": "PASS",
+      "observations": {
+        "layout": [
+          {
+            "class": "",
+            "x": 0,
+            "y": 0,
+            "width": 1366,
+            "height": 82,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          },
+          {
+            "class": "food-map leaflet-container leaflet-touch leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom",
+            "x": 0,
+            "y": 82,
+            "width": 1366,
+            "height": 762,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgb(221, 221, 221)",
+            "font": "12px / 18px \"Helvetica Neue\", Arial, Helvetica, sans-serif"
+          },
+          {
+            "class": "explorer-catalog explorer-panel",
+            "x": 190,
+            "y": 610,
+            "width": 986,
+            "height": 216,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          }
+        ],
+        "initial": {
+          "regions": 1,
+          "catalog": 1,
+          "map": 1,
+          "music": 2
+        },
+        "afterFocus": {
+          "me": 4,
+          "notifications": 4,
+          "music": 5
+        },
+        "afterPage": {
+          "catalog": 2,
+          "map": 2
+        }
+      }
+    },
+    {
+      "name": "detail-identity-and-draft",
+      "status": "PASS",
+      "observations": {
+        "layout": [
+          {
+            "class": "",
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 64,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(249, 245, 235, 0.867)",
+            "font": "16px \"Noto Serif SC\", \"Microsoft YaHei\", serif"
+          },
+          {
+            "class": "detail-hero",
+            "x": 12,
+            "y": 102,
+            "width": 366,
+            "height": 576.90625,
+            "color": "rgb(48, 35, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "font": "16px \"Microsoft YaHei\", system-ui, sans-serif"
+          }
+        ],
+        "sameAccount": {
+          "details": 7,
+          "comments": 4,
+          "likes": 4,
+          "visits": 0,
+          "music": 4,
+          "draft": "",
+          "agentDraft": "(panel remounted)"
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Deterministic API/auth/tile fixtures; no production writes or real-device evidence"
+  ]
+}

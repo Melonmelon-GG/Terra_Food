@@ -6,16 +6,22 @@ import type { Achievement } from './types'
 const notifications = ref<Achievement[]>([])
 let loading: Promise<void> | undefined
 let generation = 0
+let lastLoadedAt = 0
+let lastAttemptAt = 0
 
 export function useAchievementNotifications() {
-  async function load() {
+  async function load(force = false) {
     if (loading) return loading
+    const now = Date.now()
+    if (!force && ((lastLoadedAt && now - lastLoadedAt < 30_000) || (lastAttemptAt && now - lastAttemptAt < 10_000))) return
+    lastAttemptAt = now
     const requestedGeneration = generation
 
     loading = (async () => {
       try {
         const incoming = await getAchievementNotifications()
         if (requestedGeneration !== generation) return
+        lastLoadedAt = Date.now()
         const existingIds = new Set(notifications.value.map((achievement) => achievement.id))
         notifications.value.push(...incoming.filter((achievement) => !existingIds.has(achievement.id)))
       } catch {
@@ -42,6 +48,8 @@ export function useAchievementNotifications() {
     ++generation
     loading = undefined
     notifications.value = []
+    lastLoadedAt = 0
+    lastAttemptAt = 0
   }
 
   return {

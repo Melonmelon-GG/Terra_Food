@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { createSharedRead } from './sharedRead'
 
 import type { AgentChatPayload, AgentChatResponse, FoodFootprint, FoodCheckin, FoodTag, PagedCheckins, FoodMapResults, FoodMapClusters, FoodMapClusterItem, FoodSort, PagedFoodTags, FoodTagAdminPayload, PagedWishlist } from './types'
 
@@ -57,6 +58,9 @@ const api = axios.create({
 
 // 由 main.ts 注册的会话失效回调：统一清空登录态并跳转登录页，
 // 保持 api.ts 与 auth/router 解耦，避免循环依赖。
+const regionsRead = createSharedRead<Region[]>(60_000, 1)
+const tagsRead = createSharedRead<FoodTag[]>(30_000)
+export function clearSessionReads(): void { tagsRead.clear() }
 type RevisionedRequest = { __sessionRevision?: number }
 type SessionSnapshot = { revision: number; userId?: number; confirmed: boolean }
 let onUnauthorized: ((requestRevision?: number) => void) | undefined
@@ -161,9 +165,13 @@ export async function getFoodCatalog(params: {
   return response.data
 }
 
-export async function getFood(id: number): Promise<Food> {
-  const response = await api.get<Food>(`/foods/${id}`)
+export async function getFood(id: number, signal?: AbortSignal): Promise<Food> {
+  const response = await api.get<Food>(`/foods/${id}`, { params: { recordVisit: false }, signal })
   return response.data
+}
+
+export async function recordFoodVisit(id: number, signal?: AbortSignal): Promise<{ heat: number }> {
+  return (await api.post<{ heat: number }>(`/foods/${id}/visits`, undefined, { signal })).data
 }
 
 export async function getFoodExportImage(id: number, signal?: AbortSignal): Promise<Blob> {
@@ -180,8 +188,8 @@ export async function getUserPublic(id: number): Promise<UserPublic> {
   return response.data
 }
 
-export async function getFoodLikeStatus(id: number): Promise<FoodLikeStatus> {
-  const response = await api.get<FoodLikeStatus>(`/foods/${id}/like/status`)
+export async function getFoodLikeStatus(id: number, signal?: AbortSignal): Promise<FoodLikeStatus> {
+  const response = await api.get<FoodLikeStatus>(`/foods/${id}/like/status`, { signal })
   return response.data
 }
 
@@ -208,10 +216,12 @@ export async function createFoodComment(
   return response.data
 }
 
-export async function getRegions(): Promise<Region[]> {
-  const response = await api.get<Region[]>('/regions')
-  if (!Array.isArray(response.data)) throw new Error('Invalid list response')
-  return response.data
+export function getRegions(signal?: AbortSignal): Promise<Region[]> {
+  return regionsRead.read('regions', async requestSignal => {
+    const response = await api.get<Region[]>('/regions', { signal: requestSignal })
+    if (!Array.isArray(response.data)) throw new Error('Invalid list response')
+    return response.data
+  }, signal)
 }
 
 interface TiandituAddressComponent {
@@ -307,6 +317,7 @@ export async function ensureMapRegion(
   signal?: AbortSignal,
 ): Promise<Region> {
   const response = await api.post<Region>('/regions/resolve', { province, city }, { signal })
+  regionsRead.clear()
   return response.data
 }
 async function reverseWithTianditu(
@@ -450,6 +461,7 @@ export async function createFood(payload: FoodCreatePayload, idempotencyKey?: st
   const response = await api.post<Food>('/foods', payload, {
     headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
   })
+  regionsRead.clear()
   return response.data
 }
 
@@ -506,13 +518,20 @@ export async function deleteMyCheckin(id: number, version: number): Promise<void
   await api.delete(`/profile/check-ins/${id}`, { params: { version } })
 }
 
-export async function getFoodTags(type?: FoodTag['type'], keyword?: string): Promise<FoodTag[]> {
-  const response = await api.get<FoodTag[]>('/food-tags', { params: { type, keyword } })
-  return response.data
+export function getFoodTags(type?: FoodTag['type'], keyword?: string, signal?: AbortSignal): Promise<FoodTag[]> {
+  const scope = readSessionSnapshot()
+  // This endpoint may include the caller's pending tags. Never share across identities.
+  const key = JSON.stringify([scope.revision, scope.userId, type, keyword])
+  return tagsRead.read(key, async requestSignal => {
+    const response = await api.get<FoodTag[]>('/food-tags', { params: { type, keyword }, signal: requestSignal })
+    if (!Array.isArray(response.data)) throw new Error('Invalid tag response')
+    return response.data
+  }, signal)
 }
 
 export async function createFoodTag(payload: { type: FoodTag['type']; name: string }): Promise<FoodTag> {
   const response = await api.post<FoodTag>('/food-tags', payload)
+  tagsRead.clear()
   return response.data
 }
 
@@ -528,16 +547,18 @@ export async function getAdminFoodTags(params: { status?: string; type?: string;
 
 export async function updateAdminFoodTag(id: number, payload: FoodTagAdminPayload): Promise<FoodTag> {
   const response = await api.patch<FoodTag>(`/admin/food-tags/${id}`, payload)
+  tagsRead.clear()
   return response.data
 }
 
 export async function mergeAdminFoodTag(id: number, targetId: number, version: number): Promise<FoodTag> {
   const response = await api.post<FoodTag>(`/admin/food-tags/${id}/merge`, { targetId, version })
+  tagsRead.clear()
   return response.data
 }
 
-export async function chatWithAgent(payload: AgentChatPayload): Promise<AgentChatResponse> {
-  const response = await api.post<AgentChatResponse>('/agent/chat', payload, { timeout: 60_000 })
+export async function chatWithAgent(payload: AgentChatPayload, signal?: AbortSignal): Promise<AgentChatResponse> {
+  const response = await api.post<AgentChatResponse>('/agent/chat', payload, { timeout: 60_000, signal })
   return response.data
 }
 
@@ -559,6 +580,7 @@ export async function importFoodSpreadsheet(file: File): Promise<FoodImportResul
   formData.append('file', file)
 
   const response = await api.post<FoodImportResult>('/foods/import', formData, { timeout: 120_000 })
+  regionsRead.clear()
   return response.data
 }
 
@@ -573,8 +595,8 @@ export async function getMyFavorites(): Promise<Food[]> {
   return response.data
 }
 
-export async function getFavoriteStatus(foodId: number): Promise<FavoriteStatus> {
-  const response = await api.get<FavoriteStatus>('/profile/favorites/' + foodId + '/status')
+export async function getFavoriteStatus(foodId: number, signal?: AbortSignal): Promise<FavoriteStatus> {
+  const response = await api.get<FavoriteStatus>('/profile/favorites/' + foodId + '/status', { signal })
   if (!response.data || typeof response.data.favorited !== 'boolean') {
     throw new Error('Invalid favorite response')
   }
@@ -609,8 +631,8 @@ export async function getMyWishlistPage(page = 1, pageSize = 20): Promise<PagedW
   return response.data
 }
 
-export async function getWishlistStatus(foodId: number): Promise<WishlistStatus> {
-  const response = await api.get<WishlistStatus>('/profile/wishlist/foods/' + foodId + '/status')
+export async function getWishlistStatus(foodId: number, signal?: AbortSignal): Promise<WishlistStatus> {
+  const response = await api.get<WishlistStatus>('/profile/wishlist/foods/' + foodId + '/status', { signal })
   return response.data
 }
 

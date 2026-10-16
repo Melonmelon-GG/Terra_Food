@@ -1,7 +1,7 @@
 import { readonly, ref } from 'vue'
 import { isAxiosError } from 'axios'
 
-import { getCurrentUser, login as requestLogin, logout as requestLogout } from './api'
+import { clearSessionReads, getCurrentUser, login as requestLogin, logout as requestLogout } from './api'
 import { useAchievementNotifications } from './achievement'
 import type { AuthUser, LoginPayload, UserRole } from './types'
 import { clearDraftsForUser } from './drafts'
@@ -31,7 +31,7 @@ function notifySessionChange() {
 }
 
 function applyUser(user: AuthUser | null) {
-  if (currentUser.value?.id !== user?.id) achievementNotifications.clear()
+  if (currentUser.value?.id !== user?.id) { achievementNotifications.clear(); clearSessionReads() }
   currentUser.value = user
 }
 // 恢复失败后短时冷却，避免弱网下每次导航都重复打 /auth/me；
@@ -60,11 +60,12 @@ export function useAuth() {
     sessionConfirmed.value = false
     const revision = sessionRevision.value
     const previousId = currentUser.value?.id
+    const previousRole = currentUser.value?.role
     const promise = (async () => {
       try {
         const user = await getCurrentUser()
         if (revision !== sessionRevision.value) return
-        if (previousId !== user.id && previousId != null) ++sessionRevision.value
+        if (previousId != null && (previousId !== user.id || previousRole !== user.role)) ++sessionRevision.value
         applyUser(user)
         sessionChecked = true
         sessionConfirmed.value = true
@@ -72,9 +73,7 @@ export function useAuth() {
       } catch (error) {
         if (revision !== sessionRevision.value) return
         if (isAxiosError(error) && error.response?.status === 401) {
-          applyUser(null)
-          sessionChecked = true
-          sessionConfirmed.value = true
+          clearSession(false)
         } else {
           // 网络故障不等于登出，保留当前身份并允许后续重试。
           sessionChecked = false
@@ -97,7 +96,7 @@ export function useAuth() {
     sessionChecked = true
     sessionConfirmed.value = true
     notifySessionChange()
-    void achievementNotifications.load()
+    void achievementNotifications.load(true)
     return user
   }
 
@@ -117,6 +116,7 @@ export function useAuth() {
     currentUser.value = null
     sessionConfirmed.value = true
     achievementNotifications.clear()
+    clearSessionReads()
     sessionChecked = true
     if (broadcast) notifySessionChange()
   }
@@ -138,6 +138,7 @@ export function useAuth() {
   async function verifyForegroundSession() {
     if (document.visibilityState === 'hidden') return
     const now = Date.now()
+    if (!sessionChecked && lastRestoreAttemptAt && now - lastRestoreAttemptAt < RESTORE_COOLDOWN_MS) return
     if (now - foregroundCheckAt < 1000) return
     foregroundCheckAt = now
     await restoreSession(true)
