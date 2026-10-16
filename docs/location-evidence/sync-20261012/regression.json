@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "id": "LOCATION-city-and-draft",
+      "status": "PASS"
+    },
+    {
+      "id": "LOCATION-late-address",
+      "status": "PASS"
+    },
+    {
+      "id": "LOCATION-denied-manual-create",
+      "status": "PASS"
+    },
+    {
+      "id": "LOCATION-success-and-late-callback",
+      "status": "PASS"
+    },
+    {
+      "id": "LOCATION-no-callback-deadline",
+      "status": "PASS"
+    },
+    {
+      "id": "LOCATION-browser-errors",
+      "status": "PASS"
+    },
+    {
+      "id": "LOCATION-tiles-down-manual-pick",
+      "status": "PASS"
+    }
+  ],
+  "limitations": [
+    "API and geolocation are deterministic browser fixtures; no production writes or real-device GPS proof."
+  ]
+}

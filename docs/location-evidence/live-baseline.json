@@ -1,0 +1,11 @@
+{
+  "results": [
+    {
+      "id": "BASELINE-add-blocked-and-tile-overlay",
+      "status": "PASS"
+    }
+  ],
+  "limitations": [
+    "API and geolocation are deterministic browser fixtures; no production writes or real-device GPS proof."
+  ]
+}
