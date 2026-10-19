@@ -54,11 +54,14 @@ class ReleaseTests(PrivateWorkspace):
 
     def fake_capture(self, args):
         images = json.loads(self.arguments_cache.manifest.read_text())['images']
+        if 'config' in args and '--format' in args:
+            return json.dumps({'services':{'backend':{'environment':{'UPLOAD_DIRECTORY':'/data/uploads'}}}})
         if 'ps' in args:
             return 'container-' + args[-1]
         if 'inspect' in args and any(value.startswith('container-') for value in args):
             container = next(value for value in args if value.startswith('container-'))
-            return images[container.removeprefix('container-')]
+            return json.dumps([{'Image':images[container.removeprefix('container-')], 'State':{'Running':True}}])
+        if 'org.opencontainers.image.revision' in ' '.join(args): return 'a'*40
         return next((value for value in args if value.startswith('sha256:')), 'sha256:' + 'a' * 64)
 
     @contextlib.contextmanager
@@ -75,7 +78,7 @@ class ReleaseTests(PrivateWorkspace):
              patch.object(release, 'healthy', return_value=healthy), \
              patch.object(release, 'open', return_value=io.StringIO(), create=True), \
              patch.object(release.fcntl, 'flock'), \
-             patch.object(release.time, 'monotonic', side_effect=[0, 1, 151]), \
+             patch.object(release.time, 'monotonic', side_effect=[0, 1, 2, 152]), \
              patch.object(release.time, 'sleep'), contextlib.redirect_stdout(io.StringIO()):
             yield operations
 
@@ -86,6 +89,8 @@ class ReleaseTests(PrivateWorkspace):
         self.assertFalse(args.deployed.exists())
         self.assertTrue(any(command[-2:] == ['config', '--quiet'] for command in commands))
         self.assertFalse(any('up' in command or 'exec' in command for command in commands))
+        override=json.loads(args.manifest.with_suffix('.compose.json').read_text())
+        self.assertTrue(all('build' not in service for service in override['services'].values()))
 
     def test_success_requires_api_images_agent_and_unauthenticated_mcp_rejection(self):
         args = self.arguments()
@@ -115,11 +120,19 @@ class ReleaseTests(PrivateWorkspace):
                     with self.assertRaises(RuntimeError): release.apply(args)
                 self.assertFalse(args.deployed.exists())
 
+    def test_unreadable_candidate_uploads_prevent_replacement(self):
+        args=self.arguments()
+        with self.controlled_apply(args) as commands:
+            with patch.object(release,'validate_upload_readability',side_effect=PermissionError('fixture')):
+                with self.assertRaises(PermissionError): release.apply(args)
+        self.assertFalse(any('up' in command for command in commands))
+        self.assertFalse(args.deployed.exists())
+
     def test_image_mismatch_does_not_mark_deployed(self):
         args = self.arguments()
         with self.controlled_apply(args):
             with patch.object(release, 'capture', return_value='wrong-image'):
-                with self.assertRaises(RuntimeError): release.apply(args)
+                with self.assertRaises((ValueError,RuntimeError)): release.apply(args)
         self.assertFalse(args.deployed.exists())
 
     def test_missing_component_and_public_env_are_rejected_before_apply(self):
