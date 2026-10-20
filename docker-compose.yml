@@ -92,7 +92,6 @@ services:
     container_name: dayan-food-agent-mcp
     command: ["python", "-m", "app.mcp_server"]
     environment:
-      AGENT_INTERNAL_TOKEN: ${AGENT_INTERNAL_TOKEN:?set AGENT_INTERNAL_TOKEN}
       MCP_BACKEND_TOKEN: ${MCP_BACKEND_TOKEN:?set MCP_BACKEND_TOKEN}
       MCP_INTERNAL_TOKEN: ${MCP_INTERNAL_TOKEN:?set MCP_INTERNAL_TOKEN}
       BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://host.docker.internal:8080}
@@ -109,7 +108,6 @@ services:
     container_name: dayan-food-agent-api
     environment:
       AGENT_INTERNAL_TOKEN: ${AGENT_INTERNAL_TOKEN:?set AGENT_INTERNAL_TOKEN}
-      MCP_BACKEND_TOKEN: ${MCP_BACKEND_TOKEN:?set MCP_BACKEND_TOKEN}
       MCP_INTERNAL_TOKEN: ${MCP_INTERNAL_TOKEN:?set MCP_INTERNAL_TOKEN}
       MCP_SERVER_URL: http://agent-mcp:8091/mcp
       OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY}

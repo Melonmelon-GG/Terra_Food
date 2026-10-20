@@ -6,7 +6,7 @@
 
 跟随 main 的可靠更新入口见 [AUTO_UPDATE.md](AUTO_UPDATE.md)。源码、准备制品与已部署清单独立；首次升级及数据库迁移先人工演练，普通应用更新可由原有定时器执行。
 
-1. 在构建主机固定仓库提交，执行 `python3 ops/release.py prepare --repo PATH --revision COMMIT --manifest PRIVATE/prepared.json`。同时构建后端、前端和 Agent，不以主分支相同就跳过 Agent。
+1. 在构建主机固定仓库提交，执行 `python3 ops/release.py prepare --repo PATH --revision COMMIT --manifest PRIVATE/prepared.json --frontend-config PRIVATE/frontend.json`。同时构建后端、前端和 Agent，不以主分支相同就跳过 Agent。
 2. 先使用 `apply` 的预览模式验证完整 Compose 和四个不同的服务凭据。运行环境文件权限必须为0600，至少包含 `AGENT_INTERNAL_TOKEN`、`MCP_INTERNAL_TOKEN`、`MCP_BACKEND_TOKEN`、`AGENT_CONTEXT_SECRET`，各自至少32字符；凭据生成和保管在仓库外完成。
 3. 确认数据库、Redis、SMTP、上传挂载和数据库备份已准备；旧后台发布器必须停用或使用同一 `/run/lock/terrafood-maintenance.lock`，不能同时更新。先做数据库迁移预检，确认历史归属隔离对用户列表的影响。
 4. 维护窗口使用 `apply --execute`。只有公共目录、四个实际镜像身份、Agent版本和MCP匿名拒绝都通过，才写入 deployed 标记。失败不写成功标记、不自动回滚数据库。
@@ -40,3 +40,6 @@ java -Dloader.main=com.dayan.food.image.ImageMaintenance -cp app.jar \
 ## 回滚
 
 保留稳定身份与认证版本安全补丁作为最低版本，禁止退回用户名鉴权。数据库不删除新增表；原图不删除。可以关闭派生、缓存、Agent等可选能力，前端独立回退，但不能放开旧版本审核或CSRF。迁移后回退后端需要先验证Flyway与新增字段兼容，不能因为镜像能启动就宣称所有旧行为安全。
+## 配置交付契约
+
+发布前端必须提供独立的公开配置文件，模型密钥只通过服务端运行配置传入。地图Key、API地址、模型和邮件等运行配置变化均参与部署判断。详见 [自动更新配置与摸查](AUTO_UPDATE.md)，只读摸查入口 `audit_configuration.py`。

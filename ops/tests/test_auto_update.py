@@ -12,6 +12,8 @@ from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import auto_update as updater
 import release
+import configuration
+from fixture_configuration import PUBLIC,RUNTIME,FRONTEND,write_public
 
 SHA='a'*40
 OLD='b'*40
@@ -26,13 +28,16 @@ class UpdateTests(unittest.TestCase):
         self.config={'repo':root/'repo','state':root/'state','lock':str(root/'lock'),
                      'compose':root/'compose.yml','env_file':root/'runtime.env','project':'isolated','health_url':'http://127.0.0.1:1'}
         self.config['state'].mkdir(mode=0o700)
-        self.prepared={'revision':SHA,'images':IMAGES,'web_entry_sha256':'c'*64}
+        self.config['frontend_config']=write_public(root)
+        self.prepared={'schema':3,'revision':SHA,'images':IMAGES,'web_entry_sha256':'c'*64,'frontend':FRONTEND,
+                       'runtime_fingerprint':configuration.runtime_identity(RUNTIME)}
         release.save(self.config['state']/'deployed.json',{**self.prepared,'revision':OLD})
         self.stack=contextlib.ExitStack()
         self.addCleanup(self.stack.close)
         self.stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
         self.sync=self.stack.enter_context(patch.object(updater,'synchronize',return_value=SHA))
-        self.runtime=self.stack.enter_context(patch.object(release,'validate_runtime'))
+        self.runtime=self.stack.enter_context(patch.object(release,'validate_runtime',return_value=RUNTIME))
+        self.effective=self.stack.enter_context(patch.object(release,'effective_runtime_identity',return_value=configuration.runtime_identity(RUNTIME)))
         self.manifest=self.stack.enter_context(patch.object(release,'validate_manifest'))
         self.verify=self.stack.enter_context(patch.object(release,'verify_running'))
         self.migrations=self.stack.enter_context(patch.object(updater,'migration_changes',return_value=False))
@@ -70,6 +75,22 @@ class UpdateTests(unittest.TestCase):
         self.verify.assert_called_once()
         self.build.assert_not_called()
         self.apply.assert_not_called()
+
+    def test_current_source_with_old_frontend_configuration_rebuilds(self):
+        release.save(self.config['state']/'deployed.json',{**self.prepared,'frontend':{}})
+        self.assertEqual(updater.update(self.config),0)
+        self.build.assert_called_once();self.apply.assert_called_once()
+
+    def test_changed_runtime_reapplies_without_rebuilding_matching_images(self):
+        release.save(self.config['state']/'deployed.json',{**self.prepared,'runtime_fingerprint':'old'})
+        release.save(self.config['state']/'prepared.json',self.prepared)
+        self.assertEqual(updater.update(self.config),0)
+        self.build.assert_not_called();self.apply.assert_called_once()
+
+    def test_missing_frontend_input_blocks_before_fetch(self):
+        self.config['frontend_config'].unlink()
+        with self.assertRaisesRegex(updater.UpdateError,'FrontendConfigurationNotReady'): updater.update(self.config)
+        self.sync.assert_not_called();self.apply.assert_not_called()
 
     def test_same_revision_wrong_container_is_reapplied(self):
         release.save(self.config['state']/'deployed.json',self.prepared)

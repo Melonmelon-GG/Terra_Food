@@ -3,13 +3,17 @@ WORKDIR /source
 COPY web/package*.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts
 COPY web/ ./
-RUN npm run build
+COPY ops/build_frontend.mjs /opt/terrafood/build_frontend.mjs
+ARG FRONTEND_CONFIG_SHA256
+RUN --mount=type=secret,id=terra_frontend_config,required=true node /opt/terrafood/build_frontend.mjs
 
 FROM nginx:1.30.5-alpine@sha256:bf3201ab56f23e5954646379c775d511fc466e9f11376d9725361064ad07ed35
 COPY performance/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /source/dist /usr/share/nginx/html
 ARG SOURCE_REVISION=unknown
 LABEL org.opencontainers.image.revision=$SOURCE_REVISION
+ARG FRONTEND_CONFIG_SHA256
+LABEL org.terrafood.frontend-config=$FRONTEND_CONFIG_SHA256
 RUN sed -i '/^user /d; s@/var/run/nginx.pid@/tmp/nginx.pid@; s@/run/nginx.pid@/tmp/nginx.pid@' /etc/nginx/nginx.conf \
     && chown -R nginx:nginx /var/cache/nginx
 USER nginx

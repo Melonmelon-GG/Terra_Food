@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "map_provider": "tianditu",
+  "tianditu_key": "REPLACE_WITH_VALID_BROWSER_KEY",
+  "api_base_url": "/api"
+}
