@@ -109,5 +109,12 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIsNone(result['authentication_accepted'])
         self.assertTrue(result['configured_model_listed'])
 
+    def test_every_browser_vite_input_is_part_of_the_public_contract(self):
+        repo=Path(__file__).resolve().parents[2]
+        names={item['name'] for item in audit_configuration.declarations(repo)
+               if item['consumer']=='browser' and item['name'].startswith('VITE_')}
+        self.assertEqual(names,{'VITE_API_BASE_URL','VITE_TIANDITU_KEY'},
+                         'A new browser input requires an explicit build contract and artifact assertion')
+
 
 if __name__=='__main__': unittest.main()
