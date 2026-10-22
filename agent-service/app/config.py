@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+import hashlib
+import hmac
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,3 +33,21 @@ class Settings:
 
 
 settings = Settings()
+
+
+def model_configuration_ready(value: Settings) -> bool:
+    """Local readiness only: this does not prove provider access or model quality."""
+    from urllib.parse import urlsplit
+    key = value.openai_api_key
+    base = value.openai_base_url or 'https://api.openai.com/v1'
+    url = urlsplit(base)
+    return bool(len(key) >= 16 and key == key.strip() and not any(c.isspace() for c in key)
+                and not key.lower().startswith(('your-', 'replace-', 'change-me', 'sk-your', 'ci-dummy'))
+                and value.model.strip() and value.model == value.model.strip() and url.scheme in ('https', 'http') and url.hostname
+                and not url.username and not url.password and not url.query and not url.fragment)
+
+
+def model_configuration_identity(value: Settings) -> str:
+    payload = {'api_key': value.openai_api_key, 'base_url': value.openai_base_url or '', 'model': value.model}
+    encoded = json.dumps(payload, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()
+    return hmac.new(value.internal_token.encode(), encoded, hashlib.sha256).hexdigest()

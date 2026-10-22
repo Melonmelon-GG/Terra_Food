@@ -15,6 +15,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
+from fixture_configuration import PUBLIC, RUNTIME, FRONTEND, write_public, service_environment
 
 OPS = Path(__file__).resolve().parents[1]
 
@@ -44,23 +45,25 @@ class ReleaseTests(PrivateWorkspace):
     def arguments(self, execute=True):
         images = {service: 'sha256:' + character * 64 for service, character in zip(release.SERVICES, 'abcd')}
         manifest = self.root / 'prepared.json'
-        manifest.write_text(json.dumps({'schema': 1, 'revision': 'a' * 40, 'images': images}))
+        manifest.write_text(json.dumps({'schema': 3, 'revision': 'a' * 40, 'images': images, 'frontend':FRONTEND}))
         env = self.root / 'runtime.env'
-        env.write_text('\n'.join(key + '=' + character * 40 for key, character in zip(
-            ('AGENT_INTERNAL_TOKEN', 'MCP_INTERNAL_TOKEN', 'MCP_BACKEND_TOKEN', 'AGENT_CONTEXT_SECRET'), 'abcd')))
+        env.write_text('\n'.join(key+'='+value for key,value in RUNTIME.items()))
         env.chmod(0o600)
         return SimpleNamespace(manifest=manifest, env_file=env, compose=self.root / 'compose.yml',
-            project='terra-unit', execute=execute, health_url='http://127.0.0.1:19999', deployed=self.root / 'deployed.json')
+            project='terra-unit', execute=execute, health_url='http://127.0.0.1:19999', deployed=self.root / 'deployed.json',
+            frontend_config=write_public(self.root))
 
     def fake_capture(self, args):
         images = json.loads(self.arguments_cache.manifest.read_text())['images']
         if 'config' in args and '--format' in args:
-            return json.dumps({'services':{'backend':{'environment':{'UPLOAD_DIRECTORY':'/data/uploads'}}}})
+            return json.dumps({'services':{name:{'environment':service_environment(name)} for name in release.SERVICES}})
         if 'ps' in args:
             return 'container-' + args[-1]
         if 'inspect' in args and any(value.startswith('container-') for value in args):
             container = next(value for value in args if value.startswith('container-'))
-            return json.dumps([{'Image':images[container.removeprefix('container-')], 'State':{'Running':True}}])
+            name=container.removeprefix('container-')
+            return json.dumps([{'Image':images[name], 'State':{'Running':True},
+                'Config':{'Env':[key+'='+value for key,value in service_environment(name).items()]}}])
         if 'org.opencontainers.image.revision' in ' '.join(args): return 'a'*40
         return next((value for value in args if value.startswith('sha256:')), 'sha256:' + 'a' * 64)
 
@@ -76,6 +79,8 @@ class ReleaseTests(PrivateWorkspace):
         with patch.object(release, 'capture', side_effect=self.fake_capture), \
              patch.object(release, 'run', side_effect=run), \
              patch.object(release, 'healthy', return_value=healthy), \
+             patch.object(release, 'frontend_from_image', return_value=FRONTEND), \
+             patch.object(release, 'verify_frontend_http'), \
              patch.object(release, 'open', return_value=io.StringIO(), create=True), \
              patch.object(release.fcntl, 'flock'), \
              patch.object(release.time, 'monotonic', side_effect=[0, 1, 2, 152]), \
@@ -166,7 +171,9 @@ class ReleaseTests(PrivateWorkspace):
                 should_fail = False
                 raise subprocess.CalledProcessError(1, command)
         archive = Mock(); archive.__enter__ = Mock(return_value=archive); archive.__exit__ = Mock(return_value=False)
-        with patch.object(release, 'capture', side_effect=lambda args: 'a' * 40 if args[0] == 'git' else 'sha256:' + 'a' * 64), \
+        with patch.object(release.configuration, 'load_frontend',return_value=PUBLIC), \
+             patch.object(release,'frontend_from_image',return_value=FRONTEND), \
+             patch.object(release, 'capture', side_effect=lambda args: 'a' * 40 if args[0] == 'git' else 'sha256:' + 'a' * 64), \
              patch.object(release.subprocess, 'run'), patch.object(release.tarfile, 'open', return_value=archive), \
              patch.object(release, 'run', side_effect=fake_run):
             with self.assertRaises(subprocess.CalledProcessError): release.prepare(self.root, 'main', output)

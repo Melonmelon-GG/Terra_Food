@@ -10,6 +10,7 @@ import fcntl
 import json
 import ipaddress
 import os
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -17,6 +18,7 @@ import time
 from types import SimpleNamespace
 
 import release
+import configuration
 
 
 class UpdateError(RuntimeError):
@@ -33,7 +35,8 @@ def git(config, *args):
 
 def settings(config, manifest):
     return SimpleNamespace(manifest=manifest, compose=Path(config['compose']), env_file=Path(config['env_file']),
-        project=config['project'], health_url=config['health_url'], deployed=Path(config['state'])/'deployed.json', execute=True)
+        project=config['project'], health_url=config['health_url'], deployed=Path(config['state'])/'deployed.json',
+        frontend_config=config.get('frontend_config'), execute=True)
 
 
 def transition(config, phase, target=None, code=None):
@@ -64,6 +67,13 @@ def synchronize(config):
             time.sleep(2)
     # Do not substitute local HEAD when the upstream ref is missing.
     revision = git(config,'rev-parse',config.get('remote','origin')+'/'+config.get('branch','main')+'^{commit}')
+    required=config.get('required_ancestor')
+    if required:
+        if not re.fullmatch(r'[0-9a-f]{40}',required): raise UpdateError('InvalidRequiredAncestor')
+        try:
+            release.run(['git','-c','safe.directory='+str(config['repo']),'-C',str(config['repo']),
+                         'merge-base','--is-ancestor',required,revision],timeout=15,capture_output=True)
+        except subprocess.CalledProcessError: raise UpdateError('AwaitingUpstreamHotfix')
     release.run(['git','-c','safe.directory='+str(config['repo']),'-C',str(config['repo']),
                  'merge','--ff-only','--quiet',revision], timeout=60,capture_output=True)
     return revision
@@ -95,8 +105,14 @@ def inspect(config):
     except (OSError,ValueError): result['runtime_ready'] = False
     else: result['runtime_ready'] = True
     result['verified'] = False
-    if deployed:
+    try: public=configuration.load_frontend(config.get('frontend_config'))
+    except (OSError,ValueError): public=None
+    result['frontend_config_ready']=public is not None
+    if deployed and public and configuration.frontend_matches(deployed,public):
         try:
+            runtime=release.validate_runtime(Path(config['env_file']))
+            if deployed.get('runtime_fingerprint') != release.effective_runtime_identity(settings(config,state/'deployed.json'),state/'deployed.compose.json',runtime):
+                raise ValueError('RuntimeConfigurationChanged')
             release.validate_manifest(deployed)
             release.verify_running(settings(config,state/'deployed.json'),deployed,state/'deployed.compose.json')
             result['verified'] = True
@@ -114,19 +130,23 @@ def update(config):
         except BlockingIOError: raise UpdateError('AnotherUpdateRunning')
         target = None
         try:
+            try: public=configuration.load_frontend(config.get('frontend_config'))
+            except (OSError,ValueError): raise UpdateError('FrontendConfigurationNotReady')
             transition(config,'fetching')
             target = synchronize(config)
             transition(config,'checkout-synchronized',target)
-            try: release.validate_runtime(Path(config['env_file']))
+            try: runtime=release.validate_runtime(Path(config['env_file']))
             except (OSError,ValueError): raise UpdateError('RuntimeCredentialsNotReady')
             deployed = read(root/'deployed.json')
             if not deployed:
                 # Unknown old deployments may need ownership/data and credential
                 # migrations. Never guess a deployed revision from checkout HEAD.
                 raise UpdateError('InitialReviewedDeploymentRequired')
+            desired_runtime=release.effective_runtime_identity(settings(config,root/'deployed.json'),root/'deployed.compose.json',runtime)
             if target != deployed['revision'] and migration_changes(config,deployed['revision'],target):
                 raise UpdateError('MigrationReviewRequired')
-            if target == deployed['revision']:
+            if (target == deployed['revision'] and configuration.frontend_matches(deployed,public)
+                    and deployed.get('runtime_fingerprint') == desired_runtime):
                 try:
                     release.validate_manifest(deployed)
                     release.verify_running(settings(config,root/'deployed.json'),deployed,root/'deployed.compose.json')
@@ -139,7 +159,8 @@ def update(config):
                     return 0
             prepared_path = root/'prepared.json'
             prepared = read(prepared_path)
-            reusable = bool(prepared and prepared.get('revision') == target and prepared.get('web_entry_sha256'))
+            reusable = bool(prepared and prepared.get('revision') == target and prepared.get('web_entry_sha256')
+                            and configuration.frontend_matches(prepared,public))
             if reusable:
                 try: release.validate_manifest(prepared)
                 except Exception: reusable = False
@@ -147,9 +168,11 @@ def update(config):
                 transition(config,'building',target)
                 # Build in a new process group so signals do not orphan our CLI.
                 release.run(['python3',str(Path(__file__).with_name('release.py')),'prepare',
-                             '--repo',str(config['repo']),'--revision',target,'--manifest',str(prepared_path)],timeout=6000)
+                             '--repo',str(config['repo']),'--revision',target,'--manifest',str(prepared_path),
+                             '--frontend-config',str(config.get('frontend_config') or os.environ.get('TERRA_FRONTEND_CONFIG',''))],timeout=6000)
                 prepared = read(prepared_path)
-                if not prepared or prepared.get('revision') != target or not prepared.get('web_entry_sha256'):
+                if (not prepared or prepared.get('revision') != target or not prepared.get('web_entry_sha256')
+                        or not configuration.frontend_matches(prepared,public)):
                     raise UpdateError('PreparedManifestMissingOrWrong')
             transition(config,'applying',target)
             refresh_proxy(config,target)

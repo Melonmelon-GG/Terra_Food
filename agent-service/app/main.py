@@ -13,7 +13,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
-from .config import settings
+from .config import settings, model_configuration_ready, model_configuration_identity
 
 
 app = FastAPI(title="Terra Food Agent", version="0.1.0")
@@ -243,6 +243,13 @@ async def build_tools(request: ChatRequest):
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "memory": "disabled", "revision": __import__("os").getenv("SOURCE_REVISION", "unknown")}
+
+
+@app.get('/ready', dependencies=[Depends(require_internal_token)])
+async def ready() -> dict[str, str]:
+    if not model_configuration_ready(settings):
+        raise HTTPException(status_code=503, detail='Model configuration is not ready')
+    return {'status': 'ready', 'configuration': model_configuration_identity(settings)}
 
 
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_internal_token)])

@@ -17,13 +17,20 @@
   "lock": "/run/lock/terrafood-update.lock",
   "compose": "/srv/terrafood/deploy/docker-compose.json",
   "env_file": "/srv/terrafood/.env",
+  "frontend_config": "/etc/terrafood/frontend.json",
   "project": "terrafood",
   "health_url": "http://127.0.0.1:8180",
   "build_root": "/srv/terrafood-build"
 }
 ```
 
-state 目录必须 0700；运行环境文件 0600。环境文件需有四个不同、各至少32字符的服务凭据：`AGENT_INTERNAL_TOKEN`、`MCP_INTERNAL_TOKEN`、`MCP_BACKEND_TOKEN`、`AGENT_CONTEXT_SECRET`。维护者在仓库外生成和保管，不放入命令参数或日志。
+state 目录必须 0700；运行环境文件和前端配置文件0600。环境文件需有四个不同、各至少32字符的服务凭据：`AGENT_INTERNAL_TOKEN`、`MCP_INTERNAL_TOKEN`、`MCP_BACKEND_TOKEN`、`AGENT_CONTEXT_SECRET`，以及明确的 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`AGENT_MODEL`。不将旧Compose中已经展开的值当成今后可以轮换的配置来源。维护者在仓库外生成和保管，不放入命令参数或日志。受校验的七个字段只接受字面值，拒绝歧义插值；若既有凭据包含 `$`，先迁移到明确的凭据文件方案，不用静默转换来“兼容”。
+
+前端配置参考 `ops/frontend-config.example.json`。明确选择 `map_provider: tianditu` 并提供有效32位浏览器Key，或明确选择 `osm` 且Key为空；生产缺失配置会停止发布。`api_base_url`只接受同源路径。允许字段之外的内容一律拒绝，不能把整份后端环境文件当作浏览器构建输入。
+
+前端配置通过BuildKit secret送入构建，不复制到源码导出包；浏览器Key本身最终在客户端可见，不是服务端秘密。模型API Key绝不能进入前端。最终构建校验底图、标注/地址解析及备用源代码能力，生成公开的 `/.well-known/terrafood-build.json`（只有配置摘要、能力和关键资产摘要，没有Key）。前端镜像复用同时校验源码和完整配置摘要；只改Key或API路径也会重建。
+
+运行配置的私有HMAC涵盖服务凭据、模型参数及四个应用服务展开后的环境、挂载、启动和安全参数；同源码下修改邮件等运行设置也会触发应用。发布后逐字段核验Compose与容器环境，并调用受鉴权保护的Agent `/ready` 验证实际进程加载的模型配置。`/health`只表示存活；`/ready`只证明本地配置，不能证明供应商可用或模型推理成功。HMAC仅保存在私有部署清单，不公开凭据摘要或配置正文。
 
 如需使用经核验的 HTTPS PyPI 镜像，可添加 `pip_index_url`；仍执行 requirements.lock 的完整版本与哈希校验，拒绝 HTTP 或嵌入账号密码的索引地址。默认使用官方索引。
 
@@ -41,9 +48,11 @@ python3 ops/auto_update.py --config /etc/terrafood-update.json check
 
 ```sh
 TERRA_RELEASE_BUILD_ROOT=/srv/terrafood-build python3 ops/release.py prepare \
+  --frontend-config /etc/terrafood/frontend.json \
   --repo /srv/terrafood --revision FULL_COMMIT --manifest /var/lib/terrafood-update/prepared.json
 
 python3 ops/release.py apply --manifest /var/lib/terrafood-update/prepared.json \
+  --frontend-config /etc/terrafood/frontend.json \
   --compose /srv/terrafood/deploy/docker-compose.json --env-file /srv/terrafood/.env \
   --project terrafood --deployed /var/lib/terrafood-update/deployed.json --execute
 ```
@@ -59,6 +68,20 @@ python3 ops/auto_update.py --config /etc/terrafood-update.json run
 ```
 
 不创建第二套定时任务。建议服务 TimeoutStartSec=7200、TimeoutStopSec=30、KillMode=control-group。三个镜像各有1800秒构建上限，准备子进程上限6000秒；外层超时留有取代码、配置检查和发布余量。Snap 主机的 native Compose 插件负责读取真实主机路径，Buildx 使用 Snap wrapper，构建目录需在其可见位置。
+
+未合并热修复已人工部署时，可在私有更新配置指定 `required_ancestor` 为该修复完整提交；上游main尚未包含它时返回 `AwaitingUpstreamHotfix`，保留当前运行制品。合并后自动继续。该保护不改变远端、不强推，不把旧main覆盖热修复；记录设置依据，后续可以解除。
+
+## 全面配置摸查
+
+```sh
+python3 ops/audit_configuration.py --config /etc/terrafood-update.json
+# 可选：只调用供应商GET /models，不调用模型生成接口
+python3 ops/audit_configuration.py --config /etc/terrafood-update.json --probe-provider
+```
+
+摸查列出源码环境变量消费点、Compose到容器的逐字段一致性、运行文件同名值漂移、地图制品配置、模型与内部凭据、数据端口、Cookie和邮件TLS配置。只输出字段名、布尔结果和错误类别。不会打印配置值、凭据或供应商完整响应；供应商认证请求拒绝重定向，防止将Authorization转发到其他主机。
+
+这不能替代SMTP真实投递、数据库实际授权、Spring命令行覆盖、真实模型推理或用户网络验证，报告保留未核验项。模型不在GET /models清单中也不能单凭此断言不可用，不自动替换模型。
 
 ## 失败与恢复
 
